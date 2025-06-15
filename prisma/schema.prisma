@@ -1,0 +1,301 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// User model with role-based access control
+model User {
+  id            String    @id @default(cuid())
+  name          String
+  email         String    @unique
+  emailVerified DateTime?
+  password      String? // Hashed password
+  image         String?
+  roleId        String // Reference to Role model
+  role          Role      @relation(fields: [roleId], references: [id])
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Relations
+  author      Author?
+  permissions Permission[]
+  sessions    Session[]
+}
+
+// Role model for custom roles
+model Role {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String?
+  isSystem    Boolean  @default(false) // Flag for system-defined roles
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  users       User[]
+  permissions RolePermission[]
+}
+
+// Junction table for role permissions
+model RolePermission {
+  id           String     @id @default(cuid())
+  roleId       String
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permissionId String
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  @@unique([roleId, permissionId])
+}
+
+// Permission model for granular access control
+model Permission {
+  id          String           @id @default(cuid())
+  name        String           @unique
+  description String?
+  users       User[]
+  roles       RolePermission[]
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+}
+
+// Session model for authentication
+model Session {
+  id           String   @id @default(cuid())
+  userId       String
+  expires      DateTime
+  sessionToken String   @unique
+  accessToken  String   @unique
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// Author model
+model Author {
+  id           String   @id @default(cuid())
+  slug         String   @unique
+  name         String
+  email        String   @unique
+  title        String?
+  bio          String?  @db.Text
+  detailedBio  String?  @db.Text
+  image        String?
+  expertise    String[]
+  education    String[]
+  achievements String[]
+  publications String[]
+  location     String?
+  affiliation  String?
+  website      String?
+  twitter      String?
+  linkedin     String?
+  instagram    String?
+  orcid        String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // Relations
+  userId        String?         @unique
+  user          User?           @relation(fields: [userId], references: [id], onDelete: SetNull)
+  articles      Article[]
+  AuthorArticle AuthorArticle[]
+}
+
+// Article model for both blog posts and journal articles
+model Article {
+  id        String      @id @default(cuid())
+  slug      String      @unique
+  title     String
+  excerpt   String      @db.Text
+  content   String      @db.Text
+  date      DateTime
+  readTime  Int
+  image     String
+  images    String[]
+  type      ArticleType
+  draft     Boolean     @default(false)
+  views     Int         @default(0)
+  doi       String?     @unique
+  keywords  String[]
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+
+  // Relations
+  authors      AuthorArticle[]
+  categories   CategoryArticle[]
+  journalIssue JournalIssue?     @relation(fields: [issueId], references: [id])
+  issueId      String?
+  Author       Author?           @relation(fields: [authorId], references: [id])
+  authorId     String?
+}
+
+// Enum for article types
+enum ArticleType {
+  blog
+  journal
+}
+
+// Junction table for many-to-many relationship between authors and articles
+model AuthorArticle {
+  author    Author   @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  authorId  String
+  article   Article  @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  articleId String
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
+
+  @@id([authorId, articleId])
+}
+
+// Category model
+model Category {
+  id          String   @id @default(cuid())
+  name        String
+  slug        String   @unique
+  description String?  @db.Text
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  articles CategoryArticle[]
+}
+
+// Junction table for many-to-many relationship between categories and articles
+model CategoryArticle {
+  category   Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  categoryId String
+  article    Article  @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  articleId  String
+  createdAt  DateTime @default(now())
+
+  @@id([categoryId, articleId])
+}
+
+// Editorial Board Member model
+model EditorialBoardMember {
+  id           String   @id @default(cuid())
+  name         String
+  designation  String
+  image        String
+  order        Int
+  memberType   BoardMemberType  
+  bio          String?  @db.Text
+  detailedBio  String?  @db.Text
+  email        String?
+  expertise    String[]
+  education    String[]
+  achievements String[]
+  publications String[]
+  location     String?
+  affiliation  String?
+  website      String?
+  twitter      String?
+  linkedin     String?
+  instagram    String?
+  orcid        String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+// Enum for article types
+enum BoardMemberType {
+  Editor
+  Advisor
+}
+
+// Notification model
+model Notification {
+  id        String           @id @default(cuid())
+  title     String
+  content   String           @db.Text
+  date      DateTime
+  type      NotificationType
+  priority  Priority         @default(medium)
+  read      Boolean          @default(false)
+  link      String?
+  expiresAt DateTime?
+  image     String?
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+}
+
+// Enum for notification types
+enum NotificationType {
+  call_for_papers
+  student_competition
+  editorial_vacancy
+  special_issue
+  event
+  announcement
+  publication
+}
+
+// Enum for notification priorities
+enum Priority {
+  low
+  medium
+  high
+}
+
+// Journal Issue model
+model JournalIssue {
+  id          String   @id @default(cuid())
+  title       String
+  description String   @db.Text
+  volume      Int
+  issue       Int
+  year        Int
+  publishDate String
+  coverImage  String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  articles Article[]
+
+  @@unique([volume, issue, year])
+}
+
+// Call For Papers model
+model CallForPapers {
+  id            String   @id @default(cuid())
+  title         String
+  thematicFocus String
+  description   String   @db.Text
+  deadline      DateTime
+  volume        Int
+  issue         Int
+  year          Int
+  guidelines    String   @db.Text
+  fee           String?
+  image         String?
+  topics        String[]
+  eligibility   String?  @db.Text
+  contact       String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+// Media model for uploaded files
+model Media {
+  id          String   @id @default(cuid())
+  name        String
+  url         String
+  type        String
+  size        Int
+  alt         String?
+  description String?  @db.Text
+  uploadedBy  String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}

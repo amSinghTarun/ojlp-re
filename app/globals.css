@@ -1,0 +1,471 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 30 30% 99%;
+    --foreground: 20 14.3% 4.1%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 20 14.3% 4.1%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 20 14.3% 4.1%;
+
+    --primary: 355 65% 35%;
+    --primary-foreground: 355 10% 97%;
+
+    --secondary: 30 20% 96%;
+    --secondary-foreground: 24 9.8% 10%;
+
+    --muted: 30 20% 96%;
+    --muted-foreground: 20 5.9% 40%;
+
+    --accent: 30 40% 94%;
+    --accent-foreground: 24 9.8% 10%;
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+
+    --border: 20 5.9% 90%;
+    --input: 20 5.9% 90%;
+    --ring: 355 65% 35%;
+
+    --radius: 0.5rem;
+  }
+
+  .dark {
+    --background: 20 14.3% 4.1%;
+    --foreground: 60 9.1% 97.8%;
+
+    --card: 20 14.3% 4.1%;
+    --card-foreground: 60 9.1% 97.8%;
+
+    --popover: 20 14.3% 4.1%;
+    --popover-foreground: 60 9.1% 97.8%;
+
+    --primary: 355 65% 55%;
+    --primary-foreground: 355 10% 97%;
+
+    --secondary: 12 6.5% 15.1%;
+    --secondary-foreground: 60 9.1% 97.8%;
+
+    --muted: 12 6.5% 15.1%;
+    --muted-foreground: 24 5.4% 63.9%;
+
+    --accent: 12 6.5% 15.1%;
+    --accent-foreground: 60 9.1% 97.8%;
+
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 98%;
+
+    --border: 12 6.5% 15.1%;
+    --input: 12 6.5% 15.1%;
+    --ring: 355 65% 55%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "kern", "liga", "calt", "pnum", "tnum";
+    font-family: var(--font-serif);
+    line-height: 1.75;
+    letter-spacing: -0.011em;
+  }
+
+  /* Refined serif font for headings */
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-family: var(--font-heading);
+    font-weight: 600;
+    line-height: 1.3;
+    letter-spacing: -0.02em;
+  }
+
+  /* Improved paragraph spacing */
+  p {
+    margin-bottom: 1.5em;
+  }
+
+  /* Refined link styling */
+  a {
+    text-decoration-thickness: 1px;
+    text-underline-offset: 2px;
+  }
+}
+
+/* Clean white background */
+.elegant-bg {
+  background-color: white;
+}
+
+/* Formal divider */
+.decorative-divider {
+  position: relative;
+  height: 1px;
+  background-color: hsl(var(--border));
+  margin: 2rem 0;
+}
+
+.decorative-divider::before {
+  content: "§";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background-color: white;
+  padding: 0 1rem;
+  color: hsl(var(--primary));
+  font-family: var(--font-heading);
+}
+
+/* Formal first letter (drop cap) */
+.drop-cap:first-letter {
+  float: left;
+  font-family: var(--font-heading);
+  font-size: 3.5rem;
+  line-height: 0.8;
+  padding-top: 0.1em;
+  padding-right: 0.1em;
+  color: hsl(var(--primary));
+}
+
+/* Subtle animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(15px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slideInRight {
+  from {
+    transform: translateX(15px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.7s ease-in-out forwards;
+}
+
+.animate-slide-up {
+  animation: slideUp 0.7s ease-out forwards;
+}
+
+.animate-slide-in-right {
+  animation: slideInRight 0.7s ease-out forwards;
+}
+
+/* Staggered animation for children */
+.stagger-children > * {
+  opacity: 0;
+  animation: slideUp 0.4s ease-out forwards;
+}
+
+.stagger-children > *:nth-child(1) {
+  animation-delay: 0.1s;
+}
+.stagger-children > *:nth-child(2) {
+  animation-delay: 0.15s;
+}
+.stagger-children > *:nth-child(3) {
+  animation-delay: 0.2s;
+}
+.stagger-children > *:nth-child(4) {
+  animation-delay: 0.25s;
+}
+.stagger-children > *:nth-child(5) {
+  animation-delay: 0.3s;
+}
+.stagger-children > *:nth-child(6) {
+  animation-delay: 0.35s;
+}
+
+/* Scroll reveal animation */
+.reveal-on-scroll {
+  opacity: 0;
+  transform: translateY(10px);
+  transition: opacity 0.5s ease-out, transform 0.5s ease-out;
+}
+
+.reveal-on-scroll.is-revealed {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Modern card styling with subtle border */
+.law-card {
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  border: 1px solid hsl(var(--border));
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.law-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.1);
+}
+
+/* Replace ornamental corners with subtle accent line */
+.ornamental-corners {
+  position: relative;
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.ornamental-corners::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, transparent, hsl(var(--primary)), transparent);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.law-card:hover .ornamental-corners::after {
+  opacity: 1;
+}
+
+/* Formal seal effect */
+.seal {
+  position: relative;
+  display: inline-block;
+  width: 50px;
+  height: 50px;
+  background-color: hsl(var(--primary));
+  border-radius: 50%;
+  color: hsl(var(--primary-foreground));
+  display: flex;
+  align-items: center;
+}
+
+/* Carousel animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: scale(1.02);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.carousel-slide-active {
+  animation: fadeIn 0.8s ease-out forwards;
+}
+
+.carousel-slide-inactive {
+  opacity: 0;
+  transition: opacity 0.8s ease-out;
+}
+
+/* Subtle hover effects for carousel navigation */
+.carousel-nav-button {
+  opacity: 0.7;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.carousel-nav-button:hover {
+  opacity: 1;
+  transform: scale(1.05);
+}
+
+/* Clean article content image styling */
+.prose img {
+  border-radius: 0.25rem;
+  margin: 2rem auto;
+  max-width: 100%;
+  height: auto;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.article-preview img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 0.25rem;
+  margin: 1rem 0;
+}
+
+/* Image caption styling */
+.prose img + em {
+  display: block;
+  text-align: center;
+  font-size: 0.875rem;
+  color: hsl(var(--muted-foreground));
+  margin-top: -1.5rem;
+  margin-bottom: 2rem;
+}
+
+@keyframes marquee {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-100%);
+  }
+}
+
+.animate-marquee {
+  display: inline-block;
+  white-space: nowrap;
+  animation: marquee 25s linear infinite;
+  animation-play-state: running;
+}
+
+.animate-marquee:hover {
+  animation-play-state: paused;
+}
+
+/* Dark mode background */
+.dark .elegant-bg {
+  background-color: hsl(var(--background));
+}
+
+/* Clean card styling */
+.refined-card {
+  border-radius: var(--radius);
+  border: 1px solid hsl(var(--border));
+  background-color: hsl(var(--card));
+  overflow: hidden;
+  transition: all 0.2s ease;
+}
+
+.refined-card:hover {
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
+  transform: translateY(-1px);
+}
+
+/* Text justification with hyphenation for better spacing */
+.prose p {
+  text-align: justify;
+  hyphens: auto;
+  -webkit-hyphens: auto;
+  -ms-hyphens: auto;
+  hyphenate-limit-chars: 6 3 3;
+  hyphenate-limit-lines: 2;
+  hyphenate-limit-zone: 8%;
+  word-break: normal;
+}
+
+.text-justify {
+  text-align: justify;
+  hyphens: auto;
+  -webkit-hyphens: auto;
+  -ms-hyphens: auto;
+  hyphenate-limit-chars: 6 3 3;
+  hyphenate-limit-lines: 2;
+  hyphenate-limit-zone: 8%;
+  word-break: normal;
+}
+
+/* Enhanced typography for better readability */
+.prose {
+  font-size: 1.125rem;
+  line-height: 1.8;
+  max-width: 70ch;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.prose h2 {
+  margin-top: 2.5rem;
+}
+
+.prose h3 {
+  margin-top: 2rem;
+}
+
+.prose blockquote {
+  font-style: italic;
+  color: hsl(var(--muted-foreground));
+  border-left: 3px solid hsl(var(--primary));
+  padding-left: 1.5rem;
+  margin-left: 0;
+  margin-right: 0;
+}
+
+/* Font size adjustments for better hierarchy */
+.text-xs,
+.text-sm,
+.text-base,
+.text-lg,
+.text-xl,
+.text-2xl,
+.text-3xl,
+.text-4xl,
+.text-5xl {
+  line-height: 1.5;
+}
+
+/* Modern classic utilities */
+.text-balance {
+  text-wrap: balance;
+}
+
+.elegant-shadow {
+  box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.1);
+}
+
+.elegant-border {
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius);
+}
+
+.elegant-card {
+  @apply elegant-border elegant-shadow bg-card p-6;
+}
+
+.section-divider {
+  position: relative;
+  height: 1px;
+  background-color: hsl(var(--border));
+  margin: 3rem 0;
+  width: 100%;
+  max-width: 200px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.section-divider::before {
+  content: "§";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background-color: hsl(var(--background));
+  padding: 0 1rem;
+  color: hsl(var(--primary));
+  font-family: var(--font-heading);
+}
