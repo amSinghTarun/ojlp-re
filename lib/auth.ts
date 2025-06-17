@@ -74,7 +74,7 @@ export async function getCurrentUser(): Promise<User | null> {
     return {
       ...user,
       // Ensure role is properly structured for permission checks
-      role: user.role || { name: session.user.role },
+      role: user.role,
     }
   } catch (error) {
     console.error("Error getting current user:", error)

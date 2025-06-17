@@ -1,6 +1,6 @@
 import { DashboardHeader } from "@/components/admin/dashboard-header"
 import { NotificationForm } from "@/components/admin/notification-form"
-import { notifications } from "@/lib/notifications"
+import { getNotificationById } from "@/lib/actions/notification-actions"
 import { notFound } from "next/navigation"
 
 interface EditNotificationPageProps {
@@ -9,17 +9,22 @@ interface EditNotificationPageProps {
   }
 }
 
-export default function EditNotificationPage({ params }: EditNotificationPageProps) {
-  // In a real application, you would fetch this data from your database
-  const notification = notifications.find((notification) => notification.id === params.id)
+export default async function EditNotificationPage({ params }: EditNotificationPageProps) {
+  // Fetch notification data from database
+  const result = await getNotificationById(params.id)
 
-  if (!notification) {
+  if (!result.success || !result.data) {
     notFound()
   }
 
+  const notification = result.data
+
   return (
     <div className="space-y-6">
-      <DashboardHeader heading={`Edit Notification: ${notification.title}`} text="Edit notification details." />
+      <DashboardHeader 
+        heading={`Edit Notification: ${notification.title}`} 
+        text="Edit notification details." 
+      />
       <NotificationForm notification={notification} />
     </div>
   )

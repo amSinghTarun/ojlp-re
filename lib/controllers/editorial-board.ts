@@ -1,4 +1,5 @@
 import prisma from "../prisma"
+import { BoardMemberType } from "@prisma/client"
 
 export async function getEditorialBoardMembers() {
   return prisma.editorialBoardMember.findMany({
@@ -17,17 +18,23 @@ export async function getEditorialBoardMemberById(id: string) {
 export async function createEditorialBoardMember(data: {
   name: string
   designation: string
-  image?: string
+  memberType: BoardMemberType
+  image: string
   order?: number
   bio?: string
-  email?: string
-  linkedin?: string
-  orcid?: string
   detailedBio?: string
+  email?: string
   expertise?: string[]
   education?: string[]
   achievements?: string[]
   publications?: string[]
+  location?: string
+  affiliation?: string
+  website?: string
+  twitter?: string
+  linkedin?: string
+  instagram?: string
+  orcid?: string
 }) {
   // Get the highest order number and add 1
   const highestOrder = await prisma.editorialBoardMember.findFirst({
@@ -43,8 +50,25 @@ export async function createEditorialBoardMember(data: {
 
   return prisma.editorialBoardMember.create({
     data: {
-      ...data,
+      name: data.name,
+      designation: data.designation,
+      memberType: data.memberType,
+      image: data.image,
       order,
+      bio: data.bio,
+      detailedBio: data.detailedBio,
+      email: data.email,
+      expertise: data.expertise || [],
+      education: data.education || [],
+      achievements: data.achievements || [],
+      publications: data.publications || [],
+      location: data.location,
+      affiliation: data.affiliation,
+      website: data.website,
+      twitter: data.twitter,
+      linkedin: data.linkedin,
+      instagram: data.instagram,
+      orcid: data.orcid,
     },
   })
 }
@@ -54,17 +78,23 @@ export async function updateEditorialBoardMember(
   data: {
     name?: string
     designation?: string
+    memberType?: BoardMemberType
     image?: string
     order?: number
     bio?: string
-    email?: string
-    linkedin?: string
-    orcid?: string
     detailedBio?: string
+    email?: string
     expertise?: string[]
     education?: string[]
     achievements?: string[]
     publications?: string[]
+    location?: string
+    affiliation?: string
+    website?: string
+    twitter?: string
+    linkedin?: string
+    instagram?: string
+    orcid?: string
   },
 ) {
   return prisma.editorialBoardMember.update({

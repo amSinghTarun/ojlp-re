@@ -4,6 +4,8 @@ import { getCurrentUser } from "@/lib/auth"
 import { hasPermission, PERMISSIONS } from "@/lib/permissions"
 import { UsersTable } from "@/components/admin/users-table"
 import { getUsers } from "@/lib/controllers/users"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { AlertTriangle } from "lucide-react"
 
 export const metadata: Metadata = {
   title: "User Management",
@@ -18,21 +20,67 @@ export default async function UsersPage() {
     redirect("/admin")
   }
 
-  // Fetch users directly from the database using the controller
-  const users = await getUsers()
+  try {
+    // Fetch users directly from the database using the controller
+    const users = await getUsers()
 
-  return (
-    <div className="space-y-6">
-      <div>
-        <h3 className="text-lg font-medium">User Management</h3>
-        <p className="text-sm text-muted-foreground">Add and manage users who can access the admin panel.</p>
+    return (
+      <div className="space-y-6">
+        <div>
+          <h3 className="text-lg font-medium">User Management</h3>
+          <p className="text-sm text-muted-foreground">
+            Add and manage users who can access the admin panel.
+          </p>
+        </div>
+
+        {users && users.length > 0 ? (
+          <UsersTable currentUser={user} initialUsers={users} />
+        ) : (
+          <div className="space-y-4">
+            <Alert>
+              <AlertTriangle className="h-4 w-4" />
+              <AlertDescription>
+                No users found in the system. This might indicate a database connectivity issue
+                or the system hasn't been properly initialized.
+              </AlertDescription>
+            </Alert>
+            
+            {/* Fallback table with empty state */}
+            <UsersTable currentUser={user} initialUsers={[]} />
+          </div>
+        )}
       </div>
+    )
+  } catch (error) {
+    console.error("Error loading users:", error)
+    
+    return (
+      <div className="space-y-6">
+        <div>
+          <h3 className="text-lg font-medium">User Management</h3>
+          <p className="text-sm text-muted-foreground">
+            Add and manage users who can access the admin panel.
+          </p>
+        </div>
 
-      {users ? (
-        <UsersTable currentUser={user} initialUsers={users} />
-      ) : (
-        <div className="p-4 rounded-md bg-destructive/10 text-destructive">Error loading users. Please try again.</div>
-      )}
-    </div>
-  )
+        <Alert variant="destructive">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertDescription>
+            Failed to load users. Please check your database connection and try again.
+            {process.env.NODE_ENV === "development" && (
+              <details className="mt-2">
+                <summary className="cursor-pointer">Error Details (Development)</summary>
+                <pre className="mt-2 text-xs overflow-x-auto">
+                  {error instanceof Error ? error.message : String(error)}
+                </pre>
+              </details>
+            )}
+          </AlertDescription>
+        </Alert>
+
+        {/* Fallback table with empty state */}
+        <UsersTable currentUser={user} initialUsers={[]} />
+      </div>
+    )
+  }
 }

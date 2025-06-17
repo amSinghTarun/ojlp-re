@@ -7,6 +7,6 @@ export default function robots(): MetadataRoute.Robots {
       allow: "/",
       disallow: ["/admin/", "/api/"],
     },
-    sitemap: "https://legalinsight.org/sitemap.xml", // Replace with your actual domain
+    sitemap: "https://legalinsight.org/sitemap.xml",
   }
 }

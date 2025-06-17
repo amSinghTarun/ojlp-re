@@ -4,8 +4,14 @@ import { getToken } from "next-auth/jwt"
 import { ROUTE_PERMISSIONS } from "./lib/permissions"
 
 export async function middleware(request: NextRequest) {
-  const token = await getToken({ req: request })
+  console.log(request.url)
+  if(request.url.includes("/admin/login")) {
+    console.log("login page")
+    return NextResponse.next()
+  }
 
+  const token = await getToken({ req: request })
+  console.log(token)
   // If the user is not logged in, redirect to the login page
   if (!token) {
     const url = new URL("/admin/login", request.url)

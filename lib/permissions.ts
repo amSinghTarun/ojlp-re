@@ -42,7 +42,7 @@ export const ROUTE_PERMISSIONS: Record<string, string> = {
 
 // Check if user is a super admin
 export function isSuperAdmin(user: User & { role: Role }): boolean {
-  return user?.role?.name === "Super Admin"
+  return user?.role === "Super Admin"
 }
 
 // Helper function to get all permissions for a user

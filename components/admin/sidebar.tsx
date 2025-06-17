@@ -88,12 +88,6 @@ const sidebarNavItems: SidebarNavItem[] = [
     permission: PERMISSIONS.MANAGE_EDITORIAL_BOARD,
   },
   {
-    title: "Board of Advisors",
-    href: "/admin/board-advisors",
-    icon: Briefcase,
-    permission: PERMISSIONS.MANAGE_BOARD_ADVISORS,
-  },
-  {
     title: "Users",
     href: "/admin/users",
     icon: Users,
