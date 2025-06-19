@@ -1,3 +1,4 @@
+// lib/actions/user-actions.ts
 "use server"
 
 import { revalidatePath } from "next/cache"
@@ -10,71 +11,80 @@ import {
   updateUser as updateUserInDB,
   deleteUser as deleteUserInDB,
   updateUserPermissions as updateUserPermissionsInDB,
+  getRoles as getRolesFromDB,
 } from "@/lib/controllers/users"
 import { getCurrentUser } from "@/lib/auth"
 import { hasPermission, PERMISSIONS, isSuperAdmin } from "@/lib/permissions"
 
-// Schema for user creation/update
+// Validation schemas
 const userSchema = z.object({
-  name: z.string().min(2, "Name must be at least 2 characters"),
-  email: z.string().email("Invalid email address"),
-  password: z.string().min(8, "Password must be at least 8 characters").optional(),
+  name: z.string().min(2, "Name must be at least 2 characters").max(100, "Name is too long"),
+  email: z.string().email("Invalid email address").max(255, "Email is too long"),
+  password: z.string().min(8, "Password must be at least 8 characters").max(128, "Password is too long").optional(),
   roleId: z.string().min(1, "Role is required"),
-  image: z.string().optional(),
+  image: z.string().url("Invalid image URL").optional().or(z.literal("")),
 })
 
-// Schema for user creation (password required)
 const createUserSchema = userSchema.extend({
-  password: z.string().min(8, "Password must be at least 8 characters"),
+  password: z.string().min(8, "Password must be at least 8 characters").max(128, "Password is too long"),
 })
 
-// Schema for user update (password optional)
 const updateUserSchema = userSchema.partial().extend({
   id: z.string(),
 })
 
+// Get all users
 export async function getUsers() {
   try {
     const currentUser = await getCurrentUser()
 
     if (!currentUser || !hasPermission(currentUser, PERMISSIONS.MANAGE_USERS)) {
-      return { users: null, error: "Unauthorized" }
+      return { users: null, error: "Unauthorized access" }
     }
 
     const users = await getUsersFromDB()
     return { users, error: null }
   } catch (error) {
     console.error("Error fetching users:", error)
-    return { users: null, error: "Failed to fetch users" }
+    return { 
+      users: null, 
+      error: error instanceof Error ? error.message : "Failed to fetch users" 
+    }
   }
 }
 
+// Get single user by ID
 export async function getUser(id: string) {
   try {
     const currentUser = await getCurrentUser()
 
     if (!currentUser || !hasPermission(currentUser, PERMISSIONS.MANAGE_USERS)) {
-      return { user: null, error: "Unauthorized" }
+      return { user: null, error: "Unauthorized access" }
+    }
+
+    // Validate ID format
+    if (!id || typeof id !== 'string') {
+      return { user: null, error: "Invalid user ID" }
     }
 
     const user = await getUserByIdFromDB(id)
-    if (!user) {
-      return { user: null, error: "User not found" }
-    }
-
     return { user, error: null }
   } catch (error) {
     console.error("Error fetching user:", error)
-    return { user: null, error: "Failed to fetch user" }
+    return { 
+      user: null, 
+      error: error instanceof Error ? error.message : "Failed to fetch user" 
+    }
   }
 }
 
+// Create new user
 export async function createUser(formData: FormData) {
   try {
     const currentUser = await getCurrentUser()
 
     if (!currentUser || !hasPermission(currentUser, PERMISSIONS.MANAGE_USERS)) {
-      return { success: false, error: "Unauthorized" }
+      return { success: false, error: "Unauthorized access" }
     }
 
     // Extract and validate form data
@@ -86,24 +96,27 @@ export async function createUser(formData: FormData) {
       image: (formData.get("image") as string) || undefined,
     }
 
-    // Validate data with required password
+    // Validate data
     const validatedData = createUserSchema.parse(rawData)
-
-    // Check if email already exists
-    const existingUser = await getUsersFromDB()
-    if (existingUser.some(user => user.email === validatedData.email)) {
-      return { success: false, error: "A user with this email already exists" }
-    }
 
     // Additional role assignment checks
     if (!isSuperAdmin(currentUser)) {
-      // Non-super admins cannot create super admin users
-      // You might want to add role validation here based on your role structure
+      // Get the role details to check if non-super admin can assign it
+      const roles = await getRolesFromDB()
+      const selectedRole = roles.find(role => role.id === validatedData.roleId)
+      
+      if (selectedRole?.name === "Super Admin") {
+        return { 
+          success: false, 
+          error: "You don't have permission to create Super Admin users" 
+        }
+      }
     }
 
     // Create user
     const newUser = await createUserInDB(validatedData)
 
+    // Revalidate relevant pages
     revalidatePath("/admin/users")
     
     return { 
@@ -113,33 +126,54 @@ export async function createUser(formData: FormData) {
     }
   } catch (error) {
     console.error("Error creating user:", error)
+    
     if (error instanceof z.ZodError) {
       return { 
         success: false, 
         error: error.errors.map(err => err.message).join(", ")
       }
     }
-    return { success: false, error: "Failed to create user" }
+    
+    return { 
+      success: false, 
+      error: error instanceof Error ? error.message : "Failed to create user" 
+    }
   }
 }
 
+// Update existing user
 export async function updateUser(id: string, formData: FormData) {
   try {
     const currentUser = await getCurrentUser()
 
     if (!currentUser || !hasPermission(currentUser, PERMISSIONS.MANAGE_USERS)) {
-      return { success: false, error: "Unauthorized" }
+      return { success: false, error: "Unauthorized access" }
     }
 
-    // Get existing user
-    const existingUser = await getUserByIdFromDB(id)
-    if (!existingUser) {
-      return { success: false, error: "User not found" }
+    // Validate ID
+    if (!id || typeof id !== 'string') {
+      return { success: false, error: "Invalid user ID" }
     }
+
+    // Get existing user to validate permissions
+    const existingUser = await getUserByIdFromDB(id)
 
     // Check if current user can edit this user
-    if (!isSuperAdmin(currentUser) && existingUser.role.name === "Super Admin") {
-      return { success: false, error: "You cannot edit a Super Admin" }
+    if (!isSuperAdmin(currentUser)) {
+      if (existingUser.role.name === "Super Admin") {
+        return { 
+          success: false, 
+          error: "You don't have permission to edit Super Admin users" 
+        }
+      }
+    }
+
+    // Prevent self-editing through this interface (should use profile settings)
+    if (id === currentUser.id) {
+      return { 
+        success: false, 
+        error: "Use your profile settings to edit your own account" 
+      }
     }
 
     // Extract form data
@@ -156,26 +190,31 @@ export async function updateUser(id: string, formData: FormData) {
       rawData["password"] = password
     }
 
-    // Validate data
-    const validatedData = updateUserSchema.omit({ id: true }).parse(rawData)
+    // Remove undefined values
+    const cleanData = Object.fromEntries(
+      Object.entries(rawData).filter(([_, value]) => value !== undefined && value !== "")
+    )
 
-    // Check if email is being changed and already exists
-    if (validatedData.email && validatedData.email !== existingUser.email) {
-      const users = await getUsersFromDB()
-      if (users.some(user => user.email === validatedData.email && user.id !== id)) {
-        return { success: false, error: "A user with this email already exists" }
-      }
-    }
+    // Validate data (excluding id for now)
+    const validatedData = updateUserSchema.omit({ id: true }).parse(cleanData)
 
     // Additional role assignment checks
-    if (!isSuperAdmin(currentUser) && validatedData.roleId) {
-      // Non-super admins cannot assign super admin role
-      // Add additional role validation logic here if needed
+    if (validatedData.roleId && !isSuperAdmin(currentUser)) {
+      const roles = await getRolesFromDB()
+      const selectedRole = roles.find(role => role.id === validatedData.roleId)
+      
+      if (selectedRole?.name === "Super Admin") {
+        return { 
+          success: false, 
+          error: "You don't have permission to assign Super Admin role" 
+        }
+      }
     }
 
     // Update user
     const updatedUser = await updateUserInDB(id, validatedData)
 
+    // Revalidate relevant pages
     revalidatePath("/admin/users")
     revalidatePath(`/admin/users/${id}/edit`)
     
@@ -186,86 +225,107 @@ export async function updateUser(id: string, formData: FormData) {
     }
   } catch (error) {
     console.error("Error updating user:", error)
+    
     if (error instanceof z.ZodError) {
       return { 
         success: false, 
         error: error.errors.map(err => err.message).join(", ")
       }
     }
-    return { success: false, error: "Failed to update user" }
+    
+    return { 
+      success: false, 
+      error: error instanceof Error ? error.message : "Failed to update user" 
+    }
   }
 }
 
+// Delete user
 export async function deleteUser(id: string) {
   try {
     const currentUser = await getCurrentUser()
 
     if (!currentUser || !hasPermission(currentUser, PERMISSIONS.MANAGE_USERS)) {
-      return { success: false, error: "Unauthorized" }
+      return { success: false, error: "Unauthorized access" }
     }
 
-    // Get existing user
+    // Validate ID
+    if (!id || typeof id !== 'string') {
+      return { success: false, error: "Invalid user ID" }
+    }
+
+    // Get existing user to validate permissions
     const existingUser = await getUserByIdFromDB(id)
-    if (!existingUser) {
-      return { success: false, error: "User not found" }
-    }
 
-    // Check if user can delete this user
-    if (!isSuperAdmin(currentUser) && existingUser.role.name === "Super Admin") {
-      return { success: false, error: "You cannot delete a Super Admin" }
-    }
-
-    // Prevent self-deletion
-    if (id === currentUser.id) {
-      return { success: false, error: "You cannot delete your own account" }
-    }
-
-    // Check if this is the last Super Admin
-    if (existingUser.role.name === "Super Admin") {
-      const users = await getUsersFromDB()
-      const superAdmins = users.filter(user => user.role.name === "Super Admin")
-      if (superAdmins.length <= 1) {
+    // Check if current user can delete this user
+    if (!isSuperAdmin(currentUser)) {
+      if (existingUser.role.name === "Super Admin") {
         return { 
           success: false, 
-          error: "Cannot delete the last Super Admin. Create another Super Admin first." 
+          error: "You don't have permission to delete Super Admin users" 
         }
       }
     }
 
-    // Delete user
+    // Prevent self-deletion
+    if (id === currentUser.id) {
+      return { 
+        success: false, 
+        error: "You cannot delete your own account" 
+      }
+    }
+
+    // Delete user (controller handles last Super Admin check)
     await deleteUserInDB(id)
 
+    // Revalidate pages
     revalidatePath("/admin/users")
     
     return { success: true, error: null }
   } catch (error) {
     console.error("Error deleting user:", error)
-    return { success: false, error: "Failed to delete user" }
+    return { 
+      success: false, 
+      error: error instanceof Error ? error.message : "Failed to delete user" 
+    }
   }
 }
 
+// Update user permissions
 export async function updateUserPermissions(userId: string, permissions: string[]) {
   try {
     const currentUser = await getCurrentUser()
 
     if (!currentUser || !hasPermission(currentUser, PERMISSIONS.MANAGE_PERMISSIONS)) {
-      return { success: false, error: "Unauthorized" }
+      return { success: false, error: "Unauthorized access" }
     }
 
-    // Get existing user
+    // Validate inputs
+    if (!userId || typeof userId !== 'string') {
+      return { success: false, error: "Invalid user ID" }
+    }
+
+    if (!Array.isArray(permissions)) {
+      return { success: false, error: "Invalid permissions data" }
+    }
+
+    // Get existing user to validate permissions
     const existingUser = await getUserByIdFromDB(userId)
-    if (!existingUser) {
-      return { success: false, error: "User not found" }
-    }
 
-    // Check if user can manage permissions for this user
-    if (!isSuperAdmin(currentUser) && existingUser.role.name === "Super Admin") {
-      return { success: false, error: "You cannot modify permissions for a Super Admin" }
+    // Check if current user can manage permissions for this user
+    if (!isSuperAdmin(currentUser)) {
+      if (existingUser.role.name === "Super Admin") {
+        return { 
+          success: false, 
+          error: "You cannot modify permissions for Super Admin users" 
+        }
+      }
     }
 
     // Update permissions
     const updatedUser = await updateUserPermissionsInDB(userId, permissions)
 
+    // Revalidate pages
     revalidatePath("/admin/users")
     revalidatePath("/admin/permissions")
     
@@ -276,64 +336,41 @@ export async function updateUserPermissions(userId: string, permissions: string[
     }
   } catch (error) {
     console.error("Error updating user permissions:", error)
-    return { success: false, error: "Failed to update user permissions" }
+    return { 
+      success: false, 
+      error: error instanceof Error ? error.message : "Failed to update user permissions" 
+    }
   }
 }
 
-// Action to get current user (for client components)
-export async function getCurrentUserData() {
-  try {
-    const user = await getCurrentUser()
-    return { user, error: null }
-  } catch (error) {
-    console.error("Error getting current user:", error)
-    return { user: null, error: "Failed to get current user" }
-  }
-}
-
-// Action to change user password
-export async function changeUserPassword(userId: string, formData: FormData) {
+// Get available roles
+export async function getRoles() {
   try {
     const currentUser = await getCurrentUser()
 
-    if (!currentUser) {
-      return { success: false, error: "Unauthorized" }
+    if (!currentUser || !hasPermission(currentUser, PERMISSIONS.MANAGE_USERS)) {
+      return { roles: null, error: "Unauthorized access" }
     }
 
-    // Users can change their own password, or admins can change others
-    const canChangePassword = userId === currentUser.id || 
-      hasPermission(currentUser, PERMISSIONS.MANAGE_USERS)
-
-    if (!canChangePassword) {
-      return { success: false, error: "You don't have permission to change this password" }
-    }
-
-    const currentPassword = formData.get("currentPassword") as string
-    const newPassword = formData.get("newPassword") as string
-    const confirmPassword = formData.get("confirmPassword") as string
-
-    // Validate passwords
-    if (!newPassword || newPassword.length < 8) {
-      return { success: false, error: "New password must be at least 8 characters" }
-    }
-
-    if (newPassword !== confirmPassword) {
-      return { success: false, error: "New password and confirmation do not match" }
-    }
-
-    // For self-password change, verify current password
-    if (userId === currentUser.id && !currentPassword) {
-      return { success: false, error: "Current password is required" }
-    }
-
-    // Update password
-    await updateUserInDB(userId, { password: newPassword })
-
-    revalidatePath("/admin/users")
+    const roles = await getRolesFromDB()
     
-    return { success: true, error: null }
+    // Filter roles based on current user permissions
+    const assignableRoles = roles.filter(role => {
+      // Super Admin can assign any role
+      if (isSuperAdmin(currentUser)) return true
+      
+      // Regular admins cannot assign Super Admin roles
+      if (role.name === "Super Admin") return false
+      
+      return true
+    })
+
+    return { roles: assignableRoles, error: null }
   } catch (error) {
-    console.error("Error changing password:", error)
-    return { success: false, error: "Failed to change password" }
+    console.error("Error fetching roles:", error)
+    return { 
+      roles: null, 
+      error: error instanceof Error ? error.message : "Failed to fetch roles" 
+    }
   }
 }

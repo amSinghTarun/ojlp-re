@@ -42,7 +42,6 @@ import {
 } from "@/components/ui/alert-dialog"
 import { toast } from "@/components/ui/use-toast"
 import { deleteCallForPapers } from "@/lib/actions/call-for-papers-actions"
-import { useRouter } from "next/navigation"
 
 export type CallForPapersRow = {
   id: string
@@ -60,14 +59,12 @@ interface CallForPapersTableProps {
 }
 
 export function CallForPapersTable({ initialCalls }: CallForPapersTableProps) {
-  const router = useRouter()
   const [calls, setCalls] = useState<CallForPapersRow[]>(initialCalls)
   const [sorting, setSorting] = useState<SortingState>([])
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({})
   const [rowSelection, setRowSelection] = useState({})
-  const [isDeleting, setIsDeleting] = useState(false)
-  const [open, setOpen] = useState(false) // Moved useState to top level
+  const [isDeleting, setIsDeleting] = useState<string | null>(null) // Track which item is being deleted
 
   const columns: ColumnDef<CallForPapersRow>[] = [
     {
@@ -104,10 +101,11 @@ export function CallForPapersTable({ initialCalls }: CallForPapersTableProps) {
           {row.original.image && (
             <div className="h-10 w-10 relative overflow-hidden rounded">
               <Image
-                src={row.original.image || "/placeholder.svg?height=40&width=40&query=call for papers"}
+                src={row.original.image}
                 alt={row.getValue("title")}
                 fill
                 className="object-cover"
+                sizes="40px"
               />
             </div>
           )}
@@ -122,17 +120,41 @@ export function CallForPapersTable({ initialCalls }: CallForPapersTableProps) {
     },
     {
       accessorKey: "deadline",
-      header: "Deadline",
-      cell: ({ row }) => <div>{row.getValue("deadline")}</div>,
+      header: ({ column }) => {
+        return (
+          <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
+            Deadline
+            <ArrowUpDown className="ml-2 h-4 w-4" />
+          </Button>
+        )
+      },
+      cell: ({ row }) => {
+        const deadline = row.getValue("deadline") as string
+        return <div>{new Date(deadline).toLocaleDateString()}</div>
+      },
     },
     {
       accessorKey: "volume",
-      header: "Volume",
+      header: ({ column }) => {
+        return (
+          <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
+            Volume
+            <ArrowUpDown className="ml-2 h-4 w-4" />
+          </Button>
+        )
+      },
       cell: ({ row }) => <div>Volume {row.getValue("volume")}</div>,
     },
     {
       accessorKey: "issue",
-      header: "Issue",
+      header: ({ column }) => {
+        return (
+          <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
+            Issue
+            <ArrowUpDown className="ml-2 h-4 w-4" />
+          </Button>
+        )
+      },
       cell: ({ row }) => <div>Issue {row.getValue("issue")}</div>,
     },
     {
@@ -151,9 +173,10 @@ export function CallForPapersTable({ initialCalls }: CallForPapersTableProps) {
       id: "actions",
       cell: ({ row }) => {
         const cfp = row.original
+        const [open, setOpen] = useState(false) // Move useState inside the cell component
 
         const handleDelete = async () => {
-          setIsDeleting(true)
+          setIsDeleting(cfp.id)
           try {
             const result = await deleteCallForPapers(cfp.id)
             if (result.success) {
@@ -177,7 +200,7 @@ export function CallForPapersTable({ initialCalls }: CallForPapersTableProps) {
               variant: "destructive",
             })
           } finally {
-            setIsDeleting(false)
+            setIsDeleting(null)
             setOpen(false)
           }
         }
@@ -193,6 +216,12 @@ export function CallForPapersTable({ initialCalls }: CallForPapersTableProps) {
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                <DropdownMenuItem 
+                  onClick={() => navigator.clipboard.writeText(cfp.id)}
+                >
+                  Copy ID
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
                 <DropdownMenuItem asChild>
                   <Link href={`/admin/call-for-papers/${cfp.id}/edit`}>
                     <Pencil className="mr-2 h-4 w-4" />
@@ -200,9 +229,9 @@ export function CallForPapersTable({ initialCalls }: CallForPapersTableProps) {
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>
-                  <Link href={`/journals?view=call-for-papers`} target="_blank">
+                  <Link href={`/notifications`} target="_blank">
                     <Eye className="mr-2 h-4 w-4" />
-                    View
+                    View Public
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
@@ -223,16 +252,16 @@ export function CallForPapersTable({ initialCalls }: CallForPapersTableProps) {
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
-                <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+                <AlertDialogCancel disabled={isDeleting === cfp.id}>Cancel</AlertDialogCancel>
                 <AlertDialogAction
                   onClick={(e) => {
                     e.preventDefault()
                     handleDelete()
                   }}
                   className="bg-destructive text-destructive-foreground"
-                  disabled={isDeleting}
+                  disabled={isDeleting === cfp.id}
                 >
-                  {isDeleting ? "Deleting..." : "Delete"}
+                  {isDeleting === cfp.id ? "Deleting..." : "Delete"}
                 </AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>
@@ -261,18 +290,77 @@ export function CallForPapersTable({ initialCalls }: CallForPapersTableProps) {
     },
   })
 
+  const selectedRows = table.getFilteredSelectedRowModel().rows
+  
+  const handleBulkDelete = async () => {
+    if (selectedRows.length === 0) return
+    
+    const ids = selectedRows.map(row => row.original.id)
+    setIsDeleting("bulk")
+    
+    try {
+      const results = await Promise.allSettled(
+        ids.map(id => deleteCallForPapers(id))
+      )
+      
+      const successful = results.filter(result => 
+        result.status === 'fulfilled' && result.value.success
+      ).length
+      
+      if (successful > 0) {
+        toast({
+          title: "Bulk delete completed",
+          description: `${successful} call(s) for papers deleted successfully.`,
+        })
+        
+        // Remove successful deletions from local state
+        setCalls(calls.filter(call => !ids.includes(call.id)))
+        setRowSelection({})
+      }
+      
+      const failed = results.length - successful
+      if (failed > 0) {
+        toast({
+          title: "Some deletions failed",
+          description: `${failed} call(s) for papers could not be deleted.`,
+          variant: "destructive",
+        })
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "An unexpected error occurred during bulk delete",
+        variant: "destructive",
+      })
+    } finally {
+      setIsDeleting(null)
+    }
+  }
+
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-4">
-        <Input
-          placeholder="Filter calls for papers..."
-          value={(table.getColumn("title")?.getFilterValue() as string) ?? ""}
-          onChange={(event) => table.getColumn("title")?.setFilterValue(event.target.value)}
-          className="max-w-sm"
-        />
+      <div className="flex items-center justify-between gap-4">
+        <div className="flex items-center gap-4">
+          <Input
+            placeholder="Filter calls for papers..."
+            value={(table.getColumn("title")?.getFilterValue() as string) ?? ""}
+            onChange={(event) => table.getColumn("title")?.setFilterValue(event.target.value)}
+            className="max-w-sm"
+          />
+          {selectedRows.length > 0 && (
+            <Button 
+              variant="destructive" 
+              size="sm"
+              onClick={handleBulkDelete}
+              disabled={isDeleting === "bulk"}
+            >
+              {isDeleting === "bulk" ? "Deleting..." : `Delete ${selectedRows.length} selected`}
+            </Button>
+          )}
+        </div>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="outline" className="ml-auto">
+            <Button variant="outline">
               Columns <ChevronDown className="ml-2 h-4 w-4" />
             </Button>
           </DropdownMenuTrigger>
@@ -329,12 +417,15 @@ export function CallForPapersTable({ initialCalls }: CallForPapersTableProps) {
           </TableBody>
         </Table>
       </div>
-      <div className="flex items-center justify-end space-x-2">
+      <div className="flex items-center justify-between space-x-2">
         <div className="flex-1 text-sm text-muted-foreground">
           {table.getFilteredSelectedRowModel().rows.length} of {table.getFilteredRowModel().rows.length} row(s)
           selected.
         </div>
-        <div className="space-x-2">
+        <div className="flex items-center space-x-2">
+          <p className="text-sm font-medium">
+            Page {table.getState().pagination.pageIndex + 1} of {table.getPageCount()}
+          </p>
           <Button
             variant="outline"
             size="sm"

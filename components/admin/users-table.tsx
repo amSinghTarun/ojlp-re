@@ -1,12 +1,15 @@
+// components/admin/users-table.tsx
 "use client"
 
 import { useState, useCallback } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { PlusCircle, Pencil, Trash2, Loader2, RefreshCw } from "lucide-react"
+import { PlusCircle, Pencil, Trash2, Loader2, RefreshCw, Search, Filter } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import { Input } from "@/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -35,25 +38,42 @@ export function UsersTable({ currentUser, initialUsers }: UsersTableProps) {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null)
   const [isRefreshing, setIsRefreshing] = useState(false)
+  const [searchTerm, setSearchTerm] = useState("")
+  const [roleFilter, setRoleFilter] = useState("all")
 
   // Check permissions
   const canManageUsers = hasPermission(currentUser, PERMISSIONS.MANAGE_USERS)
   const canAssignRoles = hasPermission(currentUser, PERMISSIONS.ASSIGN_ROLES)
   const isCurrentUserSuperAdmin = isSuperAdmin(currentUser)
 
+  // Get unique roles for filter
+  const availableRoles = Array.from(new Set(users.map(user => user.role.name)))
+
+  // Filter users based on search and role filter
+  const filteredUsers = users.filter(user => {
+    const matchesSearch = searchTerm === "" || 
+      user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      user.email.toLowerCase().includes(searchTerm.toLowerCase())
+    
+    const matchesRole = roleFilter === "all" || user.role.name === roleFilter
+
+    return matchesSearch && matchesRole
+  })
+
   // Refresh users list
   const refreshUsers = useCallback(async () => {
     setIsRefreshing(true)
     try {
       router.refresh()
+      // Optionally fetch updated data here if you want real-time updates
       toast({
         title: "Refreshed",
-        description: "Users list has been refreshed",
+        description: "User list has been updated",
       })
     } catch (error) {
       toast({
         title: "Error",
-        description: "Failed to refresh users list",
+        description: "Failed to refresh user list",
         variant: "destructive",
       })
     } finally {
@@ -61,26 +81,29 @@ export function UsersTable({ currentUser, initialUsers }: UsersTableProps) {
     }
   }, [router])
 
-  // Handle delete user
-  const handleDeleteUser = useCallback(async (id: string) => {
-    setIsDeleting(id)
+  // Confirm delete action
+  const confirmDelete = useCallback((userId: string) => {
+    setSelectedUserId(userId)
+    setDeleteDialogOpen(true)
+  }, [])
+
+  // Handle delete action
+  const handleDelete = useCallback(async () => {
+    if (!selectedUserId) return
+
+    setIsDeleting(selectedUserId)
+    
     try {
-      const result = await deleteUser(id)
+      const result = await deleteUser(selectedUserId)
+      
       if (result.success) {
         // Remove user from local state
-        setUsers(prevUsers => prevUsers.filter((user) => user.id !== id))
+        setUsers(prevUsers => prevUsers.filter(user => user.id !== selectedUserId))
         
         toast({
           title: "Success",
-          description: "User deleted successfully",
+          description: "User has been deleted successfully",
         })
-        
-        // Close dialog and reset state
-        setDeleteDialogOpen(false)
-        setSelectedUserId(null)
-        
-        // Refresh the page to ensure consistency
-        router.refresh()
       } else {
         toast({
           title: "Error",
@@ -89,29 +112,18 @@ export function UsersTable({ currentUser, initialUsers }: UsersTableProps) {
         })
       }
     } catch (error) {
-      console.error("Failed to delete user:", error)
+      console.error("Delete error:", error)
       toast({
         title: "Error",
-        description: "An unexpected error occurred",
+        description: "An unexpected error occurred while deleting the user",
         variant: "destructive",
       })
     } finally {
       setIsDeleting(null)
+      setDeleteDialogOpen(false)
+      setSelectedUserId(null)
     }
-  }, [router])
-
-  // Open delete confirmation dialog
-  const confirmDelete = useCallback((userId: string) => {
-    setSelectedUserId(userId)
-    setDeleteDialogOpen(true)
-  }, [])
-
-  // Execute delete action
-  const executeDelete = useCallback(async () => {
-    if (selectedUserId) {
-      await handleDeleteUser(selectedUserId)
-    }
-  }, [selectedUserId, handleDeleteUser])
+  }, [selectedUserId])
 
   // Function to check if current user can edit a specific user
   const canEditUser = useCallback((user: User & { role: Role }) => {
@@ -163,17 +175,19 @@ export function UsersTable({ currentUser, initialUsers }: UsersTableProps) {
       year: "numeric",
       month: "short",
       day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
     }).format(new Date(date))
   }
 
   const selectedUser = selectedUserId ? users.find(u => u.id === selectedUserId) : null
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       {/* Header */}
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h2 className="text-xl font-semibold">Users ({users.length})</h2>
+          <h2 className="text-2xl font-bold">Users ({filteredUsers.length})</h2>
           <p className="text-sm text-muted-foreground mt-1">
             Manage system users and their roles
           </p>
@@ -203,6 +217,38 @@ export function UsersTable({ currentUser, initialUsers }: UsersTableProps) {
         </div>
       </div>
 
+      {/* Filters */}
+      <div className="flex flex-col sm:flex-row gap-4">
+        {/* Search */}
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+          <Input
+            placeholder="Search users by name or email..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-10"
+          />
+        </div>
+
+        {/* Role Filter */}
+        <div className="flex items-center gap-2">
+          <Filter className="h-4 w-4 text-muted-foreground" />
+          <Select value={roleFilter} onValueChange={setRoleFilter}>
+            <SelectTrigger className="w-[150px]">
+              <SelectValue placeholder="Filter by role" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Roles</SelectItem>
+              {availableRoles.map((role) => (
+                <SelectItem key={role} value={role}>
+                  {role}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
       {/* Table */}
       <div className="rounded-md border">
         <Table>
@@ -216,30 +262,56 @@ export function UsersTable({ currentUser, initialUsers }: UsersTableProps) {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {users.length === 0 ? (
+            {filteredUsers.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={5} className="text-center py-8">
                   <div className="flex flex-col items-center gap-2">
-                    <p className="text-muted-foreground">No users found</p>
-                    {canManageUsers && (
-                      <Button asChild variant="outline" size="sm">
-                        <Link href="/admin/users/new">
-                          <PlusCircle className="mr-2 h-4 w-4" />
-                          Add First User
-                        </Link>
-                      </Button>
+                    {searchTerm || roleFilter !== "all" ? (
+                      <>
+                        <p className="text-muted-foreground">No users match your search criteria</p>
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => {
+                            setSearchTerm("")
+                            setRoleFilter("all")
+                          }}
+                        >
+                          Clear Filters
+                        </Button>
+                      </>
+                    ) : (
+                      <>
+                        <p className="text-muted-foreground">No users found</p>
+                        {canManageUsers && (
+                          <Button asChild variant="outline" size="sm">
+                            <Link href="/admin/users/new">
+                              <PlusCircle className="mr-2 h-4 w-4" />
+                              Add First User
+                            </Link>
+                          </Button>
+                        )}
+                      </>
                     )}
                   </div>
                 </TableCell>
               </TableRow>
             ) : (
-              users.map((user) => (
+              filteredUsers.map((user) => (
                 <TableRow key={user.id}>
                   {/* User Info */}
                   <TableCell>
                     <div className="flex items-center gap-3">
-                      <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary font-medium text-sm">
-                        {user.name.charAt(0).toUpperCase()}
+                      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary font-medium">
+                        {user.image ? (
+                          <img 
+                            src={user.image} 
+                            alt={user.name}
+                            className="h-10 w-10 rounded-full object-cover"
+                          />
+                        ) : (
+                          user.name.charAt(0).toUpperCase()
+                        )}
                       </div>
                       <div>
                         <div className="font-medium">{user.name}</div>
@@ -261,7 +333,7 @@ export function UsersTable({ currentUser, initialUsers }: UsersTableProps) {
                   </TableCell>
 
                   {/* Created Date */}
-                  <TableCell className="text-muted-foreground">
+                  <TableCell className="text-muted-foreground text-sm">
                     {formatDate(user.createdAt)}
                   </TableCell>
 
@@ -285,19 +357,23 @@ export function UsersTable({ currentUser, initialUsers }: UsersTableProps) {
                       )}
 
                       {canDeleteUser(user) && (
-                        <Button 
-                          variant="outline" 
-                          size="sm"
-                          onClick={() => confirmDelete(user.id)}
-                          disabled={isDeleting === user.id}
-                        >
-                          {isDeleting === user.id ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                          ) : (
-                            <Trash2 className="h-4 w-4" />
-                          )}
-                          <span className="sr-only">Delete {user.name}</span>
-                        </Button>
+                        <AlertDialog open={deleteDialogOpen && selectedUserId === user.id} onOpenChange={setDeleteDialogOpen}>
+                          <AlertDialogTrigger asChild>
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              onClick={() => confirmDelete(user.id)}
+                              disabled={isDeleting === user.id}
+                            >
+                              {isDeleting === user.id ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <Trash2 className="h-4 w-4" />
+                              )}
+                              <span className="sr-only">Delete {user.name}</span>
+                            </Button>
+                          </AlertDialogTrigger>
+                        </AlertDialog>
                       )}
                     </div>
                   </TableCell>
@@ -312,28 +388,22 @@ export function UsersTable({ currentUser, initialUsers }: UsersTableProps) {
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete User</AlertDialogTitle>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete <strong>{selectedUser?.name}</strong>? This action cannot be undone.
+              This action cannot be undone. This will permanently delete the user account for{" "}
+              <strong>{selectedUser?.name}</strong> and remove all associated data.
               {selectedUser?.role.name === "Super Admin" && (
-                <div className="mt-2 p-2 bg-destructive/10 border border-destructive/20 rounded text-destructive text-sm">
-                  ⚠️ You are about to delete a Super Admin user. This is a critical action.
+                <div className="mt-2 p-2 bg-destructive/10 rounded text-destructive text-sm">
+                  ⚠️ Warning: You are about to delete a Super Admin account. Make sure there are other Super Admin accounts available.
                 </div>
               )}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel 
-              onClick={() => {
-                setSelectedUserId(null)
-                setDeleteDialogOpen(false)
-              }}
-            >
-              Cancel
-            </AlertDialogCancel>
+            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
             <AlertDialogAction
-              onClick={executeDelete}
-              disabled={isDeleting !== null}
+              onClick={handleDelete}
+              disabled={isDeleting}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               {isDeleting ? (

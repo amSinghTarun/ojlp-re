@@ -1,4 +1,15 @@
+// lib/permissions.ts
 import type { User, Role, Permission } from "@prisma/client"
+
+// Extended user type for permissions
+export type AuthUser = User & {
+  role: Role & {
+    permissions: Array<{
+      permission: Permission
+    }>
+  }
+  permissions: Permission[]
+}
 
 // Define all possible permissions in the system
 export const PERMISSIONS = {
@@ -21,7 +32,7 @@ export const PERMISSIONS = {
   // Role management (super admin only)
   MANAGE_ROLES: "manage_roles",
   MANAGE_PERMISSIONS: "manage_permissions",
-}
+} as const
 
 // Define route permissions mapping
 export const ROUTE_PERMISSIONS: Record<string, string> = {
@@ -41,19 +52,12 @@ export const ROUTE_PERMISSIONS: Record<string, string> = {
 }
 
 // Check if user is a super admin
-export function isSuperAdmin(user: User & { role: Role }): boolean {
-  return user?.role === "Super Admin"
+export function isSuperAdmin(user: AuthUser | null): boolean {
+  return user?.role?.name === "Super Admin"
 }
 
-// Helper function to get all permissions for a user
-export async function getUserPermissions(
-  user: User & {
-    role: Role & {
-      permissions: Array<{ permission: Permission }>
-    }
-    permissions: Permission[]
-  },
-): Promise<string[]> {
+// Helper function to get all permissions for a user (synchronous)
+export function getUserPermissions(user: AuthUser): string[] {
   if (!user) return []
 
   // Super Admin has all permissions
@@ -71,36 +75,20 @@ export async function getUserPermissions(
   return [...new Set([...rolePermissions, ...directPermissions])]
 }
 
-// Helper functions to check permissions
-export async function hasPermission(
-  user: User & {
-    role: Role & {
-      permissions: Array<{ permission: Permission }>
-    }
-    permissions: Permission[]
-  },
-  permission: string,
-): Promise<boolean> {
+// Check if user has specific permission (synchronous)
+export function hasPermission(user: AuthUser | null, permission: string): boolean {
   if (!user) return false
 
   // Super Admin has all permissions
   if (isSuperAdmin(user)) return true
 
   // Check if the user has the specific permission
-  const userPermissions = await getUserPermissions(user)
+  const userPermissions = getUserPermissions(user)
   return userPermissions.includes(permission)
 }
 
 // Check if user has permission to access a specific route
-export async function hasRoutePermission(
-  user: User & {
-    role: Role & {
-      permissions: Array<{ permission: Permission }>
-    }
-    permissions: Permission[]
-  },
-  route: string,
-): Promise<boolean> {
+export function hasRoutePermission(user: AuthUser | null, route: string): boolean {
   // Super Admin has access to all routes
   if (isSuperAdmin(user)) return true
 
@@ -112,65 +100,38 @@ export async function hasRoutePermission(
 }
 
 // Check if user has any of the given permissions
-export async function hasAnyPermission(
-  user: User & {
-    role: Role & {
-      permissions: Array<{ permission: Permission }>
-    }
-    permissions: Permission[]
-  },
-  permissions: string[],
-): Promise<boolean> {
+export function hasAnyPermission(user: AuthUser | null, permissions: string[]): boolean {
   // Super Admin has all permissions
   if (isSuperAdmin(user)) return true
 
-  const userPermissions = await getUserPermissions(user)
+  const userPermissions = getUserPermissions(user!)
   return permissions.some((permission) => userPermissions.includes(permission))
 }
 
 // Check if user has all of the given permissions
-export async function hasAllPermissions(
-  user: User & {
-    role: Role & {
-      permissions: Array<{ permission: Permission }>
-    }
-    permissions: Permission[]
-  },
-  permissions: string[],
-): Promise<boolean> {
+export function hasAllPermissions(user: AuthUser | null, permissions: string[]): boolean {
   // Super Admin has all permissions
   if (isSuperAdmin(user)) return true
 
-  const userPermissions = await getUserPermissions(user)
+  const userPermissions = getUserPermissions(user!)
   return permissions.every((permission) => userPermissions.includes(permission))
 }
 
 // Check if user can assign a specific role
-export async function canAssignRole(
-  user: User & {
-    role: Role & {
-      permissions: Array<{ permission: Permission }>
-    }
-    permissions: Permission[]
-  },
-  roleToAssign: Role,
-): Promise<boolean> {
+export function canAssignRole(user: AuthUser | null, roleToAssign: Role): boolean {
+  if (!user) return false
+
   // Super Admin can assign any role
   if (isSuperAdmin(user)) return true
 
   // Check if user has permission to assign roles
-  const hasAssignPermission = await hasPermission(user, PERMISSIONS.ASSIGN_ROLES)
+  const hasAssignPermission = hasPermission(user, PERMISSIONS.ASSIGN_ROLES)
   if (!hasAssignPermission) return false
 
   // Regular admins cannot assign Super Admin roles
   if (roleToAssign.name === "Super Admin") return false
 
-  // Regular admins cannot assign roles with permissions they don't have
-  const userPermissions = await getUserPermissions(user)
-  const rolePermissions = roleToAssign.permissions.map((rp) => rp.permission.name)
-
-  // Check if all role permissions are included in user permissions
-  return rolePermissions.every((permission) => userPermissions.includes(permission))
+  return true
 }
 
 // Get all available routes with their permission requirements
@@ -208,5 +169,83 @@ export function getAllPermissions(): Array<{ id: string; name: string }> {
       id: value,
       name,
     }
+  })
+}
+
+// Role hierarchy for comparison
+export const ROLE_HIERARCHY = {
+  "Viewer": 1,
+  "Author": 2,
+  "Editor": 3,
+  "Admin": 4,
+  "Super Admin": 5,
+} as const
+
+// Check if user can manage another user based on role hierarchy
+export function canManageUser(currentUser: AuthUser | null, targetUser: AuthUser): boolean {
+  if (!currentUser) return false
+
+  // Super Admin can manage anyone except themselves
+  if (isSuperAdmin(currentUser)) {
+    return currentUser.id !== targetUser.id
+  }
+
+  // Users cannot manage themselves through admin interface
+  if (currentUser.id === targetUser.id) return false
+
+  // Regular admins cannot manage super admins
+  if (isSuperAdmin(targetUser)) return false
+
+  // Check if user has manage users permission
+  return hasPermission(currentUser, PERMISSIONS.MANAGE_USERS)
+}
+
+// Check if user can delete another user
+export function canDeleteUser(currentUser: AuthUser | null, targetUser: AuthUser): boolean {
+  if (!currentUser) return false
+
+  // Users cannot delete themselves
+  if (currentUser.id === targetUser.id) return false
+
+  // Super Admin can delete anyone except themselves
+  if (isSuperAdmin(currentUser)) return true
+
+  // Regular admins cannot delete super admins
+  if (isSuperAdmin(targetUser)) return false
+
+  // Check if user has manage users permission
+  return hasPermission(currentUser, PERMISSIONS.MANAGE_USERS)
+}
+
+// Check if user can edit another user
+export function canEditUser(currentUser: AuthUser | null, targetUser: AuthUser): boolean {
+  if (!currentUser) return false
+
+  // Users cannot edit themselves through admin interface (should use profile)
+  if (currentUser.id === targetUser.id) return false
+
+  // Super Admin can edit anyone except themselves
+  if (isSuperAdmin(currentUser)) return true
+
+  // Regular admins cannot edit super admins
+  if (isSuperAdmin(targetUser)) return false
+
+  // Check if user has manage users permission
+  return hasPermission(currentUser, PERMISSIONS.MANAGE_USERS)
+}
+
+// Get assignable roles for a user
+export function getAssignableRoles(currentUser: AuthUser | null, allRoles: Role[]): Role[] {
+  if (!currentUser) return []
+
+  return allRoles.filter(role => {
+    // Super Admin can assign any role
+    if (isSuperAdmin(currentUser)) return true
+    
+    // Regular admins cannot assign Super Admin roles
+    if (role.name === "Super Admin") return false
+    
+    // Check if user has permission to assign roles
+    return hasPermission(currentUser, PERMISSIONS.ASSIGN_ROLES)
   })
 }

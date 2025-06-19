@@ -1,7 +1,8 @@
 {
-  "/admin/page": "app/admin/page.js",
-  "/admin/login/page": "app/admin/login/page.js",
-  "/admin/users/page": "app/admin/users/page.js",
-  "/admin/users/new/page": "app/admin/users/new/page.js",
-  "/admin/permissions/page": "app/admin/permissions/page.js"
+  "/_not-found/page": "app/_not-found/page.js",
+  "/admin/journal-articles/new/page": "app/admin/journal-articles/new/page.js",
+  "/journals/page": "app/journals/page.js",
+  "/admin/journals/[id]/edit/page": "app/admin/journals/[id]/edit/page.js",
+  "/admin/journals/page": "app/admin/journals/page.js",
+  "/admin/journal-articles/page": "app/admin/journal-articles/page.js"
 }

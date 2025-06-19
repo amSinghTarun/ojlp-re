@@ -113,7 +113,7 @@ export async function getArticlesByAuthor(authorId: string) {
 export async function getArticlesByJournalIssue(journalIssueId: string) {
   return prisma.article.findMany({
     where: {
-      journalIssueId,
+      issueId: journalIssueId
     },
     include: {
       authors: {

@@ -11,35 +11,55 @@
       "static/chunks/main-app.js",
       "static/chunks/app/admin/layout.js"
     ],
-    "/admin/page": [
+    "/admin/journals/new/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/admin/page.js"
+      "static/chunks/app/admin/journals/new/page.js"
     ],
-    "/admin/login/page": [
+    "/admin/journals/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/admin/login/page.js"
+      "static/chunks/app/admin/journals/page.js"
     ],
-    "/admin/users/page": [
+    "/admin/journals/[id]/edit/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/admin/users/page.js"
+      "static/chunks/app/admin/journals/[id]/edit/page.js"
     ],
-    "/admin/users/new/page": [
+    "/journals/layout": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/admin/users/new/page.js"
+      "static/chunks/app/journals/layout.js"
     ],
-    "/admin/roles/page": [
+    "/journals/loading": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/admin/roles/page.js"
+      "static/chunks/app/journals/loading.js"
     ],
-    "/admin/permissions/page": [
+    "/journals/[slug]/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/admin/permissions/page.js"
+      "static/chunks/app/journals/[slug]/page.js"
+    ],
+    "/admin/journal-articles/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/admin/journal-articles/page.js"
+    ],
+    "/journals/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/journals/page.js"
+    ],
+    "/admin/journal-articles/new/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/admin/journal-articles/new/page.js"
+    ],
+    "/_not-found/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/_not-found/page.js"
     ]
   }
 }

@@ -15,7 +15,7 @@ import {
   getSortedRowModel,
   useReactTable,
 } from "@tanstack/react-table"
-import { ArrowUpDown, ChevronDown, MoreHorizontal, Pencil, Trash, Eye } from "lucide-react"
+import { ArrowUpDown, ChevronDown, MoreHorizontal, Pencil, Trash, Eye, BookOpen, Users } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -40,19 +40,21 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
+import { Badge } from "@/components/ui/badge"
 import { toast } from "@/components/ui/use-toast"
 import { deleteJournalIssue } from "@/lib/actions/journal-actions"
-import { useRouter } from "next/navigation"
 
 export type JournalIssueRow = {
   id: string
   title: string
+  description: string
   volume: number
   issue: number
   year: number
   publishDate: string
-  coverImage?: string | null
-  articles: any[]
+  coverImage: string
+  articleCount?: number
+  articles?: any[]
 }
 
 interface JournalIssuesTableProps {
@@ -60,14 +62,12 @@ interface JournalIssuesTableProps {
 }
 
 export function JournalIssuesTable({ initialIssues }: JournalIssuesTableProps) {
-  const router = useRouter()
   const [issues, setIssues] = useState<JournalIssueRow[]>(initialIssues)
   const [sorting, setSorting] = useState<SortingState>([])
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({})
   const [rowSelection, setRowSelection] = useState({})
-  const [isDeleting, setIsDeleting] = useState(false)
-  const [open, setOpen] = useState(false) // Moved useState to top level
+  const [isDeleting, setIsDeleting] = useState<string | null>(null)
 
   const columns: ColumnDef<JournalIssueRow>[] = [
     {
@@ -90,6 +90,22 @@ export function JournalIssuesTable({ initialIssues }: JournalIssuesTableProps) {
       enableHiding: false,
     },
     {
+      accessorKey: "coverImage",
+      header: "Cover",
+      cell: ({ row }) => (
+        <div className="h-16 w-12 relative overflow-hidden rounded">
+          <Image
+            src={row.getValue("coverImage")}
+            alt={row.getValue("title")}
+            fill
+            className="object-cover"
+            sizes="48px"
+          />
+        </div>
+      ),
+      enableSorting: false,
+    },
+    {
       accessorKey: "title",
       header: ({ column }) => {
         return (
@@ -100,28 +116,54 @@ export function JournalIssuesTable({ initialIssues }: JournalIssuesTableProps) {
         )
       },
       cell: ({ row }) => (
-        <div className="flex items-center gap-4">
-          <div className="h-10 w-10 relative overflow-hidden rounded">
-            <Image
-              src={row.original.coverImage || "/placeholder.svg?height=40&width=40&query=journal"}
-              alt={row.getValue("title")}
-              fill
-              className="object-cover"
-            />
+        <div className="max-w-[300px]">
+          <div className="font-medium truncate">{row.getValue("title")}</div>
+          <div className="text-sm text-muted-foreground truncate">
+            {row.original.description}
           </div>
-          <span className="max-w-[400px] truncate font-medium">{row.getValue("title")}</span>
         </div>
       ),
     },
     {
-      accessorKey: "volume",
-      header: "Volume",
-      cell: ({ row }) => <div>Volume {row.getValue("volume")}</div>,
+      id: "issue_info",
+      header: "Issue Info",
+      cell: ({ row }) => (
+        <div className="space-y-1">
+          <Badge variant="outline">
+            Vol. {row.original.volume}, No. {row.original.issue}
+          </Badge>
+          <div className="text-sm text-muted-foreground">
+            {row.original.year}
+          </div>
+        </div>
+      ),
     },
     {
-      accessorKey: "issue",
-      header: "Issue",
-      cell: ({ row }) => <div>Issue {row.getValue("issue")}</div>,
+      accessorKey: "publishDate",
+      header: ({ column }) => {
+        return (
+          <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
+            Publish Date
+            <ArrowUpDown className="ml-2 h-4 w-4" />
+          </Button>
+        )
+      },
+      cell: ({ row }) => {
+        const date = row.getValue("publishDate") as string
+        return <div>{new Date(date).toLocaleDateString()}</div>
+      },
+    },
+    {
+      id: "articles",
+      header: "Articles",
+      cell: ({ row }) => (
+        <div className="flex items-center gap-2">
+          <Users className="h-4 w-4 text-muted-foreground" />
+          <span className="text-sm">
+            {row.original.articleCount || 0} articles
+          </span>
+        </div>
+      ),
     },
     {
       accessorKey: "year",
@@ -136,22 +178,13 @@ export function JournalIssuesTable({ initialIssues }: JournalIssuesTableProps) {
       cell: ({ row }) => <div>{row.getValue("year")}</div>,
     },
     {
-      accessorKey: "publishDate",
-      header: "Publish Date",
-      cell: ({ row }) => <div>{row.getValue("publishDate")}</div>,
-    },
-    {
-      accessorKey: "articles",
-      header: "Articles",
-      cell: ({ row }) => <div>{(row.original.articles || []).length} articles</div>,
-    },
-    {
       id: "actions",
       cell: ({ row }) => {
         const issue = row.original
+        const [open, setOpen] = useState(false)
 
         const handleDelete = async () => {
-          setIsDeleting(true)
+          setIsDeleting(issue.id)
           try {
             const result = await deleteJournalIssue(issue.id)
             if (result.success) {
@@ -159,7 +192,6 @@ export function JournalIssuesTable({ initialIssues }: JournalIssuesTableProps) {
                 title: "Journal issue deleted",
                 description: `"${issue.title}" has been deleted.`,
               })
-              // Remove from local state
               setIssues(issues.filter((i) => i.id !== issue.id))
             } else {
               toast({
@@ -175,7 +207,7 @@ export function JournalIssuesTable({ initialIssues }: JournalIssuesTableProps) {
               variant: "destructive",
             })
           } finally {
-            setIsDeleting(false)
+            setIsDeleting(null)
             setOpen(false)
           }
         }
@@ -191,6 +223,12 @@ export function JournalIssuesTable({ initialIssues }: JournalIssuesTableProps) {
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                <DropdownMenuItem 
+                  onClick={() => navigator.clipboard.writeText(issue.id)}
+                >
+                  Copy ID
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
                 <DropdownMenuItem asChild>
                   <Link href={`/admin/journals/${issue.id}/edit`}>
                     <Pencil className="mr-2 h-4 w-4" />
@@ -198,16 +236,28 @@ export function JournalIssuesTable({ initialIssues }: JournalIssuesTableProps) {
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>
-                  <Link href={`/journals?volume=${issue.volume}&issue=${issue.issue}`} target="_blank">
+                  <Link href={`/admin/journals/${issue.id}/articles`}>
+                    <BookOpen className="mr-2 h-4 w-4" />
+                    Manage Articles
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link href={`/journals/${issue.id}`} target="_blank">
                     <Eye className="mr-2 h-4 w-4" />
-                    View
+                    View Public
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <AlertDialogTrigger asChild>
-                  <DropdownMenuItem className="text-destructive">
+                  <DropdownMenuItem 
+                    className="text-destructive"
+                    disabled={issue.articleCount && issue.articleCount > 0}
+                  >
                     <Trash className="mr-2 h-4 w-4" />
                     Delete
+                    {issue.articleCount && issue.articleCount > 0 && 
+                      <span className="ml-2 text-xs">(has articles)</span>
+                    }
                   </DropdownMenuItem>
                 </AlertDialogTrigger>
               </DropdownMenuContent>
@@ -216,21 +266,27 @@ export function JournalIssuesTable({ initialIssues }: JournalIssuesTableProps) {
               <AlertDialogHeader>
                 <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
                 <AlertDialogDescription>
-                  This action cannot be undone. This will permanently delete the journal issue "{issue.title}" and
-                  remove it from our servers.
+                  This action cannot be undone. This will permanently delete the journal issue "{issue.title}" 
+                  (Vol. {issue.volume}, No. {issue.issue} - {issue.year}) and remove it from our servers.
+                  {issue.articleCount && issue.articleCount > 0 && (
+                    <span className="block mt-2 text-destructive font-medium">
+                      Warning: This issue contains {issue.articleCount} article(s). 
+                      You must remove or reassign these articles before deletion.
+                    </span>
+                  )}
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
-                <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+                <AlertDialogCancel disabled={isDeleting === issue.id}>Cancel</AlertDialogCancel>
                 <AlertDialogAction
                   onClick={(e) => {
                     e.preventDefault()
                     handleDelete()
                   }}
                   className="bg-destructive text-destructive-foreground"
-                  disabled={isDeleting}
+                  disabled={isDeleting === issue.id || (issue.articleCount && issue.articleCount > 0)}
                 >
-                  {isDeleting ? "Deleting..." : "Delete"}
+                  {isDeleting === issue.id ? "Deleting..." : "Delete"}
                 </AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>
@@ -261,16 +317,18 @@ export function JournalIssuesTable({ initialIssues }: JournalIssuesTableProps) {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-4">
-        <Input
-          placeholder="Filter issues..."
-          value={(table.getColumn("title")?.getFilterValue() as string) ?? ""}
-          onChange={(event) => table.getColumn("title")?.setFilterValue(event.target.value)}
-          className="max-w-sm"
-        />
+      <div className="flex items-center justify-between gap-4">
+        <div className="flex items-center gap-4">
+          <Input
+            placeholder="Filter journal issues..."
+            value={(table.getColumn("title")?.getFilterValue() as string) ?? ""}
+            onChange={(event) => table.getColumn("title")?.setFilterValue(event.target.value)}
+            className="max-w-sm"
+          />
+        </div>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="outline" className="ml-auto">
+            <Button variant="outline">
               Columns <ChevronDown className="ml-2 h-4 w-4" />
             </Button>
           </DropdownMenuTrigger>
@@ -327,12 +385,15 @@ export function JournalIssuesTable({ initialIssues }: JournalIssuesTableProps) {
           </TableBody>
         </Table>
       </div>
-      <div className="flex items-center justify-end space-x-2">
+      <div className="flex items-center justify-between space-x-2">
         <div className="flex-1 text-sm text-muted-foreground">
           {table.getFilteredSelectedRowModel().rows.length} of {table.getFilteredRowModel().rows.length} row(s)
           selected.
         </div>
-        <div className="space-x-2">
+        <div className="flex items-center space-x-2">
+          <p className="text-sm font-medium">
+            Page {table.getState().pagination.pageIndex + 1} of {table.getPageCount()}
+          </p>
           <Button
             variant="outline"
             size="sm"

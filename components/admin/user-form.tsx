@@ -1,3 +1,4 @@
+// components/admin/user-form.tsx
 "use client"
 
 import { useState, useEffect } from "react"
@@ -5,29 +6,49 @@ import { useRouter } from "next/navigation"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import * as z from "zod"
-import { Loader2 } from "lucide-react"
+import Link from "next/link"
+import { Loader2, Eye, EyeOff, ArrowLeft, Save } from "lucide-react"
+
+// UI Components
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { toast } from "@/components/ui/use-toast"
+import { Badge } from "@/components/ui/badge"
 import { Alert, AlertDescription } from "@/components/ui/alert"
+import { toast } from "@/components/ui/use-toast"
+
+// Types and Utils
 import type { User, Role } from "@prisma/client"
+import { hasPermission, isSuperAdmin, PERMISSIONS } from "@/lib/permissions"
 
 // Form validation schema
 const userFormSchema = z.object({
-  name: z.string().min(2, { message: "Name must be at least 2 characters" }),
-  email: z.string().email({ message: "Please enter a valid email address" }),
-  password: z.string().min(8, { message: "Password must be at least 8 characters" }).optional(),
+  name: z.string()
+    .min(2, { message: "Name must be at least 2 characters" })
+    .max(100, { message: "Name is too long" }),
+  email: z.string()
+    .email({ message: "Please enter a valid email address" })
+    .max(255, { message: "Email is too long" }),
+  password: z.string()
+    .min(8, { message: "Password must be at least 8 characters" })
+    .max(128, { message: "Password is too long" })
+    .optional(),
   roleId: z.string({
     required_error: "Please select a role",
   }),
+  image: z.string()
+    .url({ message: "Please enter a valid URL" })
+    .optional()
+    .or(z.literal("")),
 })
 
 // For new users, password is required
 const createUserSchema = userFormSchema.extend({
-  password: z.string().min(8, { message: "Password must be at least 8 characters" }),
+  password: z.string()
+    .min(8, { message: "Password must be at least 8 characters" })
+    .max(128, { message: "Password is too long" }),
 })
 
 interface UserFormProps {
@@ -40,41 +61,49 @@ interface UserFormProps {
 export function UserForm({ user, currentUser, availableRoles, mode }: UserFormProps) {
   const router = useRouter()
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [showPassword, setShowPassword] = useState(false)
 
+  // Check permissions
+  const canManageUsers = hasPermission(currentUser, PERMISSIONS.MANAGE_USERS)
+  
   // Filter roles based on current user permissions
   const assignableRoles = availableRoles.filter(role => {
     // Super Admin can assign any role
-    if (currentUser.role.name === "Super Admin") return true
+    if (isSuperAdmin(currentUser)) return true
     
     // Regular admins cannot assign Super Admin roles
     if (role.name === "Super Admin") return false
     
-    // For now, admins can assign roles at or below their level
-    const roleHierarchy = {
-      "Viewer": 1,
-      "Author": 2,
-      "Editor": 3,
-      "Admin": 4,
-      "Super Admin": 5,
-    }
-    
-    const currentUserLevel = roleHierarchy[currentUser.role.name as keyof typeof roleHierarchy] || 0
-    const targetRoleLevel = roleHierarchy[role.name as keyof typeof roleHierarchy] || 0
-    
-    return currentUserLevel >= targetRoleLevel
+    // Check if user has permission to assign roles
+    return hasPermission(currentUser, PERMISSIONS.ASSIGN_ROLES)
   })
 
-  // Initialize form with appropriate schema and default values
+  // Initialize form
   const form = useForm<z.infer<typeof userFormSchema>>({
     resolver: zodResolver(mode === "create" ? createUserSchema : userFormSchema),
     defaultValues: {
       name: user?.name || "",
       email: user?.email || "",
-      password: "", // Don't pre-fill password
+      password: "",
       roleId: user?.roleId || "",
+      image: user?.image || "",
     },
   })
 
+  // Reset form when user prop changes (for edit mode)
+  useEffect(() => {
+    if (user && mode === "edit") {
+      form.reset({
+        name: user.name,
+        email: user.email,
+        password: "",
+        roleId: user.roleId,
+        image: user.image || "",
+      })
+    }
+  }, [user, mode, form])
+
+  // Handle form submission
   const onSubmit = async (data: z.infer<typeof userFormSchema>) => {
     setIsSubmitting(true)
 
@@ -87,14 +116,13 @@ export function UserForm({ user, currentUser, availableRoles, mode }: UserFormPr
           description: "You don't have permission to assign this role",
           variant: "destructive",
         })
-        setIsSubmitting(false)
         return
       }
 
       // Prepare form data
       const formData = new FormData()
-      formData.append("name", data.name)
-      formData.append("email", data.email)
+      formData.append("name", data.name.trim())
+      formData.append("email", data.email.trim().toLowerCase())
       formData.append("roleId", data.roleId)
       
       // Only include password if provided
@@ -102,11 +130,16 @@ export function UserForm({ user, currentUser, availableRoles, mode }: UserFormPr
         formData.append("password", data.password)
       }
 
+      // Only include image if provided
+      if (data.image && data.image.trim() !== "") {
+        formData.append("image", data.image.trim())
+      }
+
       let result
 
       if (mode === "edit" && user) {
         // Update existing user
-        const updateUser = (await import("@/lib/actions/user-actions")).updateUser
+        const { updateUser } = await import("@/lib/actions/user-actions")
         result = await updateUser(user.id, formData)
       } else {
         // Create new user
@@ -116,11 +149,10 @@ export function UserForm({ user, currentUser, availableRoles, mode }: UserFormPr
             description: "Password is required for new users",
             variant: "destructive",
           })
-          setIsSubmitting(false)
           return
         }
         
-        const createUser = (await import("@/lib/actions/user-actions")).createUser
+        const { createUser } = await import("@/lib/actions/user-actions")
         result = await createUser(formData)
       }
 
@@ -150,12 +182,109 @@ export function UserForm({ user, currentUser, availableRoles, mode }: UserFormPr
     }
   }
 
+  // Get badge variant for roles
+  const getRoleBadgeVariant = (roleName: string) => {
+    switch (roleName) {
+      case "Super Admin":
+        return "destructive"
+      case "Admin":
+        return "default"
+      case "Editor":
+        return "secondary"
+      default:
+        return "outline"
+    }
+  }
+
+  // Show permission error if user can't manage users
+  if (!canManageUsers) {
+    return (
+      <div className="max-w-2xl mx-auto space-y-6">
+        <div className="flex items-center gap-4">
+          <Button variant="outline" size="sm" asChild>
+            <Link href="/admin/users">
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back to Users
+            </Link>
+          </Button>
+          <div>
+            <h1 className="text-2xl font-bold">Access Denied</h1>
+            <p className="text-muted-foreground">
+              You don't have permission to manage users
+            </p>
+          </div>
+        </div>
+        
+        <Card>
+          <CardContent className="pt-6">
+            <Alert>
+              <AlertDescription>
+                You don't have permission to manage users. Contact your administrator for access.
+              </AlertDescription>
+            </Alert>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
   return (
-    <div className="space-y-6">
+    <div className="max-w-2xl mx-auto space-y-6">
+      {/* Header */}
+      <div className="flex items-center gap-4">
+        <Button variant="outline" size="sm" asChild>
+          <Link href="/admin/users">
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Back to Users
+          </Link>
+        </Button>
+        <div>
+          <h1 className="text-2xl font-bold">
+            {mode === "edit" ? `Edit User: ${user?.name}` : "Create New User"}
+          </h1>
+          <p className="text-muted-foreground">
+            {mode === "edit" 
+              ? "Update user information and role assignments" 
+              : "Add a new user to the system with appropriate permissions"
+            }
+          </p>
+        </div>
+      </div>
+
+      {/* Current User Info (Edit Mode Only) */}
+      {mode === "edit" && user && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">Current User Information</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium">Current Role:</span>
+              <Badge variant={getRoleBadgeVariant(user.role.name)}>
+                {user.role.name}
+              </Badge>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium">Account Created:</span>
+              <span className="text-sm text-muted-foreground">
+                {new Date(user.createdAt).toLocaleDateString()}
+              </span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium">Last Updated:</span>
+              <span className="text-sm text-muted-foreground">
+                {new Date(user.updatedAt).toLocaleDateString()}
+              </span>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Main Form */}
       <Card>
         <CardHeader>
           <CardTitle>
-            {mode === "edit" ? `Edit User: ${user?.name}` : "Create New User"}
+            {mode === "edit" ? "Edit User Details" : "User Details"}
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -168,69 +297,93 @@ export function UserForm({ user, currentUser, availableRoles, mode }: UserFormPr
           ) : (
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                {/* Name Field */}
                 <FormField
                   control={form.control}
                   name="name"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Name *</FormLabel>
+                      <FormLabel>Full Name</FormLabel>
                       <FormControl>
                         <Input 
-                          placeholder="John Doe" 
+                          placeholder="Enter full name" 
                           {...field} 
                           disabled={isSubmitting}
                         />
                       </FormControl>
-                      <FormDescription>The user's full name.</FormDescription>
+                      <FormDescription>
+                        The user's full display name
+                      </FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
 
+                {/* Email Field */}
                 <FormField
                   control={form.control}
                   name="email"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Email *</FormLabel>
+                      <FormLabel>Email Address</FormLabel>
                       <FormControl>
                         <Input 
-                          placeholder="john.doe@example.com" 
-                          type="email" 
+                          type="email"
+                          placeholder="Enter email address" 
                           {...field} 
                           disabled={isSubmitting}
                         />
                       </FormControl>
-                      <FormDescription>The user's email address for login.</FormDescription>
+                      <FormDescription>
+                        Used for authentication and notifications
+                      </FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
 
+                {/* Password Field */}
                 <FormField
                   control={form.control}
                   name="password"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>
-                        {mode === "edit" ? "New Password" : "Password *"}
+                        Password
+                        {mode === "edit" && (
+                          <span className="text-sm font-normal text-muted-foreground ml-2">
+                            (leave empty to keep current password)
+                          </span>
+                        )}
                       </FormLabel>
                       <FormControl>
-                        <Input
-                          placeholder={
-                            mode === "edit" 
-                              ? "Leave blank to keep current password" 
-                              : "Enter password"
-                          }
-                          type="password"
-                          {...field}
-                          disabled={isSubmitting}
-                        />
+                        <div className="relative">
+                          <Input 
+                            type={showPassword ? "text" : "password"}
+                            placeholder={mode === "create" ? "Enter password" : "Enter new password (optional)"}
+                            {...field} 
+                            disabled={isSubmitting}
+                          />
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                            onClick={() => setShowPassword(!showPassword)}
+                            disabled={isSubmitting}
+                          >
+                            {showPassword ? (
+                              <EyeOff className="h-4 w-4" />
+                            ) : (
+                              <Eye className="h-4 w-4" />
+                            )}
+                          </Button>
+                        </div>
                       </FormControl>
                       <FormDescription>
-                        {mode === "edit" 
-                          ? "Leave blank to keep the current password. Must be at least 8 characters if changing." 
-                          : "Must be at least 8 characters."
+                        {mode === "create" 
+                          ? "Must be at least 8 characters long"
+                          : "Leave empty to keep the current password"
                         }
                       </FormDescription>
                       <FormMessage />
@@ -238,12 +391,13 @@ export function UserForm({ user, currentUser, availableRoles, mode }: UserFormPr
                   )}
                 />
 
+                {/* Role Field */}
                 <FormField
                   control={form.control}
                   name="roleId"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Role *</FormLabel>
+                      <FormLabel>Role</FormLabel>
                       <Select 
                         onValueChange={field.onChange} 
                         defaultValue={field.value}
@@ -258,9 +412,13 @@ export function UserForm({ user, currentUser, availableRoles, mode }: UserFormPr
                           {assignableRoles.map((role) => (
                             <SelectItem key={role.id} value={role.id}>
                               <div className="flex items-center gap-2">
-                                <span>{role.name}</span>
-                                {role.isSystem && (
-                                  <span className="text-xs text-muted-foreground">(System)</span>
+                                <Badge variant={getRoleBadgeVariant(role.name)} className="text-xs">
+                                  {role.name}
+                                </Badge>
+                                {role.description && (
+                                  <span className="text-sm text-muted-foreground">
+                                    - {role.description}
+                                  </span>
                                 )}
                               </div>
                             </SelectItem>
@@ -268,37 +426,63 @@ export function UserForm({ user, currentUser, availableRoles, mode }: UserFormPr
                         </SelectContent>
                       </Select>
                       <FormDescription>
-                        The user's role determines their permissions in the system.
-                        {assignableRoles.length < availableRoles.length && (
-                          <span className="block text-amber-600 mt-1">
-                            Some roles are not shown due to permission restrictions.
-                          </span>
-                        )}
+                        Determines the user's permissions and access level
                       </FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
 
-                {/* Action Buttons */}
-                <div className="flex justify-end space-x-4 pt-4">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => router.push("/admin/users")}
+                {/* Image URL Field */}
+                <FormField
+                  control={form.control}
+                  name="image"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Profile Image URL (Optional)</FormLabel>
+                      <FormControl>
+                        <Input 
+                          type="url"
+                          placeholder="https://example.com/avatar.jpg" 
+                          {...field} 
+                          disabled={isSubmitting}
+                        />
+                      </FormControl>
+                      <FormDescription>
+                        URL to the user's profile image. If not provided, a default avatar will be generated.
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                {/* Form Actions */}
+                <div className="flex items-center gap-4 pt-4">
+                  <Button 
+                    type="submit" 
                     disabled={isSubmitting}
+                    className="min-w-[120px]"
                   >
-                    Cancel
-                  </Button>
-                  <Button type="submit" disabled={isSubmitting}>
                     {isSubmitting ? (
                       <>
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                         {mode === "edit" ? "Updating..." : "Creating..."}
                       </>
                     ) : (
-                      mode === "edit" ? "Update User" : "Create User"
+                      <>
+                        <Save className="mr-2 h-4 w-4" />
+                        {mode === "edit" ? "Update User" : "Create User"}
+                      </>
                     )}
+                  </Button>
+                  
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    onClick={() => router.back()}
+                    disabled={isSubmitting}
+                  >
+                    Cancel
                   </Button>
                 </div>
               </form>
@@ -307,37 +491,32 @@ export function UserForm({ user, currentUser, availableRoles, mode }: UserFormPr
         </CardContent>
       </Card>
 
-      {/* Info Cards */}
-      <div className="grid gap-4 md:grid-cols-2">
+      {/* Available Roles Info */}
+      {assignableRoles.length > 0 && (
         <Card>
           <CardHeader>
-            <CardTitle className="text-sm">Permission Info</CardTitle>
+            <CardTitle className="text-lg">Available Roles</CardTitle>
           </CardHeader>
-          <CardContent className="text-sm text-muted-foreground">
-            <p>
-              You can only assign roles that are at or below your permission level.
-              {currentUser.role.name === "Super Admin" 
-                ? " As a Super Admin, you can assign any role."
-                : ` As ${currentUser.role.name}, you cannot assign Super Admin roles.`
-              }
-            </p>
+          <CardContent>
+            <div className="space-y-3">
+              {assignableRoles.map((role) => (
+                <div key={role.id} className="flex items-start gap-3 p-3 rounded-lg border">
+                  <Badge variant={getRoleBadgeVariant(role.name)}>
+                    {role.name}
+                  </Badge>
+                  <div className="flex-1">
+                    {role.description && (
+                      <p className="text-sm text-muted-foreground">
+                        {role.description}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
           </CardContent>
         </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-sm">Security Note</CardTitle>
-          </CardHeader>
-          <CardContent className="text-sm text-muted-foreground">
-            <p>
-              {mode === "edit" 
-                ? "When editing a user, leave the password field blank to keep their current password."
-                : "New users will need to use the password you set here to log in."
-              }
-            </p>
-          </CardContent>
-        </Card>
-      </div>
+      )}
     </div>
   )
 }

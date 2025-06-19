@@ -120,7 +120,7 @@ model Article {
   content   String      @db.Text
   date      DateTime
   readTime  Int
-  image     String
+  image     String?
   images    String[]
   type      ArticleType
   draft     Boolean     @default(false)
@@ -256,7 +256,7 @@ model JournalIssue {
   issue       Int
   year        Int
   publishDate String
-  coverImage  String
+  coverImage  String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
