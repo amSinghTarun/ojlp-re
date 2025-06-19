@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { JournalCitation } from "@/components/journal-citation"
 import { JournalDownloadButton } from "@/components/journal-download-button"
+import { ArticleContentProcessor } from "@/components/article-content-processor"
 import { getLatestIssue } from "@/lib/controllers/journal-issues"
 import { getArticlesByJournalIssue } from "@/lib/controllers/articles"
 import { redirect } from "next/navigation"
@@ -108,10 +109,34 @@ export default async function JournalsPage({ searchParams }: { searchParams: { v
                                 <JournalCitation
                                   article={{
                                     title: article.title,
+                                    slug: article.slug,
+                                    date: article.date || article.createdAt,
                                     doi: article.doi || "",
                                     volume: latestIssue.volume,
                                     issue: latestIssue.issue,
                                     year: latestIssue.year,
+                                    // Handle both old authors structure and new Author structure
+                                    authors: article.Author ? [{
+                                      id: article.Author.id,
+                                      name: article.Author.name,
+                                      slug: article.Author.slug || article.Author.email,
+                                    }] : (article.authors?.map(authorRel => ({
+                                      id: authorRel.authorId,
+                                      name: authorRel.author?.name || "Unknown Author",
+                                      slug: authorRel.author?.slug || "",
+                                    })) || []),
+                                    author: article.Author?.name || article.authors?.[0]?.author?.name || "Unknown Author",
+                                    keywords: article.keywords || [],
+                                    content: article.content || "",
+                                    excerpt: article.excerpt || "",
+                                    image: article.image || "",
+                                    images: article.images || [],
+                                    readTime: article.readTime || 5,
+                                    draft: article.draft || false,
+                                    views: article.views || 0,
+                                    createdAt: article.createdAt,
+                                    updatedAt: article.updatedAt,
+                                    categories: article.categories || [],
                                   }}
                                 />
                                 <JournalDownloadButton
@@ -126,23 +151,35 @@ export default async function JournalsPage({ searchParams }: { searchParams: { v
                               <div className="flex items-center gap-1">
                                 <User className="h-4 w-4" />
                                 <div className="flex flex-wrap">
-                                  {article.authors.map((authorRel, i) => (
-                                    <span key={authorRel.authorId}>
-                                      <Link
-                                        href={`/authors/${authorRel.author?.slug}`}
-                                        className="hover:underline hover:text-primary transition-colors"
-                                      >
-                                        {authorRel.author?.name || "Unknown Author"}
-                                      </Link>
-                                      {i < article.authors.length - 1 && <span>, </span>}
-                                    </span>
-                                  ))}
+                                  {/* Handle both new Author structure and old authors structure */}
+                                  {article.Author ? (
+                                    <Link
+                                      href={`/authors/${article.Author.slug || article.Author.email}`}
+                                      className="hover:underline hover:text-primary transition-colors"
+                                    >
+                                      {article.Author.name}
+                                    </Link>
+                                  ) : article.authors && article.authors.length > 0 ? (
+                                    article.authors.map((authorRel, i) => (
+                                      <span key={authorRel.authorId}>
+                                        <Link
+                                          href={`/authors/${authorRel.author?.slug}`}
+                                          className="hover:underline hover:text-primary transition-colors"
+                                        >
+                                          {authorRel.author?.name || "Unknown Author"}
+                                        </Link>
+                                        {i < article.authors.length - 1 && <span>, </span>}
+                                      </span>
+                                    ))
+                                  ) : (
+                                    <span>Unknown Author</span>
+                                  )}
                                 </div>
                               </div>
                               <div className="flex items-center gap-1">
                                 <Calendar className="h-4 w-4" />
                                 <span>
-                                  {new Date(article.createdAt).toLocaleDateString("en-US", {
+                                  {new Date(article.date || article.createdAt).toLocaleDateString("en-US", {
                                     year: "numeric",
                                     month: "long",
                                     day: "numeric",
@@ -151,12 +188,30 @@ export default async function JournalsPage({ searchParams }: { searchParams: { v
                               </div>
                               <div className="flex items-center gap-1">
                                 <Clock className="h-4 w-4" />
-                                <span>{Math.ceil((article.content?.length || 0) / 1000)} min read</span>
+                                <span>{article.readTime || Math.ceil((article.content?.length || 0) / 1000)} min read</span>
                               </div>
                             </div>
                           </CardHeader>
                           <CardContent>
                             <p className="text-muted-foreground">{article.excerpt}</p>
+
+                            {/* Display a preview of content with images if available */}
+                            {article.images && article.images.length > 0 && (
+                              <div className="mt-4">
+                                <details className="group">
+                                  <summary className="cursor-pointer text-sm font-medium text-primary hover:underline">
+                                    Preview content with images
+                                  </summary>
+                                  <div className="mt-3 p-4 border rounded-lg bg-muted/50">
+                                    <ArticleContentProcessor
+                                      content={article.content?.substring(0, 500) + "..." || "No content available"}
+                                      images={article.images}
+                                      className="text-sm"
+                                    />
+                                  </div>
+                                </details>
+                              </div>
+                            )}
 
                             {/* Display keywords with amber styling */}
                             <div className="flex flex-wrap gap-2 mt-4">

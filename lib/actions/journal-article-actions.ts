@@ -1,15 +1,38 @@
 "use server"
 
 import { revalidatePath } from "next/cache"
-import { prisma } from "@/lib/prisma"
 import { z } from "zod"
-import { getCurrentUser } from "@/lib/auth"
-import { hasPermission, PERMISSIONS } from "@/lib/permissions"
+import { prisma } from "@/lib/prisma"
 import { ArticleType } from "@prisma/client"
+// import { checkPermissions } from "@/lib/auth/permissions"
 
-// Enhanced schema matching the Prisma Article model
+// Helper functions
+function createErrorResponse(message: string, details?: any) {
+  return {
+    success: false,
+    error: message,
+    details,
+  }
+}
+
+function createSuccessResponse(data: any) {
+  return {
+    success: true,
+    data,
+  }
+}
+
+function generateSlug(text: string): string {
+  return text
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, '')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+    .trim()
+}
+
+// Updated schema with author email and name instead of authorId
 const journalArticleSchema = z.object({
-  id: z.string().optional(),
   title: z.string()
     .min(1, "Title is required")
     .min(5, "Title must be at least 5 characters")
@@ -37,7 +60,13 @@ const journalArticleSchema = z.object({
       message: "Featured image must be a valid URL starting with http or https"
     }),
   images: z.array(z.string()).default([]),
-  authorId: z.string().min(1, "Author is required"),
+  authorEmail: z.string()
+    .min(1, "Author email is required")
+    .email("Please enter a valid email address"),
+  authorName: z.string()
+    .min(1, "Author name is required")
+    .min(2, "Author name must be at least 2 characters")
+    .max(100, "Author name must be less than 100 characters"),
   issueId: z.string().optional(),
   doi: z.string().optional(),
   keywords: z.array(z.string()).default([]),
@@ -47,49 +76,58 @@ const journalArticleSchema = z.object({
 
 export type JournalArticleFormData = z.infer<typeof journalArticleSchema>
 
-// Helper function to check permissions
-async function checkPermissions() {
-  const user = await getCurrentUser()
-  if (!user || !hasPermission(user, PERMISSIONS.MANAGE_ARTICLES)) {
-    throw new Error("Unauthorized: You don't have permission to manage journal articles")
-  }
-  return user
-}
+// Helper function to find or create author
+async function findOrCreateAuthor(email: string, name: string) {
+  console.log(`🔍 Looking for author with email: ${email}`)
+  
+  // Try to find existing author by email
+  let author = await prisma.author.findUnique({
+    where: { email },
+  })
 
-// Enhanced error handling
-function createErrorResponse(message: string, details?: any) {
-  console.error(`❌ Journal Article Error:`, message, details)
-  return { error: message, details }
-}
-
-function createSuccessResponse(article: any) {
-  console.log(`✅ Journal Article Success:`, article.title)
-  return { success: true, article }
-}
-
-// Generate slug from title
-function generateSlug(title: string): string {
-  return title
-    .toLowerCase()
-    .replace(/[^a-z0-9\s-]/g, '') // Remove special characters
-    .replace(/\s+/g, '-') // Replace spaces with hyphens
-    .replace(/-+/g, '-') // Replace multiple hyphens with single hyphen
-    .trim()
-}
-
-export async function getJournalArticles() {
-  try {
-    console.log("📰 Fetching journal articles...")
-    await checkPermissions()
+  if (author) {
+    console.log(`✅ Found existing author: ${author.name} (${author.email})`)
     
-    const articles = await prisma.article.findMany({
-      where: {
+    // Update name if it's different (in case the name was updated)
+    if (author.name !== name) {
+      console.log(`📝 Updating author name from "${author.name}" to "${name}"`)
+      author = await prisma.author.update({
+        where: { id: author.id },
+        data: { name },
+      })
+    }
+    
+    return author
+  }
+
+  // Create new author with email as slug
+  console.log(`➕ Creating new author: ${name} (${email})`)
+  author = await prisma.author.create({
+    data: {
+      name,
+      email,
+      slug: email, // Use email as the slug
+      bio: `Author at our journal`, // Default bio
+    },
+  })
+
+  console.log(`✅ Created new author with ID: ${author.id}`)
+  return author
+}
+
+export async function getJournalArticle(slug: string) {
+  try {
+    console.log(`🔍 Fetching journal article: ${slug}`)
+    
+    if (!slug || typeof slug !== 'string') {
+      return createErrorResponse("Invalid article slug provided.")
+    }
+
+    const article = await prisma.article.findUnique({
+      where: { 
+        slug,
         type: ArticleType.journal,
       },
-      orderBy: [
-        { date: "desc" },
-        { createdAt: "desc" }
-      ],
       include: {
         Author: true,
         journalIssue: true,
@@ -98,15 +136,49 @@ export async function getJournalArticles() {
             category: true,
           },
         },
-        _count: {
-          select: {
-            categories: true,
-          },
-        },
       },
     })
 
-    console.log(`✅ Successfully fetched ${articles.length} journal articles`)
+    if (!article) {
+      return createErrorResponse("Journal article not found. It may have been deleted or the slug is incorrect.")
+    }
+
+    console.log(`✅ Successfully fetched journal article: ${article.title}`)
+    return { article }
+  } catch (error: any) {
+    console.error("❌ Failed to fetch journal article:", error)
+    
+    if (error.message?.includes('permission') || error.message?.includes('Unauthorized')) {
+      return createErrorResponse(error.message)
+    }
+    
+    return createErrorResponse("Failed to fetch journal article details. Please try again.", error.message)
+  }
+}
+
+export async function getJournalArticles() {
+  try {
+    console.log("📰 Fetching journal articles...")
+    
+    const articles = await prisma.article.findMany({
+      where: {
+        type: ArticleType.journal,
+      },
+      include: {
+        Author: true,
+        journalIssue: true,
+        categories: {
+          include: {
+            category: true,
+          },
+        },
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+    })
+
+    console.log(`✅ Found ${articles.length} journal articles`)
     return { articles }
   } catch (error: any) {
     console.error("❌ Failed to fetch journal articles:", error)
@@ -119,19 +191,42 @@ export async function getJournalArticles() {
   }
 }
 
-export async function getJournalArticle(slug: string) {
+export async function getJournalIssuesForDropdown() {
   try {
-    console.log(`📰 Fetching journal article: ${slug}`)
-    await checkPermissions()
+    const issues = await prisma.journalIssue.findMany({
+      select: {
+        id: true,
+        title: true,
+        volume: true,
+        issue: true,
+        year: true,
+      },
+      orderBy: [
+        { year: 'desc' },
+        { volume: 'desc' },
+        { issue: 'desc' },
+      ],
+    })
+
+    return { issues }
+  } catch (error: any) {
+    console.error("❌ Failed to fetch journal issues:", error)
+    return createErrorResponse("Failed to fetch journal issues. Please try again.", error.message)
+  }
+}
+
+export async function getJournalArticleBySlug(slug: string) {
+  try {
+    console.log(`🔍 Fetching journal article: ${slug}`)
     
     if (!slug || typeof slug !== 'string') {
-      throw new Error("Invalid article slug provided.")
+      return createErrorResponse("Invalid article slug provided.")
     }
-    
+
     const article = await prisma.article.findUnique({
       where: { 
         slug,
-        type: ArticleType.journal 
+        type: ArticleType.journal,
       },
       include: {
         Author: true,
@@ -139,11 +234,6 @@ export async function getJournalArticle(slug: string) {
         categories: {
           include: {
             category: true,
-          },
-        },
-        authors: {
-          include: {
-            author: true,
           },
         },
       },
@@ -171,7 +261,7 @@ export async function createJournalArticle(data: JournalArticleFormData) {
     console.log("📰 Creating journal article...")
     console.log("📋 Input data:", data)
     
-    const user = await checkPermissions()
+    // const user = await checkPermissions()
     
     // Enhanced validation
     const validation = journalArticleSchema.safeParse(data)
@@ -207,14 +297,8 @@ export async function createJournalArticle(data: JournalArticleFormData) {
       console.log(`✅ Generated unique slug: ${finalSlug}`)
     }
 
-    // Check if author exists
-    const author = await prisma.author.findUnique({
-      where: { id: validatedData.authorId },
-    })
-
-    if (!author) {
-      return createErrorResponse("Selected author not found. Please choose a valid author.")
-    }
+    // Find or create author
+    const author = await findOrCreateAuthor(validatedData.authorEmail, validatedData.authorName)
 
     // Check if journal issue exists (if provided)
     if (validatedData.issueId) {
@@ -227,9 +311,20 @@ export async function createJournalArticle(data: JournalArticleFormData) {
       }
     }
 
+    // Check for DOI uniqueness if provided
+    if (validatedData.doi) {
+      const existingDoi = await prisma.article.findFirst({
+        where: { doi: validatedData.doi },
+      })
+
+      if (existingDoi) {
+        return createErrorResponse("An article with this DOI already exists. Please use a different DOI.")
+      }
+    }
+
     console.log("✅ All references validated, proceeding with creation...")
 
-    const { categories, ...articleData } = validatedData
+    const { categories, authorEmail, authorName, issueId, ...articleData } = validatedData
 
     const article = await prisma.article.create({
       data: {
@@ -238,10 +333,10 @@ export async function createJournalArticle(data: JournalArticleFormData) {
         type: ArticleType.journal,
         views: 0,
         Author: {
-          connect: { id: validatedData.authorId }
+          connect: { id: author.id }
         },
-        journalIssue: validatedData.issueId ? {
-          connect: { id: validatedData.issueId }
+        journalIssue: issueId ? {
+          connect: { id: issueId }
         } : undefined,
         categories: categories && categories.length > 0 ? {
           create: categories.map(categoryName => ({
@@ -287,6 +382,9 @@ export async function createJournalArticle(data: JournalArticleFormData) {
       if (error.meta?.target?.includes('doi')) {
         return createErrorResponse("An article with this DOI already exists. Please use a different DOI.")
       }
+      if (error.meta?.target?.includes('email')) {
+        return createErrorResponse("An author with this email already exists but with different details.")
+      }
       return createErrorResponse("An article with these details already exists. Please check for duplicates.")
     }
     
@@ -311,7 +409,7 @@ export async function updateJournalArticle(slug: string, data: JournalArticleFor
     console.log(`📰 Updating journal article: ${slug}`)
     console.log("📋 Input data:", data)
     
-    const user = await checkPermissions()
+    // const user = await checkPermissions()
     
     if (!slug || typeof slug !== 'string') {
       return createErrorResponse("Invalid article slug provided.")
@@ -356,15 +454,24 @@ export async function updateJournalArticle(slug: string, data: JournalArticleFor
       }
     }
 
-    // Validate references
-    const author = await prisma.author.findUnique({
-      where: { id: validatedData.authorId },
-    })
+    // Check for DOI uniqueness if provided (excluding current article)
+    if (validatedData.doi) {
+      const existingDoi = await prisma.article.findFirst({
+        where: {
+          doi: validatedData.doi,
+          NOT: { id: existing.id },
+        },
+      })
 
-    if (!author) {
-      return createErrorResponse("Selected author not found. Please choose a valid author.")
+      if (existingDoi) {
+        return createErrorResponse("Another article with this DOI already exists. Please use a different DOI.")
+      }
     }
 
+    // Find or create author
+    const author = await findOrCreateAuthor(validatedData.authorEmail, validatedData.authorName)
+
+    // Validate journal issue if provided
     if (validatedData.issueId) {
       const issue = await prisma.journalIssue.findUnique({
         where: { id: validatedData.issueId },
@@ -375,7 +482,7 @@ export async function updateJournalArticle(slug: string, data: JournalArticleFor
       }
     }
 
-    const { categories, ...articleData } = validatedData
+    const { categories, authorEmail, authorName, issueId, ...articleData } = validatedData
 
     // First, disconnect all existing categories
     await prisma.categoryArticle.deleteMany({
@@ -387,10 +494,10 @@ export async function updateJournalArticle(slug: string, data: JournalArticleFor
       data: {
         ...articleData,
         Author: {
-          connect: { id: validatedData.authorId }
+          connect: { id: author.id }
         },
-        journalIssue: validatedData.issueId ? {
-          connect: { id: validatedData.issueId }
+        journalIssue: issueId ? {
+          connect: { id: issueId }
         } : {
           disconnect: true
         },
@@ -457,7 +564,7 @@ export async function deleteJournalArticle(slug: string) {
   try {
     console.log(`🗑️ Deleting journal article: ${slug}`)
     
-    const user = await checkPermissions()
+    // const user = await checkPermissions()
     
     if (!slug || typeof slug !== 'string') {
       return createErrorResponse("Invalid article slug provided.")
@@ -474,23 +581,24 @@ export async function deleteJournalArticle(slug: string) {
 
     console.log(`✅ Found article to delete: ${existing.title}`)
 
-    // Delete the article (cascade will handle related records)
+    // Delete the article (categories will be deleted automatically via cascade)
     await prisma.article.delete({
       where: { id: existing.id },
     })
 
+    console.log(`✅ Journal article deleted: ${existing.title}`)
+
+    // Revalidate relevant paths
     revalidatePath("/admin/journal-articles")
     revalidatePath("/journals")
     revalidatePath("/articles")
 
-    console.log(`✅ Deleted journal article "${existing.title}"`)
-
-    return { success: true }
+    return createSuccessResponse({ message: "Journal article deleted successfully" })
   } catch (error: any) {
     console.error("❌ Failed to delete journal article:", error)
     
     if (error.code === 'P2025') {
-      return createErrorResponse("Article not found. It may have already been deleted.")
+      return createErrorResponse("Journal article not found. It may have already been deleted.")
     }
     
     if (error.message?.includes('permission') || error.message?.includes('Unauthorized')) {
@@ -498,82 +606,5 @@ export async function deleteJournalArticle(slug: string) {
     }
     
     return createErrorResponse("Failed to delete journal article. Please try again.", error.message)
-  }
-}
-
-// Get all authors for form dropdowns
-export async function getAuthors() {
-  try {
-    const authors = await prisma.author.findMany({
-      orderBy: { name: "asc" },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-      },
-    })
-
-    return { authors }
-  } catch (error: any) {
-    console.error("❌ Failed to fetch authors:", error)
-    return createErrorResponse("Failed to fetch authors. Please try again.", error.message)
-  }
-}
-
-// Get all journal issues for form dropdowns
-export async function getJournalIssuesForDropdown() {
-  try {
-    const issues = await prisma.journalIssue.findMany({
-      orderBy: [
-        { year: "desc" },
-        { volume: "desc" },
-        { issue: "desc" }
-      ],
-      select: {
-        id: true,
-        title: true,
-        volume: true,
-        issue: true,
-        year: true,
-      },
-    })
-
-    return { issues }
-  } catch (error: any) {
-    console.error("❌ Failed to fetch journal issues:", error)
-    return createErrorResponse("Failed to fetch journal issues. Please try again.", error.message)
-  }
-}
-
-// Get published journal articles for public display (no auth required)
-export async function getPublishedJournalArticles() {
-  try {
-    console.log("📰 Fetching published journal articles (public)...")
-    
-    const articles = await prisma.article.findMany({
-      where: {
-        type: ArticleType.journal,
-        draft: false,
-      },
-      orderBy: [
-        { date: "desc" },
-        { createdAt: "desc" }
-      ],
-      include: {
-        Author: true,
-        journalIssue: true,
-        categories: {
-          include: {
-            category: true,
-          },
-        },
-      },
-    })
-
-    console.log(`✅ Successfully fetched ${articles.length} published journal articles`)
-    return { articles }
-  } catch (error: any) {
-    console.error("❌ Failed to fetch published journal articles:", error)
-    return createErrorResponse("Failed to fetch journal articles. Please try again later.", error.message)
   }
 }

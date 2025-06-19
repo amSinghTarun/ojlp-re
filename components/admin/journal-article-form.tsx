@@ -26,7 +26,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { CalendarIcon, Loader2, Plus, X, FileText, AlertTriangle, User, BookOpen } from "lucide-react"
+import { CalendarIcon, Loader2, Plus, X, FileText, AlertTriangle, Mail, BookOpen } from "lucide-react"
 import { Calendar } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { cn } from "@/lib/utils"
@@ -36,12 +36,12 @@ import { toast } from "@/components/ui/use-toast"
 import { 
   createJournalArticle, 
   updateJournalArticle, 
-  getAuthors, 
   getJournalIssuesForDropdown 
 } from "@/lib/actions/journal-article-actions"
+import { MediaSelector } from "@/components/admin/media-selector"
 import { format } from "date-fns"
 
-// Enhanced schema matching the actions
+// Enhanced schema with author email instead of authorId
 const formSchema = z.object({
   title: z.string()
     .min(1, "Title is required")
@@ -64,13 +64,15 @@ const formSchema = z.object({
     .min(1, "Read time must be at least 1 minute")
     .max(180, "Read time must be less than 180 minutes")
     .int("Read time must be a whole number"),
-  image: z.string()
-    .min(1, "Featured image is required")
-    .refine((val) => val.startsWith('http'), {
-      message: "Featured image must be a valid URL starting with http or https"
-    }),
+  image: z.string().optional(),
   images: z.array(z.string()).default([]),
-  authorId: z.string().min(1, "Author is required"),
+  authorEmail: z.string()
+    .min(1, "Author email is required")
+    .email("Please enter a valid email address"),
+  authorName: z.string()
+    .min(1, "Author name is required")
+    .min(2, "Author name must be at least 2 characters")
+    .max(100, "Author name must be less than 100 characters"),
   issueId: z.string().optional(),
   doi: z.string().optional(),
   keywords: z.array(z.string()).default([]),
@@ -99,6 +101,7 @@ interface JournalArticleFormProps {
     Author?: {
       id: string
       name: string
+      email: string
     } | null
     journalIssue?: {
       id: string
@@ -111,23 +114,15 @@ interface JournalArticleFormProps {
 export function JournalArticleForm({ article }: JournalArticleFormProps) {
   const router = useRouter()
   const [isLoading, setIsLoading] = useState(false)
-  const [authors, setAuthors] = useState<Array<{ id: string; name: string; email: string }>>([])
   const [journalIssues, setJournalIssues] = useState<Array<{ id: string; title: string; volume: number; issue: number; year: number }>>([])
   const [newKeyword, setNewKeyword] = useState("")
   const [newCategory, setNewCategory] = useState("")
-  const [newImage, setNewImage] = useState("")
 
-  // Load dropdown data
+  // Load journal issues
   useEffect(() => {
     async function loadData() {
-      const [authorsResult, issuesResult] = await Promise.all([
-        getAuthors(),
-        getJournalIssuesForDropdown()
-      ])
-
-      if (authorsResult.authors) {
-        setAuthors(authorsResult.authors)
-      }
+      const issuesResult = await getJournalIssuesForDropdown()
+      
       if (issuesResult.issues) {
         setJournalIssues(issuesResult.issues)
       }
@@ -146,7 +141,8 @@ export function JournalArticleForm({ article }: JournalArticleFormProps) {
       readTime: article?.readTime || 5,
       image: article?.image || "",
       images: article?.images || [],
-      authorId: article?.Author?.id || article?.authorId || "",
+      authorEmail: article?.Author?.email || "",
+      authorName: article?.Author?.name || "",
       issueId: article?.journalIssue?.id || article?.issueId || "",
       doi: article?.doi || "",
       keywords: article?.keywords || [],
@@ -213,9 +209,10 @@ export function JournalArticleForm({ article }: JournalArticleFormProps) {
     form.setValue("categories", categories.filter(category => category !== categoryToRemove))
   }
 
-  const addImage = () => {
-    if (newImage.trim() && newImage.startsWith('http') && !images.includes(newImage.trim())) {
-      if (images.length >= 5) {
+  const addAdditionalImage = (imageUrl: string) => {
+    const currentImages = form.getValues("images")
+    if (!currentImages.includes(imageUrl)) {
+      if (currentImages.length >= 5) {
         toast({
           title: "Too many images",
           description: "You can add a maximum of 5 additional images.",
@@ -223,12 +220,11 @@ export function JournalArticleForm({ article }: JournalArticleFormProps) {
         })
         return
       }
-      form.setValue("images", [...images, newImage.trim()])
-      setNewImage("")
+      form.setValue("images", [...currentImages, imageUrl])
     }
   }
 
-  const removeImage = (imageToRemove: string) => {
+  const removeAdditionalImage = (imageToRemove: string) => {
     form.setValue("images", images.filter(image => image !== imageToRemove))
   }
 
@@ -365,7 +361,7 @@ export function JournalArticleForm({ article }: JournalArticleFormProps) {
         <Alert>
           <FileText className="h-4 w-4" />
           <AlertDescription>
-            <strong>New Journal Article:</strong> You can save this as a draft or publish it immediately. Make sure to assign it to a journal issue if available.
+            <strong>New Journal Article:</strong> Enter the author's information below. If the author doesn't exist, a new author record will be created automatically.
           </AlertDescription>
         </Alert>
       )}
@@ -441,29 +437,44 @@ export function JournalArticleForm({ article }: JournalArticleFormProps) {
 
                   <FormField
                     control={form.control}
-                    name="authorId"
+                    name="authorName"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Author *</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select an author" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {authors.map((author) => (
-                              <SelectItem key={author.id} value={author.id}>
-                                <div className="flex items-center gap-2">
-                                  <User className="h-4 w-4" />
-                                  <span>{author.name}</span>
-                                </div>
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                        <FormLabel>Author Name *</FormLabel>
+                        <FormControl>
+                          <Input 
+                            placeholder="Enter author's full name" 
+                            {...field} 
+                            maxLength={100}
+                          />
+                        </FormControl>
                         <FormDescription>
-                          The author of this article
+                          Full name of the article author
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="authorEmail"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Author Email *</FormLabel>
+                        <FormControl>
+                          <div className="relative">
+                            <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                            <Input 
+                              placeholder="author@example.com" 
+                              {...field} 
+                              className="pl-10"
+                              type="email"
+                            />
+                          </div>
+                        </FormControl>
+                        <FormDescription>
+                          Email address of the author. If not found, a new author will be created.
                         </FormDescription>
                         <FormMessage />
                       </FormItem>
@@ -567,6 +578,19 @@ export function JournalArticleForm({ article }: JournalArticleFormProps) {
               <div className="space-y-6">
                 <h3 className="text-lg font-semibold">Content</h3>
                 
+                {/* Example Preview */}
+                {images.length > 0 && (
+                  <Alert>
+                    <FileText className="h-4 w-4" />
+                    <AlertDescription>
+                      <strong>Quick Reference:</strong> You have {images.length} additional image(s). 
+                      Use <code>[image:0]</code>{images.length > 1 && `, [image:1]`}
+                      {images.length > 2 && `, [image:2]`}
+                      {images.length > 3 && `, etc.`} in your content to place them between paragraphs.
+                    </AlertDescription>
+                  </Alert>
+                )}
+                
                 <FormField
                   control={form.control}
                   name="excerpt"
@@ -597,13 +621,38 @@ export function JournalArticleForm({ article }: JournalArticleFormProps) {
                       <FormLabel>Content *</FormLabel>
                       <FormControl>
                         <Textarea
-                          placeholder="Enter the full article content"
+                          placeholder={`Enter the full article content. 
+
+To add images between paragraphs, use:
+[image:0] - for the first additional image
+[image:1] - for the second additional image
+
+Example:
+This is the first paragraph of my article.
+
+[image:0]
+
+This paragraph comes after the first image.
+
+[image:1]
+
+This is the final paragraph.
+
+Note: Upload your images in the "Additional Images" section below first.`}
                           className="min-h-[300px]"
                           {...field}
                         />
                       </FormControl>
                       <FormDescription>
-                        The full content of your article (minimum 100 characters)
+                        <div className="space-y-2">
+                          <p>The full content of your article (minimum 100 characters)</p>
+                          <div className="text-xs bg-muted p-2 rounded">
+                            <strong>💡 Pro tip:</strong> To add images between paragraphs:
+                            <br />• Upload images in the "Additional Images" section below
+                            <br />• Use <code>[image:0]</code>, <code>[image:1]</code>, etc. to reference uploaded images by index
+                            <br />• Place these placeholders on their own line between paragraphs
+                          </div>
+                        </div>
                       </FormDescription>
                       <FormMessage />
                     </FormItem>
@@ -614,73 +663,41 @@ export function JournalArticleForm({ article }: JournalArticleFormProps) {
               {/* Media */}
               <div className="space-y-6">
                 <h3 className="text-lg font-semibold">Media</h3>
-                
-                <FormField
-                  control={form.control}
-                  name="image"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Featured Image URL *</FormLabel>
-                      <FormControl>
-                        <div className="space-y-3">
-                          <Input 
-                            placeholder="https://example.com/featured-image.jpg" 
-                            {...field} 
-                          />
-                          {field.value && field.value.startsWith('http') && (
-                            <div className="border rounded-lg p-4">
-                              <p className="text-sm text-muted-foreground mb-2">Preview:</p>
-                              <div className="h-32 w-48 relative overflow-hidden rounded">
-                                <img
-                                  src={field.value}
-                                  alt="Featured image preview"
-                                  className="object-cover w-full h-full"
-                                  onError={(e) => {
-                                    (e.target as HTMLImageElement).style.display = 'none'
-                                  }}
-                                />
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      </FormControl>
-                      <FormDescription>
-                        Main image for the article. Must start with http or https.
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
 
                 {/* Additional Images */}
                 <div>
-                  <FormLabel>Additional Images</FormLabel>
-                  <div className="space-y-3">
-                    <div className="flex gap-2">
-                      <Input
-                        placeholder="Add an image URL"
-                        value={newImage}
-                        onChange={(e) => setNewImage(e.target.value)}
-                        onKeyPress={(e) => e.key === "Enter" && (e.preventDefault(), addImage())}
-                      />
-                      <Button type="button" onClick={addImage} size="sm" disabled={images.length >= 5}>
-                        <Plus className="h-4 w-4" />
-                      </Button>
-                    </div>
+                  <FormLabel>Additional Images for Content</FormLabel>
+                  <div className="space-y-4">
+                    {/* Add New Image Button */}
+                    {images.length < 5 && (
+                      <div className="border-2 border-dashed border-gray-300 rounded-lg p-4">
+                        <MediaSelector
+                          onSelect={(url) => addAdditionalImage(url)}
+                        />
+                      </div>
+                    )}
+                    
+                    {/* Display Current Images */}
                     {images.length > 0 && (
                       <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                         {images.map((image, index) => (
                           <div key={index} className="relative border rounded-lg p-2">
+                            <div className="text-xs bg-primary text-primary-foreground px-2 py-1 rounded mb-2 text-center">
+                              Use: <code>[image:{index}]</code>
+                            </div>
                             <div className="h-20 w-full relative overflow-hidden rounded">
                               <img
                                 src={image}
                                 alt={`Additional image ${index + 1}`}
                                 className="object-cover w-full h-full"
+                                onError={(e) => {
+                                  (e.target as HTMLImageElement).style.display = 'none'
+                                }}
                               />
                             </div>
                             <button
                               type="button"
-                              onClick={() => removeImage(image)}
+                              onClick={() => removeAdditionalImage(image)}
                               className="absolute top-1 right-1 bg-destructive text-destructive-foreground rounded-full p-1 hover:bg-destructive/80"
                             >
                               <X className="h-3 w-3" />
@@ -690,9 +707,13 @@ export function JournalArticleForm({ article }: JournalArticleFormProps) {
                       </div>
                     )}
                   </div>
-                  <p className="text-sm text-muted-foreground mt-2">
-                    Additional images for the article content. {5 - images.length} remaining.
-                  </p>
+                  <div className="text-sm text-muted-foreground mt-2 space-y-1">
+                    <p>Add images that you want to use within your article content. {5 - images.length} remaining.</p>
+                    <div className="bg-muted p-2 rounded text-xs">
+                      <strong>How to use:</strong> Click "Select Image" above to upload or choose images, then reference them in your content using <code>[image:0]</code>, <code>[image:1]</code>, etc.
+                      <br />The number corresponds to the order they appear above (starting from 0).
+                    </div>
+                  </div>
                 </div>
               </div>
 

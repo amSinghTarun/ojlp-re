@@ -15,11 +15,28 @@ interface JournalCitationProps {
 export function JournalCitation({ article }: JournalCitationProps) {
   const [copiedStyle, setCopiedStyle] = useState<CitationStyle | null>(null)
 
-  // Extract year and other date components
-  const dateParts = article.date.split(" ")
-  const month = dateParts[0]
-  const day = dateParts[1].replace(",", "")
-  const year = dateParts[2]
+  // Safely handle date conversion
+  const getDateParts = () => {
+    let dateObj: Date
+
+    // Handle different date formats
+    if (article.date instanceof Date) {
+      dateObj = article.date
+    } else if (typeof article.date === 'string') {
+      dateObj = new Date(article.date)
+    } else {
+      dateObj = new Date() // Fallback to current date
+    }
+
+    // Format the date properly
+    const month = dateObj.toLocaleDateString('en-US', { month: 'long' })
+    const day = dateObj.getDate().toString()
+    const year = dateObj.getFullYear().toString()
+
+    return { month, day, year }
+  }
+
+  const { month, day, year } = getDateParts()
 
   // Get primary author's last name for certain citation styles
   const getPrimaryAuthor = () => {

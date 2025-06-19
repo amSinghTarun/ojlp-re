@@ -10,6 +10,8 @@ import { DecorativeHeading } from "@/components/decorative-heading"
 import { JournalDownloadButton } from "@/components/journal-download-button"
 import { JournalCitation } from "@/components/journal-citation"
 import { JournalMetricsButton } from "@/components/journal-metrics-button"
+import { ArticleContentProcessor } from "@/components/article-content-processor"
+import { Badge } from "@/components/ui/badge"
 
 interface JournalPageProps {
   params: {
@@ -30,7 +32,7 @@ export default async function JournalPage({ params }: JournalPageProps) {
   const relatedArticles = await getArticles({
     type: "journal",
     limit: 3,
-    categoryId: article.categories[0]?.categoryId, // Get articles from the same category if possible
+    categoryId: article.categories[0]?.categoryId,
   })
 
   // Filter out the current article
@@ -59,10 +61,34 @@ export default async function JournalPage({ params }: JournalPageProps) {
                 <JournalCitation
                   article={{
                     title: article.title,
+                    slug: article.slug,
+                    date: article.date || article.createdAt,
                     doi: article.doi || "",
-                    volume: article.journalIssue?.volume || 0,
-                    issue: article.journalIssue?.issue || 0,
+                    volume: article.journalIssue?.volume || 1,
+                    issue: article.journalIssue?.issue || 1,
                     year: article.journalIssue?.year || new Date().getFullYear(),
+                    // Handle both Author (single) and authors (multiple) structures
+                    authors: article.Author ? [{
+                      id: article.Author.id,
+                      name: article.Author.name,
+                      slug: article.Author.slug || article.Author.email,
+                    }] : (article.authors?.map(authorRel => ({
+                      id: authorRel.authorId,
+                      name: authorRel.author?.name || "Unknown Author",
+                      slug: authorRel.author?.slug || "",
+                    })) || []),
+                    author: article.Author?.name || article.authors?.[0]?.author?.name || "Unknown Author",
+                    keywords: article.keywords || [],
+                    content: article.content || "",
+                    excerpt: article.excerpt || "",
+                    image: article.image || "",
+                    images: article.images || [],
+                    readTime: article.readTime || 5,
+                    draft: article.draft || false,
+                    views: article.views || 0,
+                    createdAt: article.createdAt,
+                    updatedAt: article.updatedAt,
+                    categories: article.categories || [],
                   }}
                 />
                 <JournalDownloadButton
@@ -73,144 +99,164 @@ export default async function JournalPage({ params }: JournalPageProps) {
                 />
               </div>
             </div>
-            <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold tracking-tight">
-              {article.title}
-            </h1>
-            <div className="space-y-2">
-              {/* First line: date, read time, DOI */}
-              <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
-                <div className="flex items-center gap-1">
-                  <Calendar className="h-4 w-4" />
-                  <span>
-                    {new Date(article.createdAt).toLocaleDateString("en-US", {
-                      year: "numeric",
-                      month: "long",
-                      day: "numeric",
-                    })}
-                  </span>
-                </div>
-                <div className="flex items-center gap-1">
-                  <Clock className="h-4 w-4" />
-                  <span>{Math.ceil((article.content?.length || 0) / 1000)} min read</span>
-                </div>
-                {article.doi && (
+
+            {/* Article Header */}
+            <div className="space-y-4">
+              <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold tracking-tight">
+                {article.title}
+              </h1>
+              
+              {/* Article Meta */}
+              <div className="space-y-2">
+                
+                {/* First line: date, read time, DOI */}
+                <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
                   <div className="flex items-center gap-1">
-                    <FileText className="h-4 w-4" />
+                    <Calendar className="h-4 w-4" />
                     <span>
-                      DOI:{" "}
-                      <a
-                        href={`https://doi.org/${article.doi}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="hover:underline hover:text-primary"
-                      >
-                        {article.doi}
-                      </a>
+                      {new Date(article.date || article.createdAt).toLocaleDateString("en-US", {
+                        year: "numeric",
+                        month: "long",
+                        day: "numeric",
+                      })}
                     </span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <Clock className="h-4 w-4" />
+                    <span>{article.readTime || Math.ceil((article.content?.length || 0) / 1000)} min read</span>
+                  </div>
+                  {article.doi && (
+                    <div className="flex items-center gap-1">
+                      <FileText className="h-4 w-4" />
+                      <span>
+                        DOI:{" "}
+                        <a
+                          href={`https://doi.org/${article.doi}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="hover:underline hover:text-primary"
+                        >
+                          {article.doi}
+                        </a>
+                      </span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Second line: authors */}
+                <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
+                  <div className="flex items-center gap-1">
+                    <User className="h-4 w-4" />
+                    <div className="flex flex-wrap">
+                      {/* Handle both Author (single) and authors (multiple) structures */}
+                      {article.Author ? (
+                        <Link
+                          href={`/authors/${article.Author.slug || article.Author.email}`}
+                          className="hover:underline hover:text-primary transition-colors"
+                        >
+                          {article.Author.name}
+                        </Link>
+                      ) : article.authors && article.authors.length > 0 ? (
+                        article.authors.map((authorRel, i) => (
+                          <span key={authorRel.authorId}>
+                            <Link
+                              href={`/authors/${authorRel.author?.slug}`}
+                              className="hover:underline hover:text-primary transition-colors"
+                            >
+                              {authorRel.author?.name || "Unknown Author"}
+                            </Link>
+                            {i < article.authors.length - 1 && <span>, </span>}
+                          </span>
+                        ))
+                      ) : (
+                        <span className="text-red-500">No Author Found</span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Keywords */}
+                {article.keywords && article.keywords.length > 0 && (
+                  <div className="flex flex-wrap gap-2 mt-2">
+                    {article.keywords.map((keyword, index) => (
+                      <Badge key={index} variant="secondary" className="text-xs">
+                        <Tag className="h-3 w-3 mr-1" />
+                        {keyword}
+                      </Badge>
+                    ))}
                   </div>
                 )}
               </div>
 
-              {/* Second line: authors */}
-              <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
-                <div className="flex items-center gap-1">
-                  <User className="h-4 w-4" />
-                  <div className="flex flex-wrap">
-                    {article.authors.map((authorRel, i) => (
-                      <span key={authorRel.authorId}>
-                        <Link
-                          href={`/authors/${authorRel.author?.slug}`}
-                          className="hover:underline hover:text-primary transition-colors"
-                        >
-                          {authorRel.author?.name || "Unknown Author"}
-                        </Link>
-                        {i < article.authors.length - 1 && <span>, </span>}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              </div>
-              {article.keywords && article.keywords.length > 0 && (
-                <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground mt-2">
-                  <div className="flex items-center gap-2">
-                    <Tag className="h-4 w-4" />
-                    <div className="flex flex-wrap gap-2">
-                      {article.keywords.map((keyword, index) => (
-                        <span key={index} className="text-muted-foreground hover:text-primary transition-colors">
-                          {keyword}
-                          {index < article.keywords.length - 1 && ","}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              )}
             </div>
           </div>
 
-          <div className="relative w-full h-[250px] sm:h-[300px] md:h-[400px] mb-8 rounded-lg overflow-hidden ornamental-corners animate-fade-in">
-            <Image
-              src={article.image || "/placeholder.svg?height=600&width=800"}
-              alt={article.title}
-              fill
-              className="object-cover"
-            />
+          {/* Article Content with Image Processing */}
+          <div className="mb-12 animate-slide-up">
+            {/* Excerpt */}
+            {article.excerpt && (
+              <div className="mb-8 p-6 bg-muted/50 rounded-lg border-l-4 border-primary">
+                <p className="text-lg italic text-muted-foreground">{article.excerpt}</p>
+              </div>
+            )}
+
+            {/* Main Content with Image Processing */}
+            {article.content && (
+              <div className="prose prose-slate dark:prose-invert max-w-none">
+                <ArticleContentProcessor
+                  content={article.content}
+                  images={article.images || []}
+                  className="text-lg leading-relaxed"
+                />
+              </div>
+            )}
           </div>
 
-          {/* Find the prose div that contains the article content */}
-          <div
-            className="max-w-none dark:prose-invert animate-fade-in mx-auto md:-mx-8 lg:-mx-16"
-            style={{ animationDelay: "0.3s", maxWidth: "calc(100% + 8rem)" }}
-          >
-            {article.content.split("\n\n").map((paragraph, index) => {
-              // Check if the paragraph contains an image tag
-              if (paragraph.includes("<img")) {
-                // This is a simple approach - in a real app you might want to use a proper HTML parser
-                return (
-                  <Fragment key={index}>
-                    <div dangerouslySetInnerHTML={{ __html: paragraph }} className="my-8" />
-                  </Fragment>
-                )
-              }
-
-              return (
-                <p key={index}>
-                  {paragraph}
-                </p>
-              )
-            })}
-          </div>
-
-          <div className="decorative-divider my-12"></div>
-
-          <ScrollReveal>
-            <div className="space-y-4">
-              <DecorativeHeading>Related Journals</DecorativeHeading>
-              <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 stagger-children">
-                {filteredRelatedArticles.map((relatedArticle, index) => (
-                  <ArticleCard
-                    key={relatedArticle.id}
-                    article={{
-                      slug: relatedArticle.slug,
-                      title: relatedArticle.title,
-                      excerpt: relatedArticle.excerpt || "",
-                      image: relatedArticle.image || "/placeholder.svg?height=600&width=800",
-                      date: new Date(relatedArticle.createdAt).toLocaleDateString("en-US", {
-                        year: "numeric",
-                        month: "long",
-                        day: "numeric",
-                      }),
-                      author: relatedArticle.authors[0]?.author?.name || "Unknown Author",
-                      authorSlug: relatedArticle.authors[0]?.author?.slug || "",
-                      type: relatedArticle.type,
-                      readTime: Math.ceil((relatedArticle.content?.length || 0) / 1000),
-                    }}
-                    index={index}
-                  />
+          {/* Categories */}
+          {article.categories && article.categories.length > 0 && (
+            <div className="mb-8 animate-slide-up">
+              <h3 className="text-lg font-semibold mb-4">Categories</h3>
+              <div className="flex flex-wrap gap-2">
+                {article.categories.map((categoryRel) => (
+                  <Badge key={categoryRel.categoryId} variant="outline">
+                    {categoryRel.category?.name || "Uncategorized"}
+                  </Badge>
                 ))}
               </div>
             </div>
-          </ScrollReveal>
+          )}
+
+          {/* Related Articles */}
+          {filteredRelatedArticles.length > 0 && (
+            <ScrollReveal className="border-t pt-12">
+              <div className="mb-8">
+                <DecorativeHeading>Related Articles</DecorativeHeading>
+                <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                  {filteredRelatedArticles.slice(0, 3).map((relatedArticle, index) => (
+                    <ArticleCard
+                      key={relatedArticle.id}
+                      article={{
+                        slug: relatedArticle.slug,
+                        title: relatedArticle.title,
+                        excerpt: relatedArticle.excerpt || "",
+                        image: relatedArticle.image || "/placeholder.svg?height=600&width=800",
+                        date: new Date(relatedArticle.createdAt).toLocaleDateString("en-US", {
+                          year: "numeric",
+                          month: "long",
+                          day: "numeric",
+                        }),
+                        author: relatedArticle.Author?.name || relatedArticle.authors?.[0]?.author?.name || "Unknown Author",
+                        authorSlug: relatedArticle.Author?.slug || relatedArticle.authors?.[0]?.author?.slug || "",
+                        type: relatedArticle.type,
+                        readTime: Math.ceil((relatedArticle.content?.length || 0) / 1000),
+                      }}
+                      index={index}
+                    />
+                  ))}
+                </div>
+              </div>
+            </ScrollReveal>
+          )}
         </article>
       </main>
     </div>

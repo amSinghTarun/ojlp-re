@@ -41,6 +41,7 @@ export async function getArticles(params: {
   return prisma.article.findMany({
     where,
     include: {
+      Author: true, // Include single Author field
       authors: {
         include: {
           author: true,
@@ -65,6 +66,7 @@ export async function getArticleBySlug(slug: string) {
   return prisma.article.findUnique({
     where: { slug },
     include: {
+      Author: true, // Include single Author field
       authors: {
         include: {
           author: true,
@@ -88,6 +90,7 @@ export async function getArticlesByAuthor(authorId: string) {
     include: {
       article: {
         include: {
+          Author: true, // Include single Author field
           authors: {
             include: {
               author: true,
@@ -116,6 +119,7 @@ export async function getArticlesByJournalIssue(journalIssueId: string) {
       issueId: journalIssueId
     },
     include: {
+      Author: true, // Include single Author field for new journal articles
       authors: {
         include: {
           author: true,
@@ -149,30 +153,25 @@ export async function createArticle(data: {
 }) {
   const { authorIds, categoryIds, ...articleData } = data
 
-  // Generate slug from title
-  const slug = slugify(data.title)
-
   return prisma.article.create({
     data: {
       ...articleData,
-      slug,
+      slug: slugify(data.title),
       authors: {
         create: authorIds.map((authorId) => ({
-          author: {
-            connect: { id: authorId },
-          },
+          authorId,
         })),
       },
-      categories: {
-        create:
-          categoryIds?.map((categoryId) => ({
-            category: {
-              connect: { id: categoryId },
-            },
-          })) || [],
-      },
+      categories: categoryIds
+        ? {
+            create: categoryIds.map((categoryId) => ({
+              categoryId,
+            })),
+          }
+        : undefined,
     },
     include: {
+      Author: true,
       authors: {
         include: {
           author: true,
@@ -183,7 +182,6 @@ export async function createArticle(data: {
           category: true,
         },
       },
-      journalIssue: true,
     },
   })
 }
@@ -201,95 +199,55 @@ export async function updateArticle(
     doi?: string
     keywords?: string[]
     journalIssueId?: string | null
+    type?: "blog" | "journal"
   },
 ) {
   const { authorIds, categoryIds, ...articleData } = data
 
-  // If title is updated, update slug as well
-  if (data.title) {
-    articleData.slug = slugify(data.title)
-  }
+  // First, disconnect existing relationships if updating them
+  const updateData: any = { ...articleData }
 
-  // Start a transaction to handle the complex update
-  return prisma.$transaction(async (tx) => {
-    // Update the article basic data
-    const article = await tx.article.update({
-      where: { slug },
-      data: articleData,
-    })
-
-    // If authorIds is provided, update the authors
-    if (authorIds) {
-      // Delete existing author relationships
-      await tx.articleAuthor.deleteMany({
-        where: { articleId: article.id },
-      })
-
-      // Create new author relationships
-      await Promise.all(
-        authorIds.map((authorId) =>
-          tx.articleAuthor.create({
-            data: {
-              articleId: article.id,
-              authorId,
-            },
-          }),
-        ),
-      )
-    }
-
-    // If categoryIds is provided, update the categories
-    if (categoryIds) {
-      // Delete existing category relationships
-      await tx.articleCategory.deleteMany({
-        where: { articleId: article.id },
-      })
-
-      // Create new category relationships
-      await Promise.all(
-        categoryIds.map((categoryId) =>
-          tx.articleCategory.create({
-            data: {
-              articleId: article.id,
-              categoryId,
-            },
-          }),
-        ),
-      )
-    }
-
-    // Return the updated article with all relationships
-    return tx.article.findUnique({
-      where: { id: article.id },
-      include: {
-        authors: {
-          include: {
-            author: true,
-          },
+  if (authorIds) {
+    // Delete existing author relationships
+    await prisma.articleAuthor.deleteMany({
+      where: {
+        article: {
+          slug,
         },
-        categories: {
-          include: {
-            category: true,
-          },
-        },
-        journalIssue: true,
       },
     })
-  })
-}
 
-export async function deleteArticle(slug: string) {
-  return prisma.article.delete({
+    updateData.authors = {
+      create: authorIds.map((authorId) => ({
+        authorId,
+      })),
+    }
+  }
+
+  if (categoryIds !== undefined) {
+    // Delete existing category relationships
+    await prisma.categoryArticle.deleteMany({
+      where: {
+        article: {
+          slug,
+        },
+      },
+    })
+
+    if (categoryIds.length > 0) {
+      updateData.categories = {
+        create: categoryIds.map((categoryId) => ({
+          categoryId,
+        })),
+      }
+    }
+  }
+
+  return prisma.article.update({
     where: { slug },
-  })
-}
-
-export async function getFeaturedArticles(limit = 4) {
-  return prisma.article.findMany({
-    where: {
-      featured: true,
-    },
+    data: updateData,
     include: {
+      Author: true,
       authors: {
         include: {
           author: true,
@@ -301,47 +259,11 @@ export async function getFeaturedArticles(limit = 4) {
         },
       },
     },
-    orderBy: {
-      createdAt: "desc",
-    },
-    take: limit,
   })
 }
 
-export async function getCategories() {
-  return prisma.category.findMany()
-}
-
-export async function getCategoryBySlug(slug: string) {
-  return prisma.category.findUnique({
+export async function deleteArticle(slug: string) {
+  return prisma.article.delete({
     where: { slug },
-  })
-}
-
-export async function createCategory(data: { name: string }) {
-  return prisma.category.create({
-    data: {
-      name: data.name,
-      slug: slugify(data.name),
-    },
-  })
-}
-
-export async function updateCategory(id: string, data: { name?: string }) {
-  const updateData: any = { ...data }
-
-  if (data.name) {
-    updateData.slug = slugify(data.name)
-  }
-
-  return prisma.category.update({
-    where: { id },
-    data: updateData,
-  })
-}
-
-export async function deleteCategory(id: string) {
-  return prisma.category.delete({
-    where: { id },
   })
 }

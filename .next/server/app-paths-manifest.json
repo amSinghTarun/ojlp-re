@@ -1,8 +1,5 @@
 {
-  "/_not-found/page": "app/_not-found/page.js",
-  "/admin/journal-articles/new/page": "app/admin/journal-articles/new/page.js",
   "/journals/page": "app/journals/page.js",
-  "/admin/journals/[id]/edit/page": "app/admin/journals/[id]/edit/page.js",
-  "/admin/journals/page": "app/admin/journals/page.js",
-  "/admin/journal-articles/page": "app/admin/journal-articles/page.js"
+  "/admin/journal-articles/page": "app/admin/journal-articles/page.js",
+  "/journals/[slug]/page": "app/journals/[slug]/page.js"
 }
