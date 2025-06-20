@@ -1,3 +1,4 @@
+// app/authors/[slug]/page.tsx - FIXED to use database and handle Next.js 15
 import Link from "next/link"
 import { notFound } from "next/navigation"
 import { ArticleCard } from "@/components/article-card"
@@ -8,22 +9,26 @@ import { getAuthorBySlug } from "@/lib/controllers/authors"
 import { getArticlesByAuthor } from "@/lib/controllers/articles"
 
 interface AuthorPageProps {
-  params: {
+  params: Promise<{
     slug: string
-  }
+  }>
 }
 
 export const revalidate = 3600 // Revalidate every hour
 
 export default async function AuthorPage({ params }: AuthorPageProps) {
-  const author = await getAuthorBySlug(params.slug)
-
+  // UPDATED: Await params for Next.js 15
+  const resolvedParams = await params
+  console.log(resolvedParams.slug)
+  // UPDATED: Fetch author from database instead of static data
+  const author = await getAuthorBySlug(resolvedParams.slug)
+  console.log(author)
   if (!author) {
     notFound()
   }
 
-  // Get articles by this author
-  const authorArticles = await getArticlesByAuthor(author.id)
+  // UPDATED: Get articles by this author from database
+  const authorArticlesResult = await getArticlesByAuthor(author.id)
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -56,23 +61,29 @@ export default async function AuthorPage({ params }: AuthorPageProps) {
                     affiliation: author.affiliation || "",
                     website: author.website || "",
                     socialLinks: {
-                      twitter: author.socialTwitter || "",
-                      linkedin: author.socialLinkedin || "",
+                      // UPDATED: Use correct field names from database
+                      twitter: author.twitter || "",
+                      linkedin: author.linkedin || "",
                       email: author.socialEmail || author.email,
-                      orcid: author.socialOrcid || "",
+                      orcid: author.orcid || "",
                     },
                   }}
-                  articleCount={authorArticles.length}
+                  articleCount={authorArticlesResult.length}
                 />
               </div>
 
               <div className="md:col-span-2">
                 <DecorativeHeading>Articles by {author.name}</DecorativeHeading>
 
-                {authorArticles.length > 0 ? (
+                {authorArticlesResult.length > 0 ? (
                   <div className="grid gap-6 sm:grid-cols-1 lg:grid-cols-2">
-                    {authorArticles.map((articleRel, index) => {
+                    {authorArticlesResult.map((articleRel, index) => {
                       const article = articleRel.article
+                      
+                      // UPDATED: Handle multiple authors properly
+                      const authors = article.Authors || []
+                      const articleAuthors = authors.length > 0 ? authors : [author]
+                      
                       return (
                         <ScrollReveal key={article.id} delay={index * 100}>
                           <ArticleCard
@@ -81,15 +92,19 @@ export default async function AuthorPage({ params }: AuthorPageProps) {
                               title: article.title,
                               excerpt: article.excerpt || "",
                               image: article.image || "/placeholder.svg?height=600&width=800",
-                              date: new Date(article.createdAt).toLocaleDateString("en-US", {
+                              date: new Date(article.date || article.createdAt).toLocaleDateString("en-US", {
                                 year: "numeric",
                                 month: "long",
                                 day: "numeric",
                               }),
+                              // UPDATED: Support multiple authors
+                              authors: articleAuthors,
+                              // Legacy support for components that still expect these
                               author: author.name,
                               authorSlug: author.slug,
                               type: article.type,
-                              readTime: Math.ceil((article.content?.length || 0) / 1000),
+                              readTime: article.readTime || Math.ceil((article.content?.length || 0) / 1000),
+                              keywords: article.keywords || [],
                             }}
                             index={index}
                           />

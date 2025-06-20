@@ -1,7 +1,8 @@
+// app/journals/[slug]/page.tsx - UPDATED for multiple authors
 import Link from "next/link"
 import Image from "next/image"
 import { notFound } from "next/navigation"
-import { Calendar, Clock, FileText, Tag, User } from "lucide-react"
+import { Calendar, Clock, FileText, Tag, User, Users } from "lucide-react"
 import { Fragment } from "react"
 import { getArticleBySlug, getArticles } from "@/lib/controllers/articles"
 import { ArticleCard } from "@/components/article-card"
@@ -38,6 +39,10 @@ export default async function JournalPage({ params }: JournalPageProps) {
   // Filter out the current article
   const filteredRelatedArticles = relatedArticles.filter((a) => a.id !== article.id)
 
+  // Extract authors - prioritize the new Authors array structure
+  const authors = article.Authors || []
+  const primaryAuthor = authors.length > 0 ? authors[0] : null
+
   return (
     <div className="flex min-h-screen flex-col">
       <main className="flex-1">
@@ -67,17 +72,13 @@ export default async function JournalPage({ params }: JournalPageProps) {
                     volume: article.journalIssue?.volume || 1,
                     issue: article.journalIssue?.issue || 1,
                     year: article.journalIssue?.year || new Date().getFullYear(),
-                    // Handle both Author (single) and authors (multiple) structures
-                    authors: article.Author ? [{
-                      id: article.Author.id,
-                      name: article.Author.name,
-                      slug: article.Author.slug || article.Author.email,
-                    }] : (article.authors?.map(authorRel => ({
-                      id: authorRel.authorId,
-                      name: authorRel.author?.name || "Unknown Author",
-                      slug: authorRel.author?.slug || "",
-                    })) || []),
-                    author: article.Author?.name || article.authors?.[0]?.author?.name || "Unknown Author",
+                    // UPDATED: Use the new Authors array structure
+                    authors: authors.map(author => ({
+                      id: author.id,
+                      name: author.name,
+                      slug: author.slug || author.email,
+                    })),
+                    author: primaryAuthor?.name || "Unknown Author",
                     keywords: article.keywords || [],
                     content: article.content || "",
                     excerpt: article.excerpt || "",
@@ -143,37 +144,68 @@ export default async function JournalPage({ params }: JournalPageProps) {
                   )}
                 </div>
 
-                {/* Second line: authors */}
+                {/* Second line: authors - UPDATED for multiple authors */}
                 <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
                   <div className="flex items-center gap-1">
-                    <User className="h-4 w-4" />
+                    {authors.length > 1 ? (
+                      <Users className="h-4 w-4" />
+                    ) : (
+                      <User className="h-4 w-4" />
+                    )}
                     <div className="flex flex-wrap">
-                      {/* Handle both Author (single) and authors (multiple) structures */}
-                      {article.Author ? (
-                        <Link
-                          href={`/authors/${article.Author.slug || article.Author.email}`}
-                          className="hover:underline hover:text-primary transition-colors"
-                        >
-                          {article.Author.name}
-                        </Link>
-                      ) : article.authors && article.authors.length > 0 ? (
-                        article.authors.map((authorRel, i) => (
-                          <span key={authorRel.authorId}>
+                      {authors.length > 0 ? (
+                        authors.map((author, i) => (
+                          <span key={author.id}>
                             <Link
-                              href={`/authors/${authorRel.author?.slug}`}
+                              href={`/authors/${author.slug || author.email}`}
                               className="hover:underline hover:text-primary transition-colors"
                             >
-                              {authorRel.author?.name || "Unknown Author"}
+                              {author.name}
                             </Link>
-                            {i < article.authors.length - 1 && <span>, </span>}
+                            {i < authors.length - 1 && <span>, </span>}
                           </span>
                         ))
                       ) : (
                         <span className="text-red-500">No Author Found</span>
                       )}
                     </div>
+                    {authors.length > 1 && (
+                      <Badge variant="secondary" className="ml-2 text-xs">
+                        {authors.length} authors
+                      </Badge>
+                    )}
                   </div>
                 </div>
+
+                {/* Third line: author details for multiple authors */}
+                {authors.length > 1 && (
+                  <div className="mt-3 p-4 bg-muted/50 rounded-lg">
+                    <h4 className="text-sm font-semibold mb-2">Authors:</h4>
+                    <div className="space-y-1">
+                      {authors.map((author, index) => (
+                        <div key={author.id} className="flex items-center gap-2 text-sm">
+                          <Badge variant="outline" className="text-xs">
+                            {index + 1}
+                          </Badge>
+                          <Link
+                            href={`/authors/${author.slug || author.email}`}
+                            className="font-medium hover:underline hover:text-primary transition-colors"
+                          >
+                            {author.name}
+                          </Link>
+                          {author.email && (
+                            <span className="text-muted-foreground">({author.email})</span>
+                          )}
+                          {index === 0 && (
+                            <Badge variant="default" className="text-xs">
+                              First Author
+                            </Badge>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 {/* Keywords */}
                 {article.keywords && article.keywords.length > 0 && (
@@ -232,27 +264,34 @@ export default async function JournalPage({ params }: JournalPageProps) {
               <div className="mb-8">
                 <DecorativeHeading>Related Articles</DecorativeHeading>
                 <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                  {filteredRelatedArticles.slice(0, 3).map((relatedArticle, index) => (
-                    <ArticleCard
-                      key={relatedArticle.id}
-                      article={{
-                        slug: relatedArticle.slug,
-                        title: relatedArticle.title,
-                        excerpt: relatedArticle.excerpt || "",
-                        image: relatedArticle.image || "/placeholder.svg?height=600&width=800",
-                        date: new Date(relatedArticle.createdAt).toLocaleDateString("en-US", {
-                          year: "numeric",
-                          month: "long",
-                          day: "numeric",
-                        }),
-                        author: relatedArticle.Author?.name || relatedArticle.authors?.[0]?.author?.name || "Unknown Author",
-                        authorSlug: relatedArticle.Author?.slug || relatedArticle.authors?.[0]?.author?.slug || "",
-                        type: relatedArticle.type,
-                        readTime: Math.ceil((relatedArticle.content?.length || 0) / 1000),
-                      }}
-                      index={index}
-                    />
-                  ))}
+                  {filteredRelatedArticles.slice(0, 3).map((relatedArticle, index) => {
+                    // Extract authors for related articles
+                    const relatedAuthors = relatedArticle.Authors || []
+                    const relatedPrimaryAuthor = relatedAuthors.length > 0 ? relatedAuthors[0] : null
+
+                    return (
+                      <ArticleCard
+                        key={relatedArticle.id}
+                        article={{
+                          slug: relatedArticle.slug,
+                          title: relatedArticle.title,
+                          excerpt: relatedArticle.excerpt || "",
+                          image: relatedArticle.image || "/placeholder.svg?height=600&width=800",
+                          date: new Date(relatedArticle.createdAt).toLocaleDateString("en-US", {
+                            year: "numeric",
+                            month: "long",
+                            day: "numeric",
+                          }),
+                          // UPDATED: Use the primary author from Authors array
+                          author: relatedPrimaryAuthor?.name || "Unknown Author",
+                          authorSlug: relatedPrimaryAuthor?.slug || relatedPrimaryAuthor?.email || "",
+                          type: relatedArticle.type,
+                          readTime: Math.ceil((relatedArticle.content?.length || 0) / 1000),
+                        }}
+                        index={index}
+                      />
+                    )
+                  })}
                 </div>
               </div>
             </ScrollReveal>

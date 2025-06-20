@@ -26,7 +26,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { CalendarIcon, Loader2, Plus, X, FileText, AlertTriangle, Mail, BookOpen } from "lucide-react"
+import { CalendarIcon, Loader2, Plus, X, FileText, AlertTriangle, Mail, BookOpen, UserPlus, Users } from "lucide-react"
 import { Calendar } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { cn } from "@/lib/utils"
@@ -41,7 +41,18 @@ import {
 import { MediaSelector } from "@/components/admin/media-selector"
 import { format } from "date-fns"
 
-// Enhanced schema with author email instead of authorId
+// Author schema for individual authors
+const authorSchema = z.object({
+  name: z.string()
+    .min(1, "Author name is required")
+    .min(2, "Author name must be at least 2 characters")
+    .max(100, "Author name must be less than 100 characters"),
+  email: z.string()
+    .min(1, "Author email is required")
+    .email("Please enter a valid email address"),
+})
+
+// Enhanced schema with multiple authors
 const formSchema = z.object({
   title: z.string()
     .min(1, "Title is required")
@@ -66,13 +77,9 @@ const formSchema = z.object({
     .int("Read time must be a whole number"),
   image: z.string().optional(),
   images: z.array(z.string()).default([]),
-  authorEmail: z.string()
-    .min(1, "Author email is required")
-    .email("Please enter a valid email address"),
-  authorName: z.string()
-    .min(1, "Author name is required")
-    .min(2, "Author name must be at least 2 characters")
-    .max(100, "Author name must be less than 100 characters"),
+  authors: z.array(authorSchema)
+    .min(1, "At least one author is required")
+    .max(10, "Maximum 10 authors allowed"),
   issueId: z.string().optional(),
   doi: z.string().optional(),
   keywords: z.array(z.string()).default([]),
@@ -81,6 +88,7 @@ const formSchema = z.object({
 })
 
 type FormData = z.infer<typeof formSchema>
+type Author = z.infer<typeof authorSchema>
 
 interface JournalArticleFormProps {
   article?: {
@@ -98,11 +106,12 @@ interface JournalArticleFormProps {
     doi?: string | null
     keywords: string[]
     draft: boolean
-    Author?: {
+    // Updated to support multiple authors
+    Authors?: Array<{
       id: string
       name: string
       email: string
-    } | null
+    }> | null
     journalIssue?: {
       id: string
       title: string
@@ -117,6 +126,9 @@ export function JournalArticleForm({ article }: JournalArticleFormProps) {
   const [journalIssues, setJournalIssues] = useState<Array<{ id: string; title: string; volume: number; issue: number; year: number }>>([])
   const [newKeyword, setNewKeyword] = useState("")
   const [newCategory, setNewCategory] = useState("")
+  
+  // New state for managing author input
+  const [newAuthor, setNewAuthor] = useState<Author>({ name: "", email: "" })
 
   // Load journal issues
   useEffect(() => {
@@ -141,8 +153,11 @@ export function JournalArticleForm({ article }: JournalArticleFormProps) {
       readTime: article?.readTime || 5,
       image: article?.image || "",
       images: article?.images || [],
-      authorEmail: article?.Author?.email || "",
-      authorName: article?.Author?.name || "",
+      // Updated to handle multiple authors
+      authors: article?.Authors?.map(author => ({
+        name: author.name,
+        email: author.email,
+      })) || [{ name: "", email: "" }],
       issueId: article?.journalIssue?.id || article?.issueId || "",
       doi: article?.doi || "",
       keywords: article?.keywords || [],
@@ -157,6 +172,7 @@ export function JournalArticleForm({ article }: JournalArticleFormProps) {
   const categories = form.watch("categories")
   const images = form.watch("images")
   const title = form.watch("title")
+  const authors = form.watch("authors")
 
   // Auto-generate slug from title
   useEffect(() => {
@@ -170,6 +186,78 @@ export function JournalArticleForm({ article }: JournalArticleFormProps) {
       form.setValue("slug", slug)
     }
   }, [title, form, article])
+
+  // Author management functions
+  const addAuthor = () => {
+    const trimmedAuthor = {
+      name: newAuthor.name.trim(),
+      email: newAuthor.email.trim().toLowerCase()
+    }
+    
+    // Validate the new author
+    const authorValidation = authorSchema.safeParse(trimmedAuthor)
+    if (!authorValidation.success) {
+      const errors = authorValidation.error.errors.map(err => err.message).join(', ')
+      toast({
+        title: "Invalid Author",
+        description: errors,
+        variant: "destructive",
+      })
+      return
+    }
+
+    // Check for duplicate email
+    const existingAuthor = authors.find(author => 
+      author.email.toLowerCase() === trimmedAuthor.email
+    )
+    if (existingAuthor) {
+      toast({
+        title: "Duplicate Author",
+        description: "An author with this email already exists.",
+        variant: "destructive",
+      })
+      return
+    }
+
+    // Check maximum authors limit
+    if (authors.length >= 10) {
+      toast({
+        title: "Too many authors",
+        description: "You can add a maximum of 10 authors.",
+        variant: "destructive",
+      })
+      return
+    }
+
+    // Add the author
+    form.setValue("authors", [...authors, trimmedAuthor])
+    setNewAuthor({ name: "", email: "" })
+    
+    toast({
+      title: "Author Added",
+      description: `${trimmedAuthor.name} has been added as an author.`,
+    })
+  }
+
+  const removeAuthor = (indexToRemove: number) => {
+    if (authors.length <= 1) {
+      toast({
+        title: "Cannot Remove",
+        description: "At least one author is required.",
+        variant: "destructive",
+      })
+      return
+    }
+    
+    const updatedAuthors = authors.filter((_, index) => index !== indexToRemove)
+    form.setValue("authors", updatedAuthors)
+  }
+
+  const updateAuthor = (index: number, field: keyof Author, value: string) => {
+    const updatedAuthors = [...authors]
+    updatedAuthors[index] = { ...updatedAuthors[index], [field]: value }
+    form.setValue("authors", updatedAuthors)
+  }
 
   const addKeyword = () => {
     if (newKeyword.trim() && !keywords.includes(newKeyword.trim())) {
@@ -361,7 +449,7 @@ export function JournalArticleForm({ article }: JournalArticleFormProps) {
         <Alert>
           <FileText className="h-4 w-4" />
           <AlertDescription>
-            <strong>New Journal Article:</strong> Enter the author's information below. If the author doesn't exist, a new author record will be created automatically.
+            <strong>New Journal Article:</strong> Add authors below. If an author doesn't exist, a new author record will be created automatically based on their email.
           </AlertDescription>
         </Alert>
       )}
@@ -429,52 +517,6 @@ export function JournalArticleForm({ article }: JournalArticleFormProps) {
                         </FormControl>
                         <FormDescription>
                           URL-friendly version of the title (lowercase, hyphens only)
-                        </FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="authorName"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Author Name *</FormLabel>
-                        <FormControl>
-                          <Input 
-                            placeholder="Enter author's full name" 
-                            {...field} 
-                            maxLength={100}
-                          />
-                        </FormControl>
-                        <FormDescription>
-                          Full name of the article author
-                        </FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="authorEmail"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Author Email *</FormLabel>
-                        <FormControl>
-                          <div className="relative">
-                            <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                            <Input 
-                              placeholder="author@example.com" 
-                              {...field} 
-                              className="pl-10"
-                              type="email"
-                            />
-                          </div>
-                        </FormControl>
-                        <FormDescription>
-                          Email address of the author. If not found, a new author will be created.
                         </FormDescription>
                         <FormMessage />
                       </FormItem>
@@ -572,6 +614,107 @@ export function JournalArticleForm({ article }: JournalArticleFormProps) {
                     )}
                   />
                 </div>
+              </div>
+
+              {/* Authors Section */}
+              <div className="space-y-6">
+                <div className="flex items-center gap-2">
+                  <Users className="h-5 w-5" />
+                  <h3 className="text-lg font-semibold">Authors</h3>
+                  <Badge variant="secondary">{authors.length}/10</Badge>
+                </div>
+
+                {/* Current Authors */}
+                <div className="space-y-4">
+                  {authors.map((author, index) => (
+                    <Card key={index} className="p-4">
+                      <div className="flex items-start gap-4">
+                        <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                            <label className="text-sm font-medium">Author Name *</label>
+                            <Input
+                              placeholder="Enter author's full name"
+                              value={author.name}
+                              onChange={(e) => updateAuthor(index, 'name', e.target.value)}
+                              maxLength={100}
+                            />
+                          </div>
+                          <div>
+                            <label className="text-sm font-medium">Author Email *</label>
+                            <div className="relative">
+                              <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                              <Input
+                                placeholder="author@example.com"
+                                type="email"
+                                value={author.email}
+                                onChange={(e) => updateAuthor(index, 'email', e.target.value)}
+                                className="pl-10"
+                              />
+                            </div>
+                          </div>
+                        </div>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => removeAuthor(index)}
+                          disabled={authors.length <= 1}
+                          className="mt-6"
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </Card>
+                  ))}
+
+                  {/* Add New Author */}
+                  {authors.length < 10 && (
+                    <Card className="p-4 border-dashed">
+                      <div className="space-y-4">
+                        <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+                          <UserPlus className="h-4 w-4" />
+                          Add New Author
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <Input
+                            placeholder="Enter author's full name"
+                            value={newAuthor.name}
+                            onChange={(e) => setNewAuthor(prev => ({ ...prev, name: e.target.value }))}
+                            maxLength={100}
+                          />
+                          <div className="relative">
+                            <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                            <Input
+                              placeholder="author@example.com"
+                              type="email"
+                              value={newAuthor.email}
+                              onChange={(e) => setNewAuthor(prev => ({ ...prev, email: e.target.value }))}
+                              className="pl-10"
+                              onKeyPress={(e) => e.key === "Enter" && (e.preventDefault(), addAuthor())}
+                            />
+                          </div>
+                        </div>
+                        <Button
+                          type="button"
+                          onClick={addAuthor}
+                          size="sm"
+                          disabled={!newAuthor.name.trim() || !newAuthor.email.trim()}
+                        >
+                          <Plus className="h-4 w-4 mr-2" />
+                          Add Author
+                        </Button>
+                      </div>
+                    </Card>
+                  )}
+                </div>
+
+                <FormMessage>
+                  {form.formState.errors.authors?.message}
+                </FormMessage>
+
+                <p className="text-sm text-muted-foreground">
+                  Add all authors for this article. If an author doesn't exist in the system, they will be created automatically based on their email address. {10 - authors.length} authors remaining.
+                </p>
               </div>
 
               {/* Content */}

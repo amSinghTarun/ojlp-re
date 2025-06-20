@@ -80,7 +80,7 @@ model Session {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
-// Author model
+// Author model - UPDATED with fixed field names for multiple authors support
 model Author {
   id           String   @id @default(cuid())
   slug         String   @unique
@@ -97,21 +97,28 @@ model Author {
   location     String?
   affiliation  String?
   website      String?
-  twitter      String?
-  linkedin     String?
-  instagram    String?
-  orcid        String?
+  
+  // UPDATED: Social media fields with consistent naming
+  twitter      String?  // Twitter profile URL
+  linkedin     String?  // LinkedIn profile URL  
+  instagram    String?  // Instagram profile URL
+  socialEmail  String?  // Public contact email (different from login email)
+  orcid        String?  // ORCID academic identifier
+  
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
   // Relations
   userId        String?         @unique
   user          User?           @relation(fields: [userId], references: [id], onDelete: SetNull)
-  articles      Article[]
-  AuthorArticle AuthorArticle[]
+  
+  // UPDATED: Many-to-many relationship with articles through AuthorArticle
+  authorArticles AuthorArticle[]
+
+  @@map("authors") // Consistent table naming
 }
 
-// Article model for both blog posts and journal articles
+// Article model - UPDATED for multiple authors support
 model Article {
   id        String      @id @default(cuid())
   slug      String      @unique
@@ -131,12 +138,13 @@ model Article {
   updatedAt DateTime    @updatedAt
 
   // Relations
+  // UPDATED: Many-to-many relationship with authors through AuthorArticle
   authors      AuthorArticle[]
   categories   CategoryArticle[]
   journalIssue JournalIssue?     @relation(fields: [issueId], references: [id])
   issueId      String?
-  Author       Author?           @relation(fields: [authorId], references: [id])
-  authorId     String?
+
+  @@map("articles") // Consistent table naming
 }
 
 // Enum for article types
@@ -145,16 +153,22 @@ enum ArticleType {
   journal
 }
 
-// Junction table for many-to-many relationship between authors and articles
+// UPDATED: Junction table for many-to-many relationship between authors and articles
 model AuthorArticle {
-  author    Author   @relation(fields: [authorId], references: [id], onDelete: Cascade)
-  authorId  String
-  article   Article  @relation(fields: [articleId], references: [id], onDelete: Cascade)
-  articleId String
-  order     Int      @default(0)
-  createdAt DateTime @default(now())
+  id          String   @id @default(cuid())
+  authorId    String
+  articleId   String
+  authorOrder Int      @default(1) // For ordering authors (first author, second author, etc.)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
-  @@id([authorId, articleId])
+  // Relations
+  author  Author  @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  article Article @relation(fields: [articleId], references: [id], onDelete: Cascade)
+
+  // Ensure no duplicate author-article combinations
+  @@unique([authorId, articleId])
+  @@map("article_authors") // Consistent table naming
 }
 
 // Category model
@@ -168,6 +182,8 @@ model Category {
 
   // Relations
   articles CategoryArticle[]
+
+  @@map("categories") // Consistent table naming
 }
 
 // Junction table for many-to-many relationship between categories and articles
@@ -179,18 +195,19 @@ model CategoryArticle {
   createdAt  DateTime @default(now())
 
   @@id([categoryId, articleId])
+  @@map("category_articles") // Consistent table naming
 }
 
 // Editorial Board Member model
 model EditorialBoardMember {
-  id           String   @id @default(cuid())
+  id           String          @id @default(cuid())
   name         String
   designation  String
   image        String
   order        Int
-  memberType   BoardMemberType  
-  bio          String?  @db.Text
-  detailedBio  String?  @db.Text
+  memberType   BoardMemberType
+  bio          String?         @db.Text
+  detailedBio  String?         @db.Text
   email        String?
   expertise    String[]
   education    String[]
@@ -203,11 +220,13 @@ model EditorialBoardMember {
   linkedin     String?
   instagram    String?
   orcid        String?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+
+  @@map("editorial_board_members") // Consistent table naming
 }
 
-// Enum for article types
+// Enum for board member types
 enum BoardMemberType {
   Editor
   Advisor
@@ -227,6 +246,8 @@ model Notification {
   image     String?
   createdAt DateTime         @default(now())
   updatedAt DateTime         @updatedAt
+
+  @@map("notifications") // Consistent table naming
 }
 
 // Enum for notification types
@@ -264,6 +285,7 @@ model JournalIssue {
   articles Article[]
 
   @@unique([volume, issue, year])
+  @@map("journal_issues") // Consistent table naming
 }
 
 // Call For Papers model
@@ -284,6 +306,8 @@ model CallForPapers {
   contact       String?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
+
+  @@map("call_for_papers") // Consistent table naming
 }
 
 // Media model for uploaded files
@@ -298,4 +322,6 @@ model Media {
   uploadedBy  String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+
+  @@map("media") // Consistent table naming
 }

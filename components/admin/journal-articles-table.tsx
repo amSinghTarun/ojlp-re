@@ -1,22 +1,10 @@
+// components/admin/journal-articles-table.tsx - UPDATED for multiple authors
 "use client"
 
 import { useState } from "react"
-import Link from "next/link"
 import Image from "next/image"
-import {
-  type ColumnDef,
-  type ColumnFiltersState,
-  type SortingState,
-  type VisibilityState,
-  flexRender,
-  getCoreRowModel,
-  getFilteredRowModel,
-  getPaginationRowModel,
-  getSortedRowModel,
-  useReactTable,
-} from "@tanstack/react-table"
-import { ArrowUpDown, ChevronDown, MoreHorizontal, Pencil, Trash, Eye, BookOpen, Clock, User, FileText } from "lucide-react"
-
+import Link from "next/link"
+import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import {
@@ -27,8 +15,41 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { Input } from "@/components/ui/input"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
+import {
+  ColumnDef,
+  ColumnFiltersState,
+  SortingState,
+  VisibilityState,
+  flexRender,
+  getCoreRowModel,
+  getFilteredRowModel,
+  getPaginationRowModel,
+  getSortedRowModel,
+  useReactTable,
+} from "@tanstack/react-table"
+import {
+  ArrowUpDown,
+  Calendar,
+  Clock,
+  Eye,
+  FileText,
+  MoreHorizontal,
+  Pencil,
+  Trash2,
+  User,
+  Users,
+  BookOpen,
+} from "lucide-react"
+import { deleteJournalArticle } from "@/lib/actions/journal-article-actions"
+import { toast } from "@/components/ui/use-toast"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -40,11 +61,9 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
-import { Badge } from "@/components/ui/badge"
-import { toast } from "@/components/ui/use-toast"
-import { deleteJournalArticle } from "@/lib/actions/journal-article-actions"
 
-export type JournalArticleRow = {
+// Updated interface to support multiple authors
+interface JournalArticle {
   id: string
   slug: string
   title: string
@@ -55,13 +74,19 @@ export type JournalArticleRow = {
   image: string
   draft: boolean
   views: number
-  doi?: string | null
+  doi?: string
   keywords: string[]
+  // UPDATED: Support both old and new author structures for backward compatibility
   Author?: {
     id: string
     name: string
     email: string
   } | null
+  Authors?: Array<{
+    id: string
+    name: string
+    email: string
+  }> | null
   journalIssue?: {
     id: string
     title: string
@@ -69,27 +94,50 @@ export type JournalArticleRow = {
     issue: number
     year: number
   } | null
-  categories?: any[]
+  categories: Array<{
+    id: string
+    name: string
+    slug: string
+  }>
 }
 
 interface JournalArticlesTableProps {
-  initialArticles: JournalArticleRow[]
+  articles: JournalArticle[]
 }
 
-export function JournalArticlesTable({ initialArticles }: JournalArticlesTableProps) {
-  const [articles, setArticles] = useState<JournalArticleRow[]>(initialArticles)
+export function JournalArticlesTable({ articles }: JournalArticlesTableProps) {
   const [sorting, setSorting] = useState<SortingState>([])
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({})
   const [rowSelection, setRowSelection] = useState({})
-  const [isDeleting, setIsDeleting] = useState<string | null>(null)
+  const [data, setData] = useState<JournalArticle[]>(articles)
 
-  const columns: ColumnDef<JournalArticleRow>[] = [
+  const handleDelete = async (slug: string) => {
+    const result = await deleteJournalArticle(slug)
+
+    if (result.success) {
+      // Remove the deleted article from the table
+      setData(currentData => currentData.filter(article => article.slug !== slug))
+      
+      toast({
+        title: "✅ Article Deleted",
+        description: "The journal article has been deleted successfully.",
+      })
+    } else {
+      toast({
+        title: "❌ Error",
+        description: result.error || "Failed to delete article",
+        variant: "destructive",
+      })
+    }
+  }
+
+  const columns: ColumnDef<JournalArticle>[] = [
     {
       id: "select",
       header: ({ table }) => (
         <Checkbox
-          checked={table.getIsAllPageRowsSelected() || (table.getIsSomePageRowsSelected() && "indeterminate")}
+          checked={table.getIsAllPageRowsSelected()}
           onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
           aria-label="Select all"
         />
@@ -110,7 +158,7 @@ export function JournalArticlesTable({ initialArticles }: JournalArticlesTablePr
       cell: ({ row }) => (
         <div className="h-12 w-16 relative overflow-hidden rounded">
           <Image
-            src={row.getValue("image")}
+            src={row.getValue("image") || "/placeholder.svg"}
             alt={row.getValue("title")}
             fill
             className="object-cover"
@@ -150,17 +198,52 @@ export function JournalArticlesTable({ initialArticles }: JournalArticlesTablePr
       ),
     },
     {
-      accessorKey: "Author",
-      header: "Author",
-      cell: ({ row }) => (
-        <div className="flex items-center gap-2">
-          <User className="h-4 w-4 text-muted-foreground" />
-          <div>
-            <div className="font-medium">{row.original.Author?.name || "No Author"}</div>
-            <div className="text-sm text-muted-foreground">{row.original.Author?.email}</div>
+      // UPDATED: Authors column to handle multiple authors
+      id: "authors",
+      header: "Authors",
+      cell: ({ row }) => {
+        // Get authors from either the new Authors array or legacy Author field
+        const authors = row.original.Authors || (row.original.Author ? [row.original.Author] : [])
+        const authorCount = authors.length
+        
+        if (authorCount === 0) {
+          return (
+            <div className="flex items-center gap-2">
+              <User className="h-4 w-4 text-muted-foreground" />
+              <div className="text-sm text-muted-foreground">No Author</div>
+            </div>
+          )
+        }
+        
+        return (
+          <div className="flex items-center gap-2">
+            {authorCount === 1 ? (
+              <User className="h-4 w-4 text-muted-foreground" />
+            ) : (
+              <Users className="h-4 w-4 text-muted-foreground" />
+            )}
+            <div>
+              <div className="font-medium">
+                {authorCount === 1 ? (
+                  authors[0].name
+                ) : (
+                  `${authors[0].name} +${authorCount - 1} more`
+                )}
+              </div>
+              <div className="text-sm text-muted-foreground">
+                {authors[0].email}
+              </div>
+              {authorCount > 1 && (
+                <div className="text-xs text-muted-foreground mt-1">
+                  <Badge variant="secondary" className="text-xs">
+                    {authorCount} authors
+                  </Badge>
+                </div>
+              )}
+            </div>
           </div>
-        </div>
-      ),
+        )
+      },
     },
     {
       accessorKey: "journalIssue",
@@ -168,18 +251,19 @@ export function JournalArticlesTable({ initialArticles }: JournalArticlesTablePr
       cell: ({ row }) => (
         <div>
           {row.original.journalIssue ? (
-            <div>
-              <Badge variant="outline" className="text-xs">
-                Vol. {row.original.journalIssue.volume}, No. {row.original.journalIssue.issue}
-              </Badge>
-              <div className="text-sm text-muted-foreground mt-1">
-                {row.original.journalIssue.year}
+            <div className="flex items-center gap-2">
+              <BookOpen className="h-4 w-4 text-muted-foreground" />
+              <div>
+                <Badge variant="outline" className="text-xs">
+                  Vol. {row.original.journalIssue.volume}, No. {row.original.journalIssue.issue}
+                </Badge>
+                <div className="text-xs text-muted-foreground mt-1">
+                  {row.original.journalIssue.year}
+                </div>
               </div>
             </div>
           ) : (
-            <Badge variant="secondary" className="text-xs">
-              No Issue
-            </Badge>
+            <div className="text-sm text-muted-foreground">Not assigned</div>
           )}
         </div>
       ),
@@ -194,147 +278,118 @@ export function JournalArticlesTable({ initialArticles }: JournalArticlesTablePr
           </Button>
         )
       },
-      cell: ({ row }) => {
-        const date = row.getValue("date") as string
-        return <div>{new Date(date).toLocaleDateString()}</div>
-      },
+      cell: ({ row }) => (
+        <div className="flex items-center gap-2">
+          <Calendar className="h-4 w-4 text-muted-foreground" />
+          <div>
+            <div className="font-medium">
+              {new Date(row.getValue("date")).toLocaleDateString()}
+            </div>
+            <div className="text-sm text-muted-foreground">
+              {new Date(row.getValue("date")).toLocaleDateString("en-US", {
+                year: "numeric",
+                month: "short",
+              })}
+            </div>
+          </div>
+        </div>
+      ),
     },
     {
-      id: "metadata",
-      header: "Metadata",
+      accessorKey: "readTime",
+      header: "Read Time",
       cell: ({ row }) => (
-        <div className="space-y-1">
-          <div className="flex items-center gap-1 text-xs text-muted-foreground">
-            <Clock className="h-3 w-3" />
-            <span>{row.original.readTime} min read</span>
-          </div>
-          <div className="flex items-center gap-1 text-xs text-muted-foreground">
-            <Eye className="h-3 w-3" />
-            <span>{row.original.views} views</span>
-          </div>
-          {row.original.keywords.length > 0 && (
-            <div className="flex items-center gap-1 text-xs text-muted-foreground">
-              <FileText className="h-3 w-3" />
-              <span>{row.original.keywords.length} keywords</span>
-            </div>
-          )}
+        <div className="flex items-center gap-2">
+          <Clock className="h-4 w-4 text-muted-foreground" />
+          <span className="text-sm">{row.getValue("readTime")} min</span>
+        </div>
+      ),
+    },
+    {
+      accessorKey: "views",
+      header: ({ column }) => {
+        return (
+          <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
+            Views
+            <ArrowUpDown className="ml-2 h-4 w-4" />
+          </Button>
+        )
+      },
+      cell: ({ row }) => (
+        <div className="flex items-center gap-2">
+          <Eye className="h-4 w-4 text-muted-foreground" />
+          <span className="font-medium">{row.getValue("views") || 0}</span>
         </div>
       ),
     },
     {
       id: "actions",
+      enableHiding: false,
       cell: ({ row }) => {
         const article = row.original
-        const [open, setOpen] = useState(false)
-
-        const handleDelete = async () => {
-          setIsDeleting(article.id)
-          try {
-            const result = await deleteJournalArticle(article.slug)
-            if (result.success) {
-              toast({
-                title: "Article deleted",
-                description: `"${article.title}" has been deleted.`,
-              })
-              setArticles(articles.filter((a) => a.id !== article.id))
-            } else {
-              toast({
-                title: "Error",
-                description: result.error || "Failed to delete article",
-                variant: "destructive",
-              })
-            }
-          } catch (error) {
-            toast({
-              title: "Error",
-              description: "An unexpected error occurred",
-              variant: "destructive",
-            })
-          } finally {
-            setIsDeleting(null)
-            setOpen(false)
-          }
-        }
 
         return (
-          <AlertDialog open={open} onOpenChange={setOpen}>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="h-8 w-8 p-0">
-                  <span className="sr-only">Open menu</span>
-                  <MoreHorizontal className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                <DropdownMenuItem 
-                  onClick={() => navigator.clipboard.writeText(article.id)}
-                >
-                  Copy ID
-                </DropdownMenuItem>
-                <DropdownMenuItem 
-                  onClick={() => navigator.clipboard.writeText(article.slug)}
-                >
-                  Copy Slug
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem asChild>
-                  <Link href={`/admin/journal-articles/${article.slug}/edit`}>
-                    <Pencil className="mr-2 h-4 w-4" />
-                    Edit
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <Link href={`/articles/${article.slug}`} target="_blank">
-                    <Eye className="mr-2 h-4 w-4" />
-                    View Public
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" className="h-8 w-8 p-0">
+                <span className="sr-only">Open menu</span>
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuLabel>Actions</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem asChild>
+                <Link href={`/admin/journal-articles/${article.slug}/edit`} className="flex items-center">
+                  <Pencil className="mr-2 h-4 w-4" />
+                  Edit Article
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link href={`/journals/${article.slug}`} className="flex items-center">
+                  <Eye className="mr-2 h-4 w-4" />
+                  View Article
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <AlertDialog>
                 <AlertDialogTrigger asChild>
-                  <DropdownMenuItem className="text-destructive">
-                    <Trash className="mr-2 h-4 w-4" />
-                    Delete
+                  <DropdownMenuItem 
+                    className="text-destructive focus:text-destructive"
+                    onSelect={(e) => e.preventDefault()}
+                  >
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    Delete Article
                   </DropdownMenuItem>
                 </AlertDialogTrigger>
-              </DropdownMenuContent>
-            </DropdownMenu>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                <AlertDialogDescription>
-                  This action cannot be undone. This will permanently delete the article "{article.title}" 
-                  and remove it from our servers.
-                  {article.journalIssue && (
-                    <span className="block mt-2 text-muted-foreground">
-                      This article is currently assigned to Volume {article.journalIssue.volume}, 
-                      Issue {article.journalIssue.issue} ({article.journalIssue.year}).
-                    </span>
-                  )}
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel disabled={isDeleting === article.id}>Cancel</AlertDialogCancel>
-                <AlertDialogAction
-                  onClick={(e) => {
-                    e.preventDefault()
-                    handleDelete()
-                  }}
-                  className="bg-destructive text-destructive-foreground"
-                  disabled={isDeleting === article.id}
-                >
-                  {isDeleting === article.id ? "Deleting..." : "Delete"}
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This action cannot be undone. This will permanently delete the article
+                      &quot;{article.title}&quot; and remove all its data from our servers.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={() => handleDelete(article.slug)}
+                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    >
+                      Delete Article
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            </DropdownMenuContent>
+          </DropdownMenu>
         )
       },
     },
   ]
 
   const table = useReactTable({
-    data: articles,
+    data,
     columns,
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
@@ -350,44 +405,15 @@ export function JournalArticlesTable({ initialArticles }: JournalArticlesTablePr
       columnVisibility,
       rowSelection,
     },
+    initialState: {
+      pagination: {
+        pageSize: 10,
+      },
+    },
   })
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between gap-4">
-        <div className="flex items-center gap-4">
-          <Input
-            placeholder="Filter articles..."
-            value={(table.getColumn("title")?.getFilterValue() as string) ?? ""}
-            onChange={(event) => table.getColumn("title")?.setFilterValue(event.target.value)}
-            className="max-w-sm"
-          />
-        </div>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline">
-              Columns <ChevronDown className="ml-2 h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            {table
-              .getAllColumns()
-              .filter((column) => column.getCanHide())
-              .map((column) => {
-                return (
-                  <DropdownMenuItem key={column.id} className="capitalize" onSelect={(e) => e.preventDefault()}>
-                    <Checkbox
-                      checked={column.getIsVisible()}
-                      onCheckedChange={(value) => column.toggleVisibility(!!value)}
-                      className="mr-2"
-                    />
-                    {column.id}
-                  </DropdownMenuItem>
-                )
-              })}
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
       <div className="rounded-md border">
         <Table>
           <TableHeader>
@@ -396,7 +422,12 @@ export function JournalArticlesTable({ initialArticles }: JournalArticlesTablePr
                 {headerGroup.headers.map((header) => {
                   return (
                     <TableHead key={header.id}>
-                      {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
+                      {header.isPlaceholder
+                        ? null
+                        : flexRender(
+                            header.column.columnDef.header,
+                            header.getContext()
+                          )}
                     </TableHead>
                   )
                 })}
@@ -406,31 +437,39 @@ export function JournalArticlesTable({ initialArticles }: JournalArticlesTablePr
           <TableBody>
             {table.getRowModel().rows?.length ? (
               table.getRowModel().rows.map((row) => (
-                <TableRow key={row.id} data-state={row.getIsSelected() && "selected"}>
+                <TableRow
+                  key={row.id}
+                  data-state={row.getIsSelected() && "selected"}
+                >
                   {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>
+                    <TableCell key={cell.id}>
+                      {flexRender(
+                        cell.column.columnDef.cell,
+                        cell.getContext()
+                      )}
+                    </TableCell>
                   ))}
                 </TableRow>
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={columns.length} className="h-24 text-center">
-                  No results.
+                <TableCell
+                  colSpan={columns.length}
+                  className="h-24 text-center"
+                >
+                  No articles found.
                 </TableCell>
               </TableRow>
             )}
           </TableBody>
         </Table>
       </div>
-      <div className="flex items-center justify-between space-x-2">
+      <div className="flex items-center justify-end space-x-2 py-4">
         <div className="flex-1 text-sm text-muted-foreground">
-          {table.getFilteredSelectedRowModel().rows.length} of {table.getFilteredRowModel().rows.length} row(s)
-          selected.
+          {table.getFilteredSelectedRowModel().rows.length} of{" "}
+          {table.getFilteredRowModel().rows.length} row(s) selected.
         </div>
-        <div className="flex items-center space-x-2">
-          <p className="text-sm font-medium">
-            Page {table.getState().pagination.pageIndex + 1} of {table.getPageCount()}
-          </p>
+        <div className="space-x-2">
           <Button
             variant="outline"
             size="sm"
@@ -439,7 +478,12 @@ export function JournalArticlesTable({ initialArticles }: JournalArticlesTablePr
           >
             Previous
           </Button>
-          <Button variant="outline" size="sm" onClick={() => table.nextPage()} disabled={!table.getCanNextPage()}>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => table.nextPage()}
+            disabled={!table.getCanNextPage()}
+          >
             Next
           </Button>
         </div>

@@ -3,7 +3,7 @@
 import { signIn, signOut } from "next-auth/react"
 import { redirect } from "next/navigation"
 import { z } from "zod"
-import { generateOTP, storeOTP, verifyOTP } from "@/lib/email-utils"
+import { generateOTP } from "@/lib/email-utils"
 import prisma from "@/lib/prisma"
 import { hashPassword } from "@/lib/auth-utils"
 

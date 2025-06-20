@@ -1,3 +1,4 @@
+// app/admin/journal-articles/page.tsx - UPDATED for multiple authors
 import Link from "next/link"
 import { Plus, FileText, Eye, PenTool } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -24,7 +25,7 @@ export default async function JournalArticlesPage() {
 
     console.log("📰 Admin page: Fetching journal articles...")
 
-    // Fetch journal articles from database
+    // Fetch journal articles from database (now returns articles with multiple authors)
     const result = await getJournalArticles()
     
     console.log("📥 Admin page: Server response:", result)
@@ -56,7 +57,7 @@ export default async function JournalArticlesPage() {
       )
     }
 
-    // Transform database data to match table requirements
+    // Transform database data to match table requirements - UPDATED for multiple authors
     const articlesForTable = result.articles?.map(article => ({
       id: article.id,
       slug: article.slug,
@@ -67,20 +68,29 @@ export default async function JournalArticlesPage() {
       readTime: article.readTime,
       image: article.image,
       draft: article.draft,
-      views: article.views,
+      views: article.views || 0,
       doi: article.doi,
       keywords: article.keywords,
-      Author: article.Author,
+      // UPDATED: Pass both old Author field (for backward compatibility) and new Authors array
+      Author: article.Author, // This is the primary author from the updated server action
+      Authors: article.Authors, // This is the full authors array
       journalIssue: article.journalIssue,
       categories: article.categories?.map(cat => cat.category) || [],
     })) || []
 
-    // Calculate stats
+    // Calculate stats - UPDATED to handle cases where articles might not have authors
     const publishedCount = articlesForTable.filter(article => !article.draft).length
     const draftCount = articlesForTable.filter(article => article.draft).length
-    const totalViews = articlesForTable.reduce((sum, article) => sum + article.views, 0)
+    const totalViews = articlesForTable.reduce((sum, article) => sum + (article.views || 0), 0)
+    const totalAuthors = new Set(
+      articlesForTable.flatMap(article => 
+        article.Authors?.map(author => author.id) || 
+        (article.Author ? [article.Author.id] : [])
+      )
+    ).size
 
     console.log("✅ Admin page: Transformed data for table:", articlesForTable.length, "records")
+    console.log("📊 Admin page: Stats calculated:", { publishedCount, draftCount, totalViews, totalAuthors })
 
     return (
       <div className="space-y-6">
@@ -89,68 +99,81 @@ export default async function JournalArticlesPage() {
             heading="Journal Articles"
             text="Create and manage journal articles."
           />
-          <div className="flex gap-2">
-            <Button asChild variant="outline">
-              <Link href="/admin/journals">
-                <FileText className="mr-2 h-4 w-4" />
-                Manage Issues
-              </Link>
-            </Button>
-            <Button asChild>
-              <Link href="/admin/journal-articles/new">
-                <Plus className="mr-2 h-4 w-4" />
-                New Article
-              </Link>
-            </Button>
+          <Button asChild>
+            <Link href="/admin/journal-articles/new">
+              <Plus className="mr-2 h-4 w-4" />
+              New Article
+            </Link>
+          </Button>
+        </div>
+
+        {/* Summary Stats */}
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          <div className="rounded-lg border p-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Total Articles</p>
+                <p className="text-2xl font-bold">{articlesForTable.length}</p>
+              </div>
+              <FileText className="h-8 w-8 text-muted-foreground" />
+            </div>
+          </div>
+          
+          <div className="rounded-lg border p-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Published</p>
+                <p className="text-2xl font-bold text-green-600">{publishedCount}</p>
+              </div>
+              <Eye className="h-8 w-8 text-green-600" />
+            </div>
+          </div>
+          
+          <div className="rounded-lg border p-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Drafts</p>
+                <p className="text-2xl font-bold text-orange-600">{draftCount}</p>
+              </div>
+              <PenTool className="h-8 w-8 text-orange-600" />
+            </div>
+          </div>
+          
+          <div className="rounded-lg border p-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Total Views</p>
+                <p className="text-2xl font-bold">{totalViews.toLocaleString()}</p>
+              </div>
+              <Eye className="h-8 w-8 text-muted-foreground" />
+            </div>
           </div>
         </div>
 
-        {/* Statistics Cards */}
-        <div className="grid gap-4 md:grid-cols-4">
-          <div className="rounded-lg border p-4">
-            <div className="flex items-center gap-2">
-              <FileText className="h-5 w-5 text-primary" />
-              <h3 className="font-semibold">Total Articles</h3>
+        {/* Additional Stats for Multiple Authors */}
+        <div className="rounded-lg border p-4 bg-muted/50">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="font-semibold">Author Statistics</h3>
+              <p className="text-sm text-muted-foreground">
+                {totalAuthors} unique authors contributing to {articlesForTable.length} articles
+              </p>
             </div>
-            <p className="text-2xl font-bold mt-2">{articlesForTable.length}</p>
-            <p className="text-sm text-muted-foreground">All journal articles</p>
-          </div>
-          <div className="rounded-lg border p-4">
-            <div className="flex items-center gap-2">
-              <Eye className="h-5 w-5 text-green-600" />
-              <h3 className="font-semibold">Published</h3>
+            <div className="text-right">
+              <p className="text-sm font-medium">Average Authors per Article</p>
+              <p className="text-lg font-bold">
+                {articlesForTable.length > 0 
+                  ? (articlesForTable.reduce((sum, article) => 
+                      sum + (article.Authors?.length || (article.Author ? 1 : 0)), 0
+                    ) / articlesForTable.length).toFixed(1)
+                  : "0"}
+              </p>
             </div>
-            <p className="text-2xl font-bold mt-2">{publishedCount}</p>
-            <p className="text-sm text-muted-foreground">Live articles</p>
-          </div>
-          <div className="rounded-lg border p-4">
-            <div className="flex items-center gap-2">
-              <PenTool className="h-5 w-5 text-orange-600" />
-              <h3 className="font-semibold">Drafts</h3>
-            </div>
-            <p className="text-2xl font-bold mt-2">{draftCount}</p>
-            <p className="text-sm text-muted-foreground">Work in progress</p>
-          </div>
-          <div className="rounded-lg border p-4">
-            <div className="flex items-center gap-2">
-              <Eye className="h-5 w-5 text-blue-600" />
-              <h3 className="font-semibold">Total Views</h3>
-            </div>
-            <p className="text-2xl font-bold mt-2">{totalViews.toLocaleString()}</p>
-            <p className="text-sm text-muted-foreground">Article views</p>
           </div>
         </div>
 
-        {/* Debug info in development */}
-        {process.env.NODE_ENV === 'development' && (
-          <Alert variant="outline">
-            <AlertDescription>
-              <strong>Debug:</strong> Loaded {articlesForTable.length} journal article(s). Check console for detailed logs.
-            </AlertDescription>
-          </Alert>
-        )}
-
-        <JournalArticlesTable initialArticles={articlesForTable} />
+        {/* Articles Table */}
+        <JournalArticlesTable articles={articlesForTable} />
       </div>
     )
   } catch (error) {
@@ -174,7 +197,7 @@ export default async function JournalArticlesPage() {
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
           <AlertDescription>
-            An unexpected error occurred while loading the page. Please check the console for more details.
+            An unexpected error occurred while loading the page. Please try again or contact support if the problem persists.
           </AlertDescription>
         </Alert>
       </div>

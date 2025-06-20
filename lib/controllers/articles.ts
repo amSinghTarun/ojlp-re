@@ -1,269 +1,481 @@
-import prisma from "../prisma"
-import type { Prisma } from "@prisma/client"
-import { slugify } from "../utils"
+// lib/controllers/articles.ts - UPDATED for multiple authors support
+import { PrismaClient, ArticleType } from "@prisma/client"
 
-export async function getArticles(params: {
+const prisma = new PrismaClient()
+
+interface GetArticlesOptions {
   type?: "blog" | "journal"
   limit?: number
-  offset?: number
   categoryId?: string
   authorId?: string
   featured?: boolean
-}) {
-  const { type, limit, offset = 0, categoryId, authorId, featured } = params
-
-  const where: Prisma.ArticleWhereInput = {}
-
-  if (type) {
-    where.type = type
-  }
-
-  if (categoryId) {
-    where.categories = {
-      some: {
-        categoryId,
-      },
-    }
-  }
-
-  if (authorId) {
-    where.authors = {
-      some: {
-        authorId,
-      },
-    }
-  }
-
-  if (featured !== undefined) {
-    where.featured = featured
-  }
-
-  return prisma.article.findMany({
-    where,
-    include: {
-      Author: true, // Include single Author field
-      authors: {
-        include: {
-          author: true,
-        },
-      },
-      categories: {
-        include: {
-          category: true,
-        },
-      },
-      journalIssue: true,
-    },
-    orderBy: {
-      createdAt: "desc",
-    },
-    skip: offset,
-    take: limit,
-  })
 }
 
+/**
+ * Get a single article by slug with multiple authors - UPDATED
+ */
 export async function getArticleBySlug(slug: string) {
-  return prisma.article.findUnique({
-    where: { slug },
-    include: {
-      Author: true, // Include single Author field
-      authors: {
-        include: {
-          author: true,
-        },
-      },
-      categories: {
-        include: {
-          category: true,
-        },
-      },
-      journalIssue: true,
-    },
-  })
-}
-
-export async function getArticlesByAuthor(authorId: string) {
-  return prisma.articleAuthor.findMany({
-    where: {
-      authorId,
-    },
-    include: {
-      article: {
-        include: {
-          Author: true, // Include single Author field
-          authors: {
-            include: {
-              author: true,
-            },
+  try {
+    const article = await prisma.article.findUnique({
+      where: { slug },
+      include: {
+        // UPDATED: Include multiple authors through AuthorArticle junction
+        authors: {
+          include: {
+            author: true
           },
-          categories: {
-            include: {
-              category: true,
-            },
-          },
-          journalIssue: true,
-        },
-      },
-    },
-    orderBy: {
-      article: {
-        createdAt: "desc",
-      },
-    },
-  })
-}
-
-export async function getArticlesByJournalIssue(journalIssueId: string) {
-  return prisma.article.findMany({
-    where: {
-      issueId: journalIssueId
-    },
-    include: {
-      Author: true, // Include single Author field for new journal articles
-      authors: {
-        include: {
-          author: true,
-        },
-      },
-      categories: {
-        include: {
-          category: true,
-        },
-      },
-      journalIssue: true,
-    },
-    orderBy: {
-      createdAt: "desc",
-    },
-  })
-}
-
-export async function createArticle(data: {
-  title: string
-  content: string
-  excerpt?: string
-  type: "blog" | "journal"
-  image?: string
-  authorIds: string[]
-  categoryIds?: string[]
-  featured?: boolean
-  doi?: string
-  keywords?: string[]
-  journalIssueId?: string
-}) {
-  const { authorIds, categoryIds, ...articleData } = data
-
-  return prisma.article.create({
-    data: {
-      ...articleData,
-      slug: slugify(data.title),
-      authors: {
-        create: authorIds.map((authorId) => ({
-          authorId,
-        })),
-      },
-      categories: categoryIds
-        ? {
-            create: categoryIds.map((categoryId) => ({
-              categoryId,
-            })),
+          orderBy: {
+            authorOrder: 'asc'
           }
-        : undefined,
-    },
-    include: {
-      Author: true,
-      authors: {
-        include: {
-          author: true,
         },
-      },
-      categories: {
-        include: {
-          category: true,
+        journalIssue: {
+          select: {
+            id: true,
+            title: true,
+            volume: true,
+            issue: true,
+            year: true,
+            publishDate: true
+          }
         },
-      },
-    },
-  })
+        categories: {
+          include: {
+            category: {
+              select: {
+                id: true,
+                name: true,
+                slug: true
+              }
+            }
+          }
+        }
+      }
+    })
+
+    if (!article) {
+      return null
+    }
+
+    // UPDATED: Transform the data to include Authors array for frontend compatibility
+    return {
+      ...article,
+      Authors: article.authors.map(aa => aa.author),
+      // Keep primary author for backward compatibility
+      Author: article.authors.length > 0 ? article.authors[0].author : null
+    }
+  } catch (error) {
+    console.error("Error fetching article by slug:", error)
+    throw new Error("Failed to fetch article")
+  }
 }
 
-export async function updateArticle(
-  slug: string,
-  data: {
-    title?: string
-    content?: string
-    excerpt?: string
-    image?: string
-    authorIds?: string[]
-    categoryIds?: string[]
-    featured?: boolean
-    doi?: string
-    keywords?: string[]
-    journalIssueId?: string | null
-    type?: "blog" | "journal"
-  },
-) {
-  const { authorIds, categoryIds, ...articleData } = data
+/**
+ * Get multiple articles with multiple authors - UPDATED
+ */
+export async function getArticles(options: GetArticlesOptions = {}) {
+  try {
+    const { type, limit, categoryId, authorId, featured } = options
 
-  // First, disconnect existing relationships if updating them
-  const updateData: any = { ...articleData }
+    const where: any = {}
 
-  if (authorIds) {
-    // Delete existing author relationships
-    await prisma.articleAuthor.deleteMany({
-      where: {
-        article: {
-          slug,
-        },
-      },
-    })
-
-    updateData.authors = {
-      create: authorIds.map((authorId) => ({
-        authorId,
-      })),
+    if (type) {
+      where.type = type
     }
-  }
 
-  if (categoryIds !== undefined) {
-    // Delete existing category relationships
-    await prisma.categoryArticle.deleteMany({
-      where: {
-        article: {
-          slug,
-        },
-      },
-    })
-
-    if (categoryIds.length > 0) {
-      updateData.categories = {
-        create: categoryIds.map((categoryId) => ({
-          categoryId,
-        })),
+    if (categoryId) {
+      where.categories = {
+        some: {
+          categoryId: categoryId
+        }
       }
     }
-  }
 
-  return prisma.article.update({
-    where: { slug },
-    data: updateData,
-    include: {
-      Author: true,
-      authors: {
-        include: {
-          author: true,
+    if (authorId) {
+      where.authors = {
+        some: {
+          authorId: authorId
+        }
+      }
+    }
+
+    if (featured !== undefined) {
+      // Assuming you have a featured field, otherwise remove this
+      where.featured = featured
+    }
+
+    // Only show published articles (not drafts) in public views
+    where.draft = false
+
+    const articles = await prisma.article.findMany({
+      where,
+      include: {
+        // UPDATED: Include multiple authors through AuthorArticle junction
+        authors: {
+          include: {
+            author: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+                slug: true,
+                image: true
+              }
+            }
+          },
+          orderBy: {
+            authorOrder: 'asc'
+          }
         },
-      },
-      categories: {
-        include: {
-          category: true,
+        journalIssue: {
+          select: {
+            id: true,
+            title: true,
+            volume: true,
+            issue: true,
+            year: true,
+            publishDate: true
+          }
         },
+        categories: {
+          include: {
+            category: {
+              select: {
+                id: true,
+                name: true,
+                slug: true
+              }
+            }
+          }
+        }
       },
-    },
-  })
+      orderBy: {
+        createdAt: 'desc'
+      },
+      take: limit
+    })
+
+    // UPDATED: Transform the data to include Authors array for frontend compatibility
+    return articles.map(article => ({
+      ...article,
+      Authors: article.authors.map(aa => aa.author),
+      // Keep primary author for backward compatibility
+      Author: article.authors.length > 0 ? article.authors[0].author : null
+    }))
+  } catch (error) {
+    console.error("Error fetching articles:", error)
+    throw new Error("Failed to fetch articles")
+  }
 }
 
-export async function deleteArticle(slug: string) {
-  return prisma.article.delete({
-    where: { slug },
-  })
+/**
+ * Get articles by journal issue with multiple authors - UPDATED
+ */
+export async function getArticlesByJournalIssue(issueId: string) {
+  try {
+    const articles = await prisma.article.findMany({
+      where: {
+        issueId: issueId,
+        type: ArticleType.journal,
+        draft: false // Only published articles
+      },
+      include: {
+        // UPDATED: Include multiple authors through AuthorArticle junction
+        authors: {
+          include: {
+            author: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+                slug: true,
+                image: true,
+                bio: true
+              }
+            }
+          },
+          orderBy: {
+            authorOrder: 'asc'
+          }
+        },
+        categories: {
+          include: {
+            category: {
+              select: {
+                id: true,
+                name: true,
+                slug: true
+              }
+            }
+          }
+        }
+      },
+      orderBy: {
+        createdAt: 'desc'
+      }
+    })
+
+    // UPDATED: Transform the data to include Authors array for frontend compatibility
+    return articles.map(article => ({
+      ...article,
+      Authors: article.authors.map(aa => aa.author),
+      // Keep primary author for backward compatibility
+      Author: article.authors.length > 0 ? article.authors[0].author : null
+    }))
+  } catch (error) {
+    console.error("Error fetching articles by journal issue:", error)
+    throw new Error("Failed to fetch articles for journal issue")
+  }
+}
+
+/**
+ * Get articles by author with multiple authors - NEW
+ */
+export async function getArticlesByAuthor(authorId: string, options: { limit?: number; type?: "blog" | "journal" } = {}) {
+  try {
+    const { limit, type } = options
+
+    const where: any = {
+      authors: {
+        some: {
+          authorId: authorId
+        }
+      },
+      draft: false // Only published articles
+    }
+
+    if (type) {
+      where.type = type
+    }
+
+    const articles = await prisma.article.findMany({
+      where,
+      include: {
+        authors: {
+          include: {
+            author: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+                slug: true,
+                image: true
+              }
+            }
+          },
+          orderBy: {
+            authorOrder: 'asc'
+          }
+        },
+        journalIssue: {
+          select: {
+            id: true,
+            title: true,
+            volume: true,
+            issue: true,
+            year: true
+          }
+        },
+        categories: {
+          include: {
+            category: {
+              select: {
+                id: true,
+                name: true,
+                slug: true
+              }
+            }
+          }
+        }
+      },
+      orderBy: {
+        createdAt: 'desc'
+      },
+      take: limit
+    })
+
+    // Transform the data to include Authors array for frontend compatibility
+    return articles.map(article => ({
+      ...article,
+      Authors: article.authors.map(aa => aa.author),
+      Author: article.authors.length > 0 ? article.authors[0].author : null
+    }))
+  } catch (error) {
+    console.error("Error fetching articles by author:", error)
+    throw new Error("Failed to fetch articles by author")
+  }
+}
+
+/**
+ * Search articles with multiple authors - UPDATED
+ */
+export async function searchArticles(query: string, options: { limit?: number; type?: "blog" | "journal" } = {}) {
+  try {
+    const { limit, type } = options
+
+    const where: any = {
+      AND: [
+        {
+          OR: [
+            {
+              title: {
+                contains: query,
+                mode: 'insensitive'
+              }
+            },
+            {
+              excerpt: {
+                contains: query,
+                mode: 'insensitive'
+              }
+            },
+            {
+              content: {
+                contains: query,
+                mode: 'insensitive'
+              }
+            },
+            {
+              keywords: {
+                has: query
+              }
+            },
+            {
+              authors: {
+                some: {
+                  author: {
+                    name: {
+                      contains: query,
+                      mode: 'insensitive'
+                    }
+                  }
+                }
+              }
+            }
+          ]
+        },
+        {
+          draft: false
+        }
+      ]
+    }
+
+    if (type) {
+      where.AND.push({ type })
+    }
+
+    const articles = await prisma.article.findMany({
+      where,
+      include: {
+        authors: {
+          include: {
+            author: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+                slug: true,
+                image: true
+              }
+            }
+          },
+          orderBy: {
+            authorOrder: 'asc'
+          }
+        },
+        journalIssue: {
+          select: {
+            id: true,
+            title: true,
+            volume: true,
+            issue: true,
+            year: true
+          }
+        },
+        categories: {
+          include: {
+            category: {
+              select: {
+                id: true,
+                name: true,
+                slug: true
+              }
+            }
+          }
+        }
+      },
+      orderBy: {
+        createdAt: 'desc'
+      },
+      take: limit
+    })
+
+    // Transform the data to include Authors array
+    return articles.map(article => ({
+      ...article,
+      Authors: article.authors.map(aa => aa.author),
+      Author: article.authors.length > 0 ? article.authors[0].author : null
+    }))
+  } catch (error) {
+    console.error("Error searching articles:", error)
+    throw new Error("Failed to search articles")
+  }
+}
+
+/**
+ * Get featured articles with multiple authors - NEW
+ */
+export async function getFeaturedArticles(limit: number = 3) {
+  try {
+    // This assumes you have some way to mark articles as featured
+    // You might have a featured field, or use categories, or some other logic
+    const articles = await prisma.article.findMany({
+      where: {
+        draft: false,
+        // Add your featured logic here, for example:
+        // featured: true,
+        // OR you could use view count, date, or categories to determine featured articles
+      },
+      include: {
+        authors: {
+          include: {
+            author: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+                slug: true,
+                image: true
+              }
+            }
+          },
+          orderBy: {
+            authorOrder: 'asc'
+          }
+        },
+        journalIssue: {
+          select: {
+            id: true,
+            title: true,
+            volume: true,
+            issue: true,
+            year: true
+          }
+        }
+      },
+      orderBy: [
+        { views: 'desc' }, // Most viewed
+        { createdAt: 'desc' } // Most recent
+      ],
+      take: limit
+    })
+
+    return articles.map(article => ({
+      ...article,
+      Authors: article.authors.map(aa => aa.author),
+      Author: article.authors.length > 0 ? article.authors[0].author : null
+    }))
+  } catch (error) {
+    console.error("Error fetching featured articles:", error)
+    throw new Error("Failed to fetch featured articles")
+  }
 }
