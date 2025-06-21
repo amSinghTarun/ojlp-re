@@ -2,34 +2,111 @@
 
 import { useState, useEffect } from "react"
 import Link from "next/link"
-import { Bell, ChevronRight, X } from "lucide-react"
+import { Bell, ChevronRight, X, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { notifications } from "@/lib/notifications"
 import { cn } from "@/lib/utils"
+import { getHighPriorityNotifications } from "@/lib/actions/notification-actions"
+
+interface Notification {
+  id: string
+  title: string
+  content: string
+  date: string
+  type: string
+  priority: string
+  read: boolean
+  link?: string | null
+  expiresAt?: string | null
+  image?: string | null
+}
 
 export function NotificationBanner() {
   const [currentIndex, setCurrentIndex] = useState(0)
   const [isVisible, setIsVisible] = useState(true)
+  const [notifications, setNotifications] = useState<Notification[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
-  // Only show unread high priority notifications
-  const highPriorityNotifications = notifications.filter((n) => n.priority === "high" && !n.read)
+  // Fetch notifications from database
+  useEffect(() => {
+    async function fetchNotifications() {
+      try {
+        setIsLoading(true)
+        setError(null)
+        const fetchedNotifications = await getHighPriorityNotifications()
+        setNotifications(fetchedNotifications)
+      } catch (err) {
+        console.error("Failed to fetch notifications:", err)
+        setError("Failed to load notifications")
+      } finally {
+        setIsLoading(false)
+      }
+    }
 
-  const hasNotifications = highPriorityNotifications.length > 0
+    fetchNotifications()
+
+    // Refresh notifications every 5 minutes
+    const refreshInterval = setInterval(fetchNotifications, 5 * 60 * 1000)
+
+    return () => clearInterval(refreshInterval)
+  }, [])
+
+  const hasNotifications = notifications.length > 0
 
   useEffect(() => {
     if (!hasNotifications) return
 
     // Rotate through notifications every 8 seconds
     const interval = setInterval(() => {
-      setCurrentIndex((prev) => (prev + 1) % highPriorityNotifications.length)
+      setCurrentIndex((prev) => (prev + 1) % notifications.length)
     }, 8000)
 
     return () => clearInterval(interval)
-  }, [hasNotifications, highPriorityNotifications.length])
+  }, [hasNotifications, notifications.length])
 
+  // Show loading state
+  if (isLoading) {
+    return (
+      <div className="bg-primary/10 text-primary border-b border-primary/20">
+        <div className="container px-4 py-2">
+          <div className="flex items-center justify-center gap-2 text-sm">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            <span>Loading notifications...</span>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // Show error state
+  if (error) {
+    return (
+      <div className="bg-orange-100 text-orange-800 border-b border-orange-200">
+        <div className="container px-4 py-2">
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center text-sm">
+              <Bell className="h-4 w-4 mr-2 flex-shrink-0" />
+              <span>⚠️ {error}</span>
+            </div>
+            <Button 
+              size="sm" 
+              variant="ghost" 
+              className="h-7 w-7 p-0 text-orange-800 hover:bg-orange-200" 
+              onClick={() => setIsVisible(false)}
+            >
+              <X className="h-3 w-3" />
+              <span className="sr-only">Dismiss</span>
+            </Button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // Don't render if no notifications or dismissed
   if (!hasNotifications || !isVisible) return null
 
-  const notification = highPriorityNotifications[currentIndex]
+  const notification = notifications[currentIndex]
 
   return (
     <div className="bg-primary/10 text-primary border-b border-primary/20 relative overflow-hidden">
@@ -54,7 +131,12 @@ export function NotificationBanner() {
                 <ChevronRight className="ml-1 h-3 w-3" />
               </Link>
             </Button>
-            <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => setIsVisible(false)}>
+            <Button 
+              size="sm" 
+              variant="ghost" 
+              className="h-7 w-7 p-0" 
+              onClick={() => setIsVisible(false)}
+            >
               <X className="h-3 w-3" />
               <span className="sr-only">Dismiss</span>
             </Button>
@@ -62,9 +144,9 @@ export function NotificationBanner() {
         </div>
 
         {/* Progress bar */}
-        {highPriorityNotifications.length > 1 && (
+        {notifications.length > 1 && (
           <div className="flex gap-1 absolute bottom-0 left-1/2 transform -translate-x-1/2">
-            {highPriorityNotifications.map((_, index) => (
+            {notifications.map((_, index) => (
               <div
                 key={index}
                 className={cn(

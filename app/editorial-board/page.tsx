@@ -158,7 +158,6 @@ export default function EditorialBoardPage() {
                 <ScrollReveal key={member.id} delay={index * 100}>
                   <div
                     className="border rounded-lg overflow-hidden bg-card cursor-pointer transition-all duration-300 hover:shadow-md"
-                    onClick={() => setSelectedMember(member)}
                   >
                     {member.image ? (
                       <div className="relative h-48 w-full">

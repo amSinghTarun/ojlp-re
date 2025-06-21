@@ -1,6 +1,8 @@
 {
-  "/authors/[slug]/page": "app/authors/[slug]/page.js",
-  "/admin/authors/page": "app/admin/authors/page.js",
-  "/journals/page": "app/journals/page.js",
+  "/about/page": "app/about/page.js",
+  "/board-of-advisors/page": "app/board-of-advisors/page.js",
+  "/submit/page": "app/submit/page.js",
+  "/editorial-board/page": "app/editorial-board/page.js",
+  "/admin/login/page": "app/admin/login/page.js",
   "/journals/call-for-papers/page": "app/journals/call-for-papers/page.js"
 }

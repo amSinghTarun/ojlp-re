@@ -1,58 +1,282 @@
 {
   "node": {
-    "00422c54fd4309a8b03aa26254f521b484a58d3766": {
+    "002ea02c8ac11d225ab15aeb5147973fa03678a897": {
       "workers": {
-        "app/admin/authors/page": {
-          "moduleId": "(rsc)/./node_modules/next/dist/build/webpack/loaders/next-flight-action-entry-loader.js?actions=%5B%5B%22%2FUsers%2Ftarun%2FProjects%2Fbusiness%2Fojlp-re%2Flib%2Factions%2Fauthor-actions.ts%22%2C%5B%7B%22id%22%3A%2200422c54fd4309a8b03aa26254f521b484a58d3766%22%2C%22exportedName%22%3A%22getAuthorsList%22%7D%2C%7B%22id%22%3A%22402993cd93246ba0b0e053540112b5b226a51ae591%22%2C%22exportedName%22%3A%22getAuthorDetail%22%7D%2C%7B%22id%22%3A%224065325f9fdcd77b4580927930f0ea0eb55170d5c3%22%2C%22exportedName%22%3A%22deleteExistingAuthor%22%7D%2C%7B%22id%22%3A%2240affecd5a96ff0138771e0d7974f1de7d4da392f8%22%2C%22exportedName%22%3A%22createNewAuthor%22%7D%2C%7B%22id%22%3A%22601c4860b44fe99d72c5e53af76c2f2bd343c48fc9%22%2C%22exportedName%22%3A%22updateExistingAuthor%22%7D%5D%5D%5D&__client_imported__=!",
+        "app/journals/page": {
+          "moduleId": "(action-browser)/./node_modules/next/dist/build/webpack/loaders/next-flight-action-entry-loader.js?actions=%5B%5B%22%2FUsers%2Ftarun%2FProjects%2Fbusiness%2Fojlp-re%2Flib%2Factions%2Fnotification-actions.ts%22%2C%5B%7B%22id%22%3A%22002ea02c8ac11d225ab15aeb5147973fa03678a897%22%2C%22exportedName%22%3A%22getHighPriorityNotifications%22%7D%2C%7B%22id%22%3A%22006412eb5aec83e5e4257ca5f4a4720915d0b0e39d%22%2C%22exportedName%22%3A%22getAllNotifications%22%7D%2C%7B%22id%22%3A%224055ea384c2c3702ac7438c43b6cf8950ffb0b8cfb%22%2C%22exportedName%22%3A%22markNotificationAsRead%22%7D%5D%5D%5D&__client_imported__=true!",
+          "async": false
+        },
+        "app/journals/[slug]/page": {
+          "moduleId": "(action-browser)/./node_modules/next/dist/build/webpack/loaders/next-flight-action-entry-loader.js?actions=%5B%5B%22%2FUsers%2Ftarun%2FProjects%2Fbusiness%2Fojlp-re%2Flib%2Factions%2Fnotification-actions.ts%22%2C%5B%7B%22id%22%3A%22002ea02c8ac11d225ab15aeb5147973fa03678a897%22%2C%22exportedName%22%3A%22getHighPriorityNotifications%22%7D%2C%7B%22id%22%3A%22006412eb5aec83e5e4257ca5f4a4720915d0b0e39d%22%2C%22exportedName%22%3A%22getAllNotifications%22%7D%2C%7B%22id%22%3A%224055ea384c2c3702ac7438c43b6cf8950ffb0b8cfb%22%2C%22exportedName%22%3A%22markNotificationAsRead%22%7D%5D%5D%5D&__client_imported__=true!",
+          "async": false
+        },
+        "app/admin/login/page": {
+          "moduleId": "(action-browser)/./node_modules/next/dist/build/webpack/loaders/next-flight-action-entry-loader.js?actions=%5B%5B%22%2FUsers%2Ftarun%2FProjects%2Fbusiness%2Fojlp-re%2Flib%2Factions%2Fnotification-actions.ts%22%2C%5B%7B%22id%22%3A%22002ea02c8ac11d225ab15aeb5147973fa03678a897%22%2C%22exportedName%22%3A%22getHighPriorityNotifications%22%7D%2C%7B%22id%22%3A%22006412eb5aec83e5e4257ca5f4a4720915d0b0e39d%22%2C%22exportedName%22%3A%22getAllNotifications%22%7D%2C%7B%22id%22%3A%224055ea384c2c3702ac7438c43b6cf8950ffb0b8cfb%22%2C%22exportedName%22%3A%22markNotificationAsRead%22%7D%5D%5D%5D&__client_imported__=true!",
+          "async": false
+        },
+        "app/about/page": {
+          "moduleId": "(action-browser)/./node_modules/next/dist/build/webpack/loaders/next-flight-action-entry-loader.js?actions=%5B%5B%22%2FUsers%2Ftarun%2FProjects%2Fbusiness%2Fojlp-re%2Flib%2Factions%2Fnotification-actions.ts%22%2C%5B%7B%22id%22%3A%22002ea02c8ac11d225ab15aeb5147973fa03678a897%22%2C%22exportedName%22%3A%22getHighPriorityNotifications%22%7D%2C%7B%22id%22%3A%22006412eb5aec83e5e4257ca5f4a4720915d0b0e39d%22%2C%22exportedName%22%3A%22getAllNotifications%22%7D%2C%7B%22id%22%3A%224055ea384c2c3702ac7438c43b6cf8950ffb0b8cfb%22%2C%22exportedName%22%3A%22markNotificationAsRead%22%7D%5D%5D%5D&__client_imported__=true!",
+          "async": false
+        },
+        "app/submit/page": {
+          "moduleId": "(action-browser)/./node_modules/next/dist/build/webpack/loaders/next-flight-action-entry-loader.js?actions=%5B%5B%22%2FUsers%2Ftarun%2FProjects%2Fbusiness%2Fojlp-re%2Flib%2Factions%2Fnotification-actions.ts%22%2C%5B%7B%22id%22%3A%22002ea02c8ac11d225ab15aeb5147973fa03678a897%22%2C%22exportedName%22%3A%22getHighPriorityNotifications%22%7D%2C%7B%22id%22%3A%22006412eb5aec83e5e4257ca5f4a4720915d0b0e39d%22%2C%22exportedName%22%3A%22getAllNotifications%22%7D%2C%7B%22id%22%3A%224055ea384c2c3702ac7438c43b6cf8950ffb0b8cfb%22%2C%22exportedName%22%3A%22markNotificationAsRead%22%7D%5D%5D%5D&__client_imported__=true!",
+          "async": false
+        },
+        "app/contact/page": {
+          "moduleId": "(action-browser)/./node_modules/next/dist/build/webpack/loaders/next-flight-action-entry-loader.js?actions=%5B%5B%22%2FUsers%2Ftarun%2FProjects%2Fbusiness%2Fojlp-re%2Flib%2Factions%2Fnotification-actions.ts%22%2C%5B%7B%22id%22%3A%22002ea02c8ac11d225ab15aeb5147973fa03678a897%22%2C%22exportedName%22%3A%22getHighPriorityNotifications%22%7D%2C%7B%22id%22%3A%22006412eb5aec83e5e4257ca5f4a4720915d0b0e39d%22%2C%22exportedName%22%3A%22getAllNotifications%22%7D%2C%7B%22id%22%3A%224055ea384c2c3702ac7438c43b6cf8950ffb0b8cfb%22%2C%22exportedName%22%3A%22markNotificationAsRead%22%7D%5D%5D%5D&__client_imported__=true!",
+          "async": false
+        },
+        "app/journals/archive/page": {
+          "moduleId": "(action-browser)/./node_modules/next/dist/build/webpack/loaders/next-flight-action-entry-loader.js?actions=%5B%5B%22%2FUsers%2Ftarun%2FProjects%2Fbusiness%2Fojlp-re%2Flib%2Factions%2Fnotification-actions.ts%22%2C%5B%7B%22id%22%3A%22002ea02c8ac11d225ab15aeb5147973fa03678a897%22%2C%22exportedName%22%3A%22getHighPriorityNotifications%22%7D%2C%7B%22id%22%3A%22006412eb5aec83e5e4257ca5f4a4720915d0b0e39d%22%2C%22exportedName%22%3A%22getAllNotifications%22%7D%2C%7B%22id%22%3A%224055ea384c2c3702ac7438c43b6cf8950ffb0b8cfb%22%2C%22exportedName%22%3A%22markNotificationAsRead%22%7D%5D%5D%5D&__client_imported__=true!",
+          "async": false
+        },
+        "app/editorial-board/page": {
+          "moduleId": "(action-browser)/./node_modules/next/dist/build/webpack/loaders/next-flight-action-entry-loader.js?actions=%5B%5B%22%2FUsers%2Ftarun%2FProjects%2Fbusiness%2Fojlp-re%2Flib%2Factions%2Fnotification-actions.ts%22%2C%5B%7B%22id%22%3A%22002ea02c8ac11d225ab15aeb5147973fa03678a897%22%2C%22exportedName%22%3A%22getHighPriorityNotifications%22%7D%2C%7B%22id%22%3A%22006412eb5aec83e5e4257ca5f4a4720915d0b0e39d%22%2C%22exportedName%22%3A%22getAllNotifications%22%7D%2C%7B%22id%22%3A%224055ea384c2c3702ac7438c43b6cf8950ffb0b8cfb%22%2C%22exportedName%22%3A%22markNotificationAsRead%22%7D%5D%5D%2C%5B%22%2FUsers%2Ftarun%2FProjects%2Fbusiness%2Fojlp-re%2Flib%2Factions%2Feditorial-board-actions.ts%22%2C%5B%7B%22id%22%3A%2200b9f51393787848acd3daf01b15686a012cde32bf%22%2C%22exportedName%22%3A%22getEditorialBoard%22%7D%2C%7B%22id%22%3A%2240418e33b258547c29d0d0a511a83d247326f4d72e%22%2C%22exportedName%22%3A%22getEditorialBoardMember%22%7D%2C%7B%22id%22%3A%22404c0ed046fa8d230d110356610ced19ac6ff0136e%22%2C%22exportedName%22%3A%22createBoardMember%22%7D%2C%7B%22id%22%3A%22409b7e464306434dfaddf4dbe9aa64721ca8e4a7c7%22%2C%22exportedName%22%3A%22deleteBoardMember%22%7D%2C%7B%22id%22%3A%2240a7ff5633f9dfcd3a47030b7d319f5b7056520715%22%2C%22exportedName%22%3A%22reorderBoardMembers%22%7D%2C%7B%22id%22%3A%22606ba3b1bb6fd67772bd6066a6a04bdc71c93ba7e8%22%2C%22exportedName%22%3A%22updateBoardMember%22%7D%5D%5D%5D&__client_imported__=true!",
+          "async": false
+        },
+        "app/board-of-advisors/page": {
+          "moduleId": "(action-browser)/./node_modules/next/dist/build/webpack/loaders/next-flight-action-entry-loader.js?actions=%5B%5B%22%2FUsers%2Ftarun%2FProjects%2Fbusiness%2Fojlp-re%2Flib%2Factions%2Fnotification-actions.ts%22%2C%5B%7B%22id%22%3A%22002ea02c8ac11d225ab15aeb5147973fa03678a897%22%2C%22exportedName%22%3A%22getHighPriorityNotifications%22%7D%2C%7B%22id%22%3A%22006412eb5aec83e5e4257ca5f4a4720915d0b0e39d%22%2C%22exportedName%22%3A%22getAllNotifications%22%7D%2C%7B%22id%22%3A%224055ea384c2c3702ac7438c43b6cf8950ffb0b8cfb%22%2C%22exportedName%22%3A%22markNotificationAsRead%22%7D%5D%5D%2C%5B%22%2FUsers%2Ftarun%2FProjects%2Fbusiness%2Fojlp-re%2Flib%2Factions%2Feditorial-board-actions.ts%22%2C%5B%7B%22id%22%3A%2200b9f51393787848acd3daf01b15686a012cde32bf%22%2C%22exportedName%22%3A%22getEditorialBoard%22%7D%2C%7B%22id%22%3A%2240418e33b258547c29d0d0a511a83d247326f4d72e%22%2C%22exportedName%22%3A%22getEditorialBoardMember%22%7D%2C%7B%22id%22%3A%22404c0ed046fa8d230d110356610ced19ac6ff0136e%22%2C%22exportedName%22%3A%22createBoardMember%22%7D%2C%7B%22id%22%3A%22409b7e464306434dfaddf4dbe9aa64721ca8e4a7c7%22%2C%22exportedName%22%3A%22deleteBoardMember%22%7D%2C%7B%22id%22%3A%2240a7ff5633f9dfcd3a47030b7d319f5b7056520715%22%2C%22exportedName%22%3A%22reorderBoardMembers%22%7D%2C%7B%22id%22%3A%22606ba3b1bb6fd67772bd6066a6a04bdc71c93ba7e8%22%2C%22exportedName%22%3A%22updateBoardMember%22%7D%5D%5D%5D&__client_imported__=true!",
+          "async": false
+        },
+        "app/page": {
+          "moduleId": "(action-browser)/./node_modules/next/dist/build/webpack/loaders/next-flight-action-entry-loader.js?actions=%5B%5B%22%2FUsers%2Ftarun%2FProjects%2Fbusiness%2Fojlp-re%2Flib%2Factions%2Fnotification-actions.ts%22%2C%5B%7B%22id%22%3A%22002ea02c8ac11d225ab15aeb5147973fa03678a897%22%2C%22exportedName%22%3A%22getHighPriorityNotifications%22%7D%2C%7B%22id%22%3A%22006412eb5aec83e5e4257ca5f4a4720915d0b0e39d%22%2C%22exportedName%22%3A%22getAllNotifications%22%7D%2C%7B%22id%22%3A%224055ea384c2c3702ac7438c43b6cf8950ffb0b8cfb%22%2C%22exportedName%22%3A%22markNotificationAsRead%22%7D%5D%5D%5D&__client_imported__=true!",
+          "async": false
+        },
+        "app/journals/call-for-papers/page": {
+          "moduleId": "(action-browser)/./node_modules/next/dist/build/webpack/loaders/next-flight-action-entry-loader.js?actions=%5B%5B%22%2FUsers%2Ftarun%2FProjects%2Fbusiness%2Fojlp-re%2Flib%2Factions%2Fnotification-actions.ts%22%2C%5B%7B%22id%22%3A%22002ea02c8ac11d225ab15aeb5147973fa03678a897%22%2C%22exportedName%22%3A%22getHighPriorityNotifications%22%7D%2C%7B%22id%22%3A%22006412eb5aec83e5e4257ca5f4a4720915d0b0e39d%22%2C%22exportedName%22%3A%22getAllNotifications%22%7D%2C%7B%22id%22%3A%224055ea384c2c3702ac7438c43b6cf8950ffb0b8cfb%22%2C%22exportedName%22%3A%22markNotificationAsRead%22%7D%5D%5D%5D&__client_imported__=true!",
           "async": false
         }
       },
       "layer": {
-        "app/admin/authors/page": "rsc"
+        "app/journals/page": "action-browser",
+        "app/journals/[slug]/page": "action-browser",
+        "app/admin/login/page": "action-browser",
+        "app/about/page": "action-browser",
+        "app/submit/page": "action-browser",
+        "app/contact/page": "action-browser",
+        "app/journals/archive/page": "action-browser",
+        "app/editorial-board/page": "action-browser",
+        "app/board-of-advisors/page": "action-browser",
+        "app/page": "action-browser",
+        "app/journals/call-for-papers/page": "action-browser"
       }
     },
-    "402993cd93246ba0b0e053540112b5b226a51ae591": {
+    "006412eb5aec83e5e4257ca5f4a4720915d0b0e39d": {
       "workers": {
-        "app/admin/authors/page": {
-          "moduleId": "(rsc)/./node_modules/next/dist/build/webpack/loaders/next-flight-action-entry-loader.js?actions=%5B%5B%22%2FUsers%2Ftarun%2FProjects%2Fbusiness%2Fojlp-re%2Flib%2Factions%2Fauthor-actions.ts%22%2C%5B%7B%22id%22%3A%2200422c54fd4309a8b03aa26254f521b484a58d3766%22%2C%22exportedName%22%3A%22getAuthorsList%22%7D%2C%7B%22id%22%3A%22402993cd93246ba0b0e053540112b5b226a51ae591%22%2C%22exportedName%22%3A%22getAuthorDetail%22%7D%2C%7B%22id%22%3A%224065325f9fdcd77b4580927930f0ea0eb55170d5c3%22%2C%22exportedName%22%3A%22deleteExistingAuthor%22%7D%2C%7B%22id%22%3A%2240affecd5a96ff0138771e0d7974f1de7d4da392f8%22%2C%22exportedName%22%3A%22createNewAuthor%22%7D%2C%7B%22id%22%3A%22601c4860b44fe99d72c5e53af76c2f2bd343c48fc9%22%2C%22exportedName%22%3A%22updateExistingAuthor%22%7D%5D%5D%5D&__client_imported__=!",
+        "app/journals/page": {
+          "moduleId": "(action-browser)/./node_modules/next/dist/build/webpack/loaders/next-flight-action-entry-loader.js?actions=%5B%5B%22%2FUsers%2Ftarun%2FProjects%2Fbusiness%2Fojlp-re%2Flib%2Factions%2Fnotification-actions.ts%22%2C%5B%7B%22id%22%3A%22002ea02c8ac11d225ab15aeb5147973fa03678a897%22%2C%22exportedName%22%3A%22getHighPriorityNotifications%22%7D%2C%7B%22id%22%3A%22006412eb5aec83e5e4257ca5f4a4720915d0b0e39d%22%2C%22exportedName%22%3A%22getAllNotifications%22%7D%2C%7B%22id%22%3A%224055ea384c2c3702ac7438c43b6cf8950ffb0b8cfb%22%2C%22exportedName%22%3A%22markNotificationAsRead%22%7D%5D%5D%5D&__client_imported__=true!",
+          "async": false
+        },
+        "app/journals/[slug]/page": {
+          "moduleId": "(action-browser)/./node_modules/next/dist/build/webpack/loaders/next-flight-action-entry-loader.js?actions=%5B%5B%22%2FUsers%2Ftarun%2FProjects%2Fbusiness%2Fojlp-re%2Flib%2Factions%2Fnotification-actions.ts%22%2C%5B%7B%22id%22%3A%22002ea02c8ac11d225ab15aeb5147973fa03678a897%22%2C%22exportedName%22%3A%22getHighPriorityNotifications%22%7D%2C%7B%22id%22%3A%22006412eb5aec83e5e4257ca5f4a4720915d0b0e39d%22%2C%22exportedName%22%3A%22getAllNotifications%22%7D%2C%7B%22id%22%3A%224055ea384c2c3702ac7438c43b6cf8950ffb0b8cfb%22%2C%22exportedName%22%3A%22markNotificationAsRead%22%7D%5D%5D%5D&__client_imported__=true!",
+          "async": false
+        },
+        "app/admin/login/page": {
+          "moduleId": "(action-browser)/./node_modules/next/dist/build/webpack/loaders/next-flight-action-entry-loader.js?actions=%5B%5B%22%2FUsers%2Ftarun%2FProjects%2Fbusiness%2Fojlp-re%2Flib%2Factions%2Fnotification-actions.ts%22%2C%5B%7B%22id%22%3A%22002ea02c8ac11d225ab15aeb5147973fa03678a897%22%2C%22exportedName%22%3A%22getHighPriorityNotifications%22%7D%2C%7B%22id%22%3A%22006412eb5aec83e5e4257ca5f4a4720915d0b0e39d%22%2C%22exportedName%22%3A%22getAllNotifications%22%7D%2C%7B%22id%22%3A%224055ea384c2c3702ac7438c43b6cf8950ffb0b8cfb%22%2C%22exportedName%22%3A%22markNotificationAsRead%22%7D%5D%5D%5D&__client_imported__=true!",
+          "async": false
+        },
+        "app/about/page": {
+          "moduleId": "(action-browser)/./node_modules/next/dist/build/webpack/loaders/next-flight-action-entry-loader.js?actions=%5B%5B%22%2FUsers%2Ftarun%2FProjects%2Fbusiness%2Fojlp-re%2Flib%2Factions%2Fnotification-actions.ts%22%2C%5B%7B%22id%22%3A%22002ea02c8ac11d225ab15aeb5147973fa03678a897%22%2C%22exportedName%22%3A%22getHighPriorityNotifications%22%7D%2C%7B%22id%22%3A%22006412eb5aec83e5e4257ca5f4a4720915d0b0e39d%22%2C%22exportedName%22%3A%22getAllNotifications%22%7D%2C%7B%22id%22%3A%224055ea384c2c3702ac7438c43b6cf8950ffb0b8cfb%22%2C%22exportedName%22%3A%22markNotificationAsRead%22%7D%5D%5D%5D&__client_imported__=true!",
+          "async": false
+        },
+        "app/submit/page": {
+          "moduleId": "(action-browser)/./node_modules/next/dist/build/webpack/loaders/next-flight-action-entry-loader.js?actions=%5B%5B%22%2FUsers%2Ftarun%2FProjects%2Fbusiness%2Fojlp-re%2Flib%2Factions%2Fnotification-actions.ts%22%2C%5B%7B%22id%22%3A%22002ea02c8ac11d225ab15aeb5147973fa03678a897%22%2C%22exportedName%22%3A%22getHighPriorityNotifications%22%7D%2C%7B%22id%22%3A%22006412eb5aec83e5e4257ca5f4a4720915d0b0e39d%22%2C%22exportedName%22%3A%22getAllNotifications%22%7D%2C%7B%22id%22%3A%224055ea384c2c3702ac7438c43b6cf8950ffb0b8cfb%22%2C%22exportedName%22%3A%22markNotificationAsRead%22%7D%5D%5D%5D&__client_imported__=true!",
+          "async": false
+        },
+        "app/contact/page": {
+          "moduleId": "(action-browser)/./node_modules/next/dist/build/webpack/loaders/next-flight-action-entry-loader.js?actions=%5B%5B%22%2FUsers%2Ftarun%2FProjects%2Fbusiness%2Fojlp-re%2Flib%2Factions%2Fnotification-actions.ts%22%2C%5B%7B%22id%22%3A%22002ea02c8ac11d225ab15aeb5147973fa03678a897%22%2C%22exportedName%22%3A%22getHighPriorityNotifications%22%7D%2C%7B%22id%22%3A%22006412eb5aec83e5e4257ca5f4a4720915d0b0e39d%22%2C%22exportedName%22%3A%22getAllNotifications%22%7D%2C%7B%22id%22%3A%224055ea384c2c3702ac7438c43b6cf8950ffb0b8cfb%22%2C%22exportedName%22%3A%22markNotificationAsRead%22%7D%5D%5D%5D&__client_imported__=true!",
+          "async": false
+        },
+        "app/journals/archive/page": {
+          "moduleId": "(action-browser)/./node_modules/next/dist/build/webpack/loaders/next-flight-action-entry-loader.js?actions=%5B%5B%22%2FUsers%2Ftarun%2FProjects%2Fbusiness%2Fojlp-re%2Flib%2Factions%2Fnotification-actions.ts%22%2C%5B%7B%22id%22%3A%22002ea02c8ac11d225ab15aeb5147973fa03678a897%22%2C%22exportedName%22%3A%22getHighPriorityNotifications%22%7D%2C%7B%22id%22%3A%22006412eb5aec83e5e4257ca5f4a4720915d0b0e39d%22%2C%22exportedName%22%3A%22getAllNotifications%22%7D%2C%7B%22id%22%3A%224055ea384c2c3702ac7438c43b6cf8950ffb0b8cfb%22%2C%22exportedName%22%3A%22markNotificationAsRead%22%7D%5D%5D%5D&__client_imported__=true!",
+          "async": false
+        },
+        "app/editorial-board/page": {
+          "moduleId": "(action-browser)/./node_modules/next/dist/build/webpack/loaders/next-flight-action-entry-loader.js?actions=%5B%5B%22%2FUsers%2Ftarun%2FProjects%2Fbusiness%2Fojlp-re%2Flib%2Factions%2Fnotification-actions.ts%22%2C%5B%7B%22id%22%3A%22002ea02c8ac11d225ab15aeb5147973fa03678a897%22%2C%22exportedName%22%3A%22getHighPriorityNotifications%22%7D%2C%7B%22id%22%3A%22006412eb5aec83e5e4257ca5f4a4720915d0b0e39d%22%2C%22exportedName%22%3A%22getAllNotifications%22%7D%2C%7B%22id%22%3A%224055ea384c2c3702ac7438c43b6cf8950ffb0b8cfb%22%2C%22exportedName%22%3A%22markNotificationAsRead%22%7D%5D%5D%2C%5B%22%2FUsers%2Ftarun%2FProjects%2Fbusiness%2Fojlp-re%2Flib%2Factions%2Feditorial-board-actions.ts%22%2C%5B%7B%22id%22%3A%2200b9f51393787848acd3daf01b15686a012cde32bf%22%2C%22exportedName%22%3A%22getEditorialBoard%22%7D%2C%7B%22id%22%3A%2240418e33b258547c29d0d0a511a83d247326f4d72e%22%2C%22exportedName%22%3A%22getEditorialBoardMember%22%7D%2C%7B%22id%22%3A%22404c0ed046fa8d230d110356610ced19ac6ff0136e%22%2C%22exportedName%22%3A%22createBoardMember%22%7D%2C%7B%22id%22%3A%22409b7e464306434dfaddf4dbe9aa64721ca8e4a7c7%22%2C%22exportedName%22%3A%22deleteBoardMember%22%7D%2C%7B%22id%22%3A%2240a7ff5633f9dfcd3a47030b7d319f5b7056520715%22%2C%22exportedName%22%3A%22reorderBoardMembers%22%7D%2C%7B%22id%22%3A%22606ba3b1bb6fd67772bd6066a6a04bdc71c93ba7e8%22%2C%22exportedName%22%3A%22updateBoardMember%22%7D%5D%5D%5D&__client_imported__=true!",
+          "async": false
+        },
+        "app/board-of-advisors/page": {
+          "moduleId": "(action-browser)/./node_modules/next/dist/build/webpack/loaders/next-flight-action-entry-loader.js?actions=%5B%5B%22%2FUsers%2Ftarun%2FProjects%2Fbusiness%2Fojlp-re%2Flib%2Factions%2Fnotification-actions.ts%22%2C%5B%7B%22id%22%3A%22002ea02c8ac11d225ab15aeb5147973fa03678a897%22%2C%22exportedName%22%3A%22getHighPriorityNotifications%22%7D%2C%7B%22id%22%3A%22006412eb5aec83e5e4257ca5f4a4720915d0b0e39d%22%2C%22exportedName%22%3A%22getAllNotifications%22%7D%2C%7B%22id%22%3A%224055ea384c2c3702ac7438c43b6cf8950ffb0b8cfb%22%2C%22exportedName%22%3A%22markNotificationAsRead%22%7D%5D%5D%2C%5B%22%2FUsers%2Ftarun%2FProjects%2Fbusiness%2Fojlp-re%2Flib%2Factions%2Feditorial-board-actions.ts%22%2C%5B%7B%22id%22%3A%2200b9f51393787848acd3daf01b15686a012cde32bf%22%2C%22exportedName%22%3A%22getEditorialBoard%22%7D%2C%7B%22id%22%3A%2240418e33b258547c29d0d0a511a83d247326f4d72e%22%2C%22exportedName%22%3A%22getEditorialBoardMember%22%7D%2C%7B%22id%22%3A%22404c0ed046fa8d230d110356610ced19ac6ff0136e%22%2C%22exportedName%22%3A%22createBoardMember%22%7D%2C%7B%22id%22%3A%22409b7e464306434dfaddf4dbe9aa64721ca8e4a7c7%22%2C%22exportedName%22%3A%22deleteBoardMember%22%7D%2C%7B%22id%22%3A%2240a7ff5633f9dfcd3a47030b7d319f5b7056520715%22%2C%22exportedName%22%3A%22reorderBoardMembers%22%7D%2C%7B%22id%22%3A%22606ba3b1bb6fd67772bd6066a6a04bdc71c93ba7e8%22%2C%22exportedName%22%3A%22updateBoardMember%22%7D%5D%5D%5D&__client_imported__=true!",
+          "async": false
+        },
+        "app/page": {
+          "moduleId": "(action-browser)/./node_modules/next/dist/build/webpack/loaders/next-flight-action-entry-loader.js?actions=%5B%5B%22%2FUsers%2Ftarun%2FProjects%2Fbusiness%2Fojlp-re%2Flib%2Factions%2Fnotification-actions.ts%22%2C%5B%7B%22id%22%3A%22002ea02c8ac11d225ab15aeb5147973fa03678a897%22%2C%22exportedName%22%3A%22getHighPriorityNotifications%22%7D%2C%7B%22id%22%3A%22006412eb5aec83e5e4257ca5f4a4720915d0b0e39d%22%2C%22exportedName%22%3A%22getAllNotifications%22%7D%2C%7B%22id%22%3A%224055ea384c2c3702ac7438c43b6cf8950ffb0b8cfb%22%2C%22exportedName%22%3A%22markNotificationAsRead%22%7D%5D%5D%5D&__client_imported__=true!",
+          "async": false
+        },
+        "app/journals/call-for-papers/page": {
+          "moduleId": "(action-browser)/./node_modules/next/dist/build/webpack/loaders/next-flight-action-entry-loader.js?actions=%5B%5B%22%2FUsers%2Ftarun%2FProjects%2Fbusiness%2Fojlp-re%2Flib%2Factions%2Fnotification-actions.ts%22%2C%5B%7B%22id%22%3A%22002ea02c8ac11d225ab15aeb5147973fa03678a897%22%2C%22exportedName%22%3A%22getHighPriorityNotifications%22%7D%2C%7B%22id%22%3A%22006412eb5aec83e5e4257ca5f4a4720915d0b0e39d%22%2C%22exportedName%22%3A%22getAllNotifications%22%7D%2C%7B%22id%22%3A%224055ea384c2c3702ac7438c43b6cf8950ffb0b8cfb%22%2C%22exportedName%22%3A%22markNotificationAsRead%22%7D%5D%5D%5D&__client_imported__=true!",
           "async": false
         }
       },
       "layer": {
-        "app/admin/authors/page": "rsc"
+        "app/journals/page": "action-browser",
+        "app/journals/[slug]/page": "action-browser",
+        "app/admin/login/page": "action-browser",
+        "app/about/page": "action-browser",
+        "app/submit/page": "action-browser",
+        "app/contact/page": "action-browser",
+        "app/journals/archive/page": "action-browser",
+        "app/editorial-board/page": "action-browser",
+        "app/board-of-advisors/page": "action-browser",
+        "app/page": "action-browser",
+        "app/journals/call-for-papers/page": "action-browser"
       }
     },
-    "4065325f9fdcd77b4580927930f0ea0eb55170d5c3": {
+    "4055ea384c2c3702ac7438c43b6cf8950ffb0b8cfb": {
       "workers": {
-        "app/admin/authors/page": {
-          "moduleId": "(rsc)/./node_modules/next/dist/build/webpack/loaders/next-flight-action-entry-loader.js?actions=%5B%5B%22%2FUsers%2Ftarun%2FProjects%2Fbusiness%2Fojlp-re%2Flib%2Factions%2Fauthor-actions.ts%22%2C%5B%7B%22id%22%3A%2200422c54fd4309a8b03aa26254f521b484a58d3766%22%2C%22exportedName%22%3A%22getAuthorsList%22%7D%2C%7B%22id%22%3A%22402993cd93246ba0b0e053540112b5b226a51ae591%22%2C%22exportedName%22%3A%22getAuthorDetail%22%7D%2C%7B%22id%22%3A%224065325f9fdcd77b4580927930f0ea0eb55170d5c3%22%2C%22exportedName%22%3A%22deleteExistingAuthor%22%7D%2C%7B%22id%22%3A%2240affecd5a96ff0138771e0d7974f1de7d4da392f8%22%2C%22exportedName%22%3A%22createNewAuthor%22%7D%2C%7B%22id%22%3A%22601c4860b44fe99d72c5e53af76c2f2bd343c48fc9%22%2C%22exportedName%22%3A%22updateExistingAuthor%22%7D%5D%5D%5D&__client_imported__=!",
+        "app/journals/page": {
+          "moduleId": "(action-browser)/./node_modules/next/dist/build/webpack/loaders/next-flight-action-entry-loader.js?actions=%5B%5B%22%2FUsers%2Ftarun%2FProjects%2Fbusiness%2Fojlp-re%2Flib%2Factions%2Fnotification-actions.ts%22%2C%5B%7B%22id%22%3A%22002ea02c8ac11d225ab15aeb5147973fa03678a897%22%2C%22exportedName%22%3A%22getHighPriorityNotifications%22%7D%2C%7B%22id%22%3A%22006412eb5aec83e5e4257ca5f4a4720915d0b0e39d%22%2C%22exportedName%22%3A%22getAllNotifications%22%7D%2C%7B%22id%22%3A%224055ea384c2c3702ac7438c43b6cf8950ffb0b8cfb%22%2C%22exportedName%22%3A%22markNotificationAsRead%22%7D%5D%5D%5D&__client_imported__=true!",
+          "async": false
+        },
+        "app/journals/[slug]/page": {
+          "moduleId": "(action-browser)/./node_modules/next/dist/build/webpack/loaders/next-flight-action-entry-loader.js?actions=%5B%5B%22%2FUsers%2Ftarun%2FProjects%2Fbusiness%2Fojlp-re%2Flib%2Factions%2Fnotification-actions.ts%22%2C%5B%7B%22id%22%3A%22002ea02c8ac11d225ab15aeb5147973fa03678a897%22%2C%22exportedName%22%3A%22getHighPriorityNotifications%22%7D%2C%7B%22id%22%3A%22006412eb5aec83e5e4257ca5f4a4720915d0b0e39d%22%2C%22exportedName%22%3A%22getAllNotifications%22%7D%2C%7B%22id%22%3A%224055ea384c2c3702ac7438c43b6cf8950ffb0b8cfb%22%2C%22exportedName%22%3A%22markNotificationAsRead%22%7D%5D%5D%5D&__client_imported__=true!",
+          "async": false
+        },
+        "app/admin/login/page": {
+          "moduleId": "(action-browser)/./node_modules/next/dist/build/webpack/loaders/next-flight-action-entry-loader.js?actions=%5B%5B%22%2FUsers%2Ftarun%2FProjects%2Fbusiness%2Fojlp-re%2Flib%2Factions%2Fnotification-actions.ts%22%2C%5B%7B%22id%22%3A%22002ea02c8ac11d225ab15aeb5147973fa03678a897%22%2C%22exportedName%22%3A%22getHighPriorityNotifications%22%7D%2C%7B%22id%22%3A%22006412eb5aec83e5e4257ca5f4a4720915d0b0e39d%22%2C%22exportedName%22%3A%22getAllNotifications%22%7D%2C%7B%22id%22%3A%224055ea384c2c3702ac7438c43b6cf8950ffb0b8cfb%22%2C%22exportedName%22%3A%22markNotificationAsRead%22%7D%5D%5D%5D&__client_imported__=true!",
+          "async": false
+        },
+        "app/about/page": {
+          "moduleId": "(action-browser)/./node_modules/next/dist/build/webpack/loaders/next-flight-action-entry-loader.js?actions=%5B%5B%22%2FUsers%2Ftarun%2FProjects%2Fbusiness%2Fojlp-re%2Flib%2Factions%2Fnotification-actions.ts%22%2C%5B%7B%22id%22%3A%22002ea02c8ac11d225ab15aeb5147973fa03678a897%22%2C%22exportedName%22%3A%22getHighPriorityNotifications%22%7D%2C%7B%22id%22%3A%22006412eb5aec83e5e4257ca5f4a4720915d0b0e39d%22%2C%22exportedName%22%3A%22getAllNotifications%22%7D%2C%7B%22id%22%3A%224055ea384c2c3702ac7438c43b6cf8950ffb0b8cfb%22%2C%22exportedName%22%3A%22markNotificationAsRead%22%7D%5D%5D%5D&__client_imported__=true!",
+          "async": false
+        },
+        "app/submit/page": {
+          "moduleId": "(action-browser)/./node_modules/next/dist/build/webpack/loaders/next-flight-action-entry-loader.js?actions=%5B%5B%22%2FUsers%2Ftarun%2FProjects%2Fbusiness%2Fojlp-re%2Flib%2Factions%2Fnotification-actions.ts%22%2C%5B%7B%22id%22%3A%22002ea02c8ac11d225ab15aeb5147973fa03678a897%22%2C%22exportedName%22%3A%22getHighPriorityNotifications%22%7D%2C%7B%22id%22%3A%22006412eb5aec83e5e4257ca5f4a4720915d0b0e39d%22%2C%22exportedName%22%3A%22getAllNotifications%22%7D%2C%7B%22id%22%3A%224055ea384c2c3702ac7438c43b6cf8950ffb0b8cfb%22%2C%22exportedName%22%3A%22markNotificationAsRead%22%7D%5D%5D%5D&__client_imported__=true!",
+          "async": false
+        },
+        "app/contact/page": {
+          "moduleId": "(action-browser)/./node_modules/next/dist/build/webpack/loaders/next-flight-action-entry-loader.js?actions=%5B%5B%22%2FUsers%2Ftarun%2FProjects%2Fbusiness%2Fojlp-re%2Flib%2Factions%2Fnotification-actions.ts%22%2C%5B%7B%22id%22%3A%22002ea02c8ac11d225ab15aeb5147973fa03678a897%22%2C%22exportedName%22%3A%22getHighPriorityNotifications%22%7D%2C%7B%22id%22%3A%22006412eb5aec83e5e4257ca5f4a4720915d0b0e39d%22%2C%22exportedName%22%3A%22getAllNotifications%22%7D%2C%7B%22id%22%3A%224055ea384c2c3702ac7438c43b6cf8950ffb0b8cfb%22%2C%22exportedName%22%3A%22markNotificationAsRead%22%7D%5D%5D%5D&__client_imported__=true!",
+          "async": false
+        },
+        "app/journals/archive/page": {
+          "moduleId": "(action-browser)/./node_modules/next/dist/build/webpack/loaders/next-flight-action-entry-loader.js?actions=%5B%5B%22%2FUsers%2Ftarun%2FProjects%2Fbusiness%2Fojlp-re%2Flib%2Factions%2Fnotification-actions.ts%22%2C%5B%7B%22id%22%3A%22002ea02c8ac11d225ab15aeb5147973fa03678a897%22%2C%22exportedName%22%3A%22getHighPriorityNotifications%22%7D%2C%7B%22id%22%3A%22006412eb5aec83e5e4257ca5f4a4720915d0b0e39d%22%2C%22exportedName%22%3A%22getAllNotifications%22%7D%2C%7B%22id%22%3A%224055ea384c2c3702ac7438c43b6cf8950ffb0b8cfb%22%2C%22exportedName%22%3A%22markNotificationAsRead%22%7D%5D%5D%5D&__client_imported__=true!",
+          "async": false
+        },
+        "app/editorial-board/page": {
+          "moduleId": "(action-browser)/./node_modules/next/dist/build/webpack/loaders/next-flight-action-entry-loader.js?actions=%5B%5B%22%2FUsers%2Ftarun%2FProjects%2Fbusiness%2Fojlp-re%2Flib%2Factions%2Fnotification-actions.ts%22%2C%5B%7B%22id%22%3A%22002ea02c8ac11d225ab15aeb5147973fa03678a897%22%2C%22exportedName%22%3A%22getHighPriorityNotifications%22%7D%2C%7B%22id%22%3A%22006412eb5aec83e5e4257ca5f4a4720915d0b0e39d%22%2C%22exportedName%22%3A%22getAllNotifications%22%7D%2C%7B%22id%22%3A%224055ea384c2c3702ac7438c43b6cf8950ffb0b8cfb%22%2C%22exportedName%22%3A%22markNotificationAsRead%22%7D%5D%5D%2C%5B%22%2FUsers%2Ftarun%2FProjects%2Fbusiness%2Fojlp-re%2Flib%2Factions%2Feditorial-board-actions.ts%22%2C%5B%7B%22id%22%3A%2200b9f51393787848acd3daf01b15686a012cde32bf%22%2C%22exportedName%22%3A%22getEditorialBoard%22%7D%2C%7B%22id%22%3A%2240418e33b258547c29d0d0a511a83d247326f4d72e%22%2C%22exportedName%22%3A%22getEditorialBoardMember%22%7D%2C%7B%22id%22%3A%22404c0ed046fa8d230d110356610ced19ac6ff0136e%22%2C%22exportedName%22%3A%22createBoardMember%22%7D%2C%7B%22id%22%3A%22409b7e464306434dfaddf4dbe9aa64721ca8e4a7c7%22%2C%22exportedName%22%3A%22deleteBoardMember%22%7D%2C%7B%22id%22%3A%2240a7ff5633f9dfcd3a47030b7d319f5b7056520715%22%2C%22exportedName%22%3A%22reorderBoardMembers%22%7D%2C%7B%22id%22%3A%22606ba3b1bb6fd67772bd6066a6a04bdc71c93ba7e8%22%2C%22exportedName%22%3A%22updateBoardMember%22%7D%5D%5D%5D&__client_imported__=true!",
+          "async": false
+        },
+        "app/board-of-advisors/page": {
+          "moduleId": "(action-browser)/./node_modules/next/dist/build/webpack/loaders/next-flight-action-entry-loader.js?actions=%5B%5B%22%2FUsers%2Ftarun%2FProjects%2Fbusiness%2Fojlp-re%2Flib%2Factions%2Fnotification-actions.ts%22%2C%5B%7B%22id%22%3A%22002ea02c8ac11d225ab15aeb5147973fa03678a897%22%2C%22exportedName%22%3A%22getHighPriorityNotifications%22%7D%2C%7B%22id%22%3A%22006412eb5aec83e5e4257ca5f4a4720915d0b0e39d%22%2C%22exportedName%22%3A%22getAllNotifications%22%7D%2C%7B%22id%22%3A%224055ea384c2c3702ac7438c43b6cf8950ffb0b8cfb%22%2C%22exportedName%22%3A%22markNotificationAsRead%22%7D%5D%5D%2C%5B%22%2FUsers%2Ftarun%2FProjects%2Fbusiness%2Fojlp-re%2Flib%2Factions%2Feditorial-board-actions.ts%22%2C%5B%7B%22id%22%3A%2200b9f51393787848acd3daf01b15686a012cde32bf%22%2C%22exportedName%22%3A%22getEditorialBoard%22%7D%2C%7B%22id%22%3A%2240418e33b258547c29d0d0a511a83d247326f4d72e%22%2C%22exportedName%22%3A%22getEditorialBoardMember%22%7D%2C%7B%22id%22%3A%22404c0ed046fa8d230d110356610ced19ac6ff0136e%22%2C%22exportedName%22%3A%22createBoardMember%22%7D%2C%7B%22id%22%3A%22409b7e464306434dfaddf4dbe9aa64721ca8e4a7c7%22%2C%22exportedName%22%3A%22deleteBoardMember%22%7D%2C%7B%22id%22%3A%2240a7ff5633f9dfcd3a47030b7d319f5b7056520715%22%2C%22exportedName%22%3A%22reorderBoardMembers%22%7D%2C%7B%22id%22%3A%22606ba3b1bb6fd67772bd6066a6a04bdc71c93ba7e8%22%2C%22exportedName%22%3A%22updateBoardMember%22%7D%5D%5D%5D&__client_imported__=true!",
+          "async": false
+        },
+        "app/page": {
+          "moduleId": "(action-browser)/./node_modules/next/dist/build/webpack/loaders/next-flight-action-entry-loader.js?actions=%5B%5B%22%2FUsers%2Ftarun%2FProjects%2Fbusiness%2Fojlp-re%2Flib%2Factions%2Fnotification-actions.ts%22%2C%5B%7B%22id%22%3A%22002ea02c8ac11d225ab15aeb5147973fa03678a897%22%2C%22exportedName%22%3A%22getHighPriorityNotifications%22%7D%2C%7B%22id%22%3A%22006412eb5aec83e5e4257ca5f4a4720915d0b0e39d%22%2C%22exportedName%22%3A%22getAllNotifications%22%7D%2C%7B%22id%22%3A%224055ea384c2c3702ac7438c43b6cf8950ffb0b8cfb%22%2C%22exportedName%22%3A%22markNotificationAsRead%22%7D%5D%5D%5D&__client_imported__=true!",
+          "async": false
+        },
+        "app/journals/call-for-papers/page": {
+          "moduleId": "(action-browser)/./node_modules/next/dist/build/webpack/loaders/next-flight-action-entry-loader.js?actions=%5B%5B%22%2FUsers%2Ftarun%2FProjects%2Fbusiness%2Fojlp-re%2Flib%2Factions%2Fnotification-actions.ts%22%2C%5B%7B%22id%22%3A%22002ea02c8ac11d225ab15aeb5147973fa03678a897%22%2C%22exportedName%22%3A%22getHighPriorityNotifications%22%7D%2C%7B%22id%22%3A%22006412eb5aec83e5e4257ca5f4a4720915d0b0e39d%22%2C%22exportedName%22%3A%22getAllNotifications%22%7D%2C%7B%22id%22%3A%224055ea384c2c3702ac7438c43b6cf8950ffb0b8cfb%22%2C%22exportedName%22%3A%22markNotificationAsRead%22%7D%5D%5D%5D&__client_imported__=true!",
           "async": false
         }
       },
       "layer": {
-        "app/admin/authors/page": "rsc"
+        "app/journals/page": "action-browser",
+        "app/journals/[slug]/page": "action-browser",
+        "app/admin/login/page": "action-browser",
+        "app/about/page": "action-browser",
+        "app/submit/page": "action-browser",
+        "app/contact/page": "action-browser",
+        "app/journals/archive/page": "action-browser",
+        "app/editorial-board/page": "action-browser",
+        "app/board-of-advisors/page": "action-browser",
+        "app/page": "action-browser",
+        "app/journals/call-for-papers/page": "action-browser"
       }
     },
-    "40affecd5a96ff0138771e0d7974f1de7d4da392f8": {
+    "00b9f51393787848acd3daf01b15686a012cde32bf": {
       "workers": {
-        "app/admin/authors/page": {
-          "moduleId": "(rsc)/./node_modules/next/dist/build/webpack/loaders/next-flight-action-entry-loader.js?actions=%5B%5B%22%2FUsers%2Ftarun%2FProjects%2Fbusiness%2Fojlp-re%2Flib%2Factions%2Fauthor-actions.ts%22%2C%5B%7B%22id%22%3A%2200422c54fd4309a8b03aa26254f521b484a58d3766%22%2C%22exportedName%22%3A%22getAuthorsList%22%7D%2C%7B%22id%22%3A%22402993cd93246ba0b0e053540112b5b226a51ae591%22%2C%22exportedName%22%3A%22getAuthorDetail%22%7D%2C%7B%22id%22%3A%224065325f9fdcd77b4580927930f0ea0eb55170d5c3%22%2C%22exportedName%22%3A%22deleteExistingAuthor%22%7D%2C%7B%22id%22%3A%2240affecd5a96ff0138771e0d7974f1de7d4da392f8%22%2C%22exportedName%22%3A%22createNewAuthor%22%7D%2C%7B%22id%22%3A%22601c4860b44fe99d72c5e53af76c2f2bd343c48fc9%22%2C%22exportedName%22%3A%22updateExistingAuthor%22%7D%5D%5D%5D&__client_imported__=!",
+        "app/editorial-board/page": {
+          "moduleId": "(action-browser)/./node_modules/next/dist/build/webpack/loaders/next-flight-action-entry-loader.js?actions=%5B%5B%22%2FUsers%2Ftarun%2FProjects%2Fbusiness%2Fojlp-re%2Flib%2Factions%2Fnotification-actions.ts%22%2C%5B%7B%22id%22%3A%22002ea02c8ac11d225ab15aeb5147973fa03678a897%22%2C%22exportedName%22%3A%22getHighPriorityNotifications%22%7D%2C%7B%22id%22%3A%22006412eb5aec83e5e4257ca5f4a4720915d0b0e39d%22%2C%22exportedName%22%3A%22getAllNotifications%22%7D%2C%7B%22id%22%3A%224055ea384c2c3702ac7438c43b6cf8950ffb0b8cfb%22%2C%22exportedName%22%3A%22markNotificationAsRead%22%7D%5D%5D%2C%5B%22%2FUsers%2Ftarun%2FProjects%2Fbusiness%2Fojlp-re%2Flib%2Factions%2Feditorial-board-actions.ts%22%2C%5B%7B%22id%22%3A%2200b9f51393787848acd3daf01b15686a012cde32bf%22%2C%22exportedName%22%3A%22getEditorialBoard%22%7D%2C%7B%22id%22%3A%2240418e33b258547c29d0d0a511a83d247326f4d72e%22%2C%22exportedName%22%3A%22getEditorialBoardMember%22%7D%2C%7B%22id%22%3A%22404c0ed046fa8d230d110356610ced19ac6ff0136e%22%2C%22exportedName%22%3A%22createBoardMember%22%7D%2C%7B%22id%22%3A%22409b7e464306434dfaddf4dbe9aa64721ca8e4a7c7%22%2C%22exportedName%22%3A%22deleteBoardMember%22%7D%2C%7B%22id%22%3A%2240a7ff5633f9dfcd3a47030b7d319f5b7056520715%22%2C%22exportedName%22%3A%22reorderBoardMembers%22%7D%2C%7B%22id%22%3A%22606ba3b1bb6fd67772bd6066a6a04bdc71c93ba7e8%22%2C%22exportedName%22%3A%22updateBoardMember%22%7D%5D%5D%5D&__client_imported__=true!",
+          "async": false
+        },
+        "app/board-of-advisors/page": {
+          "moduleId": "(action-browser)/./node_modules/next/dist/build/webpack/loaders/next-flight-action-entry-loader.js?actions=%5B%5B%22%2FUsers%2Ftarun%2FProjects%2Fbusiness%2Fojlp-re%2Flib%2Factions%2Fnotification-actions.ts%22%2C%5B%7B%22id%22%3A%22002ea02c8ac11d225ab15aeb5147973fa03678a897%22%2C%22exportedName%22%3A%22getHighPriorityNotifications%22%7D%2C%7B%22id%22%3A%22006412eb5aec83e5e4257ca5f4a4720915d0b0e39d%22%2C%22exportedName%22%3A%22getAllNotifications%22%7D%2C%7B%22id%22%3A%224055ea384c2c3702ac7438c43b6cf8950ffb0b8cfb%22%2C%22exportedName%22%3A%22markNotificationAsRead%22%7D%5D%5D%2C%5B%22%2FUsers%2Ftarun%2FProjects%2Fbusiness%2Fojlp-re%2Flib%2Factions%2Feditorial-board-actions.ts%22%2C%5B%7B%22id%22%3A%2200b9f51393787848acd3daf01b15686a012cde32bf%22%2C%22exportedName%22%3A%22getEditorialBoard%22%7D%2C%7B%22id%22%3A%2240418e33b258547c29d0d0a511a83d247326f4d72e%22%2C%22exportedName%22%3A%22getEditorialBoardMember%22%7D%2C%7B%22id%22%3A%22404c0ed046fa8d230d110356610ced19ac6ff0136e%22%2C%22exportedName%22%3A%22createBoardMember%22%7D%2C%7B%22id%22%3A%22409b7e464306434dfaddf4dbe9aa64721ca8e4a7c7%22%2C%22exportedName%22%3A%22deleteBoardMember%22%7D%2C%7B%22id%22%3A%2240a7ff5633f9dfcd3a47030b7d319f5b7056520715%22%2C%22exportedName%22%3A%22reorderBoardMembers%22%7D%2C%7B%22id%22%3A%22606ba3b1bb6fd67772bd6066a6a04bdc71c93ba7e8%22%2C%22exportedName%22%3A%22updateBoardMember%22%7D%5D%5D%5D&__client_imported__=true!",
           "async": false
         }
       },
       "layer": {
-        "app/admin/authors/page": "rsc"
+        "app/editorial-board/page": "action-browser",
+        "app/board-of-advisors/page": "action-browser"
       }
     },
-    "601c4860b44fe99d72c5e53af76c2f2bd343c48fc9": {
+    "40418e33b258547c29d0d0a511a83d247326f4d72e": {
       "workers": {
-        "app/admin/authors/page": {
-          "moduleId": "(rsc)/./node_modules/next/dist/build/webpack/loaders/next-flight-action-entry-loader.js?actions=%5B%5B%22%2FUsers%2Ftarun%2FProjects%2Fbusiness%2Fojlp-re%2Flib%2Factions%2Fauthor-actions.ts%22%2C%5B%7B%22id%22%3A%2200422c54fd4309a8b03aa26254f521b484a58d3766%22%2C%22exportedName%22%3A%22getAuthorsList%22%7D%2C%7B%22id%22%3A%22402993cd93246ba0b0e053540112b5b226a51ae591%22%2C%22exportedName%22%3A%22getAuthorDetail%22%7D%2C%7B%22id%22%3A%224065325f9fdcd77b4580927930f0ea0eb55170d5c3%22%2C%22exportedName%22%3A%22deleteExistingAuthor%22%7D%2C%7B%22id%22%3A%2240affecd5a96ff0138771e0d7974f1de7d4da392f8%22%2C%22exportedName%22%3A%22createNewAuthor%22%7D%2C%7B%22id%22%3A%22601c4860b44fe99d72c5e53af76c2f2bd343c48fc9%22%2C%22exportedName%22%3A%22updateExistingAuthor%22%7D%5D%5D%5D&__client_imported__=!",
+        "app/editorial-board/page": {
+          "moduleId": "(action-browser)/./node_modules/next/dist/build/webpack/loaders/next-flight-action-entry-loader.js?actions=%5B%5B%22%2FUsers%2Ftarun%2FProjects%2Fbusiness%2Fojlp-re%2Flib%2Factions%2Fnotification-actions.ts%22%2C%5B%7B%22id%22%3A%22002ea02c8ac11d225ab15aeb5147973fa03678a897%22%2C%22exportedName%22%3A%22getHighPriorityNotifications%22%7D%2C%7B%22id%22%3A%22006412eb5aec83e5e4257ca5f4a4720915d0b0e39d%22%2C%22exportedName%22%3A%22getAllNotifications%22%7D%2C%7B%22id%22%3A%224055ea384c2c3702ac7438c43b6cf8950ffb0b8cfb%22%2C%22exportedName%22%3A%22markNotificationAsRead%22%7D%5D%5D%2C%5B%22%2FUsers%2Ftarun%2FProjects%2Fbusiness%2Fojlp-re%2Flib%2Factions%2Feditorial-board-actions.ts%22%2C%5B%7B%22id%22%3A%2200b9f51393787848acd3daf01b15686a012cde32bf%22%2C%22exportedName%22%3A%22getEditorialBoard%22%7D%2C%7B%22id%22%3A%2240418e33b258547c29d0d0a511a83d247326f4d72e%22%2C%22exportedName%22%3A%22getEditorialBoardMember%22%7D%2C%7B%22id%22%3A%22404c0ed046fa8d230d110356610ced19ac6ff0136e%22%2C%22exportedName%22%3A%22createBoardMember%22%7D%2C%7B%22id%22%3A%22409b7e464306434dfaddf4dbe9aa64721ca8e4a7c7%22%2C%22exportedName%22%3A%22deleteBoardMember%22%7D%2C%7B%22id%22%3A%2240a7ff5633f9dfcd3a47030b7d319f5b7056520715%22%2C%22exportedName%22%3A%22reorderBoardMembers%22%7D%2C%7B%22id%22%3A%22606ba3b1bb6fd67772bd6066a6a04bdc71c93ba7e8%22%2C%22exportedName%22%3A%22updateBoardMember%22%7D%5D%5D%5D&__client_imported__=true!",
+          "async": false
+        },
+        "app/board-of-advisors/page": {
+          "moduleId": "(action-browser)/./node_modules/next/dist/build/webpack/loaders/next-flight-action-entry-loader.js?actions=%5B%5B%22%2FUsers%2Ftarun%2FProjects%2Fbusiness%2Fojlp-re%2Flib%2Factions%2Fnotification-actions.ts%22%2C%5B%7B%22id%22%3A%22002ea02c8ac11d225ab15aeb5147973fa03678a897%22%2C%22exportedName%22%3A%22getHighPriorityNotifications%22%7D%2C%7B%22id%22%3A%22006412eb5aec83e5e4257ca5f4a4720915d0b0e39d%22%2C%22exportedName%22%3A%22getAllNotifications%22%7D%2C%7B%22id%22%3A%224055ea384c2c3702ac7438c43b6cf8950ffb0b8cfb%22%2C%22exportedName%22%3A%22markNotificationAsRead%22%7D%5D%5D%2C%5B%22%2FUsers%2Ftarun%2FProjects%2Fbusiness%2Fojlp-re%2Flib%2Factions%2Feditorial-board-actions.ts%22%2C%5B%7B%22id%22%3A%2200b9f51393787848acd3daf01b15686a012cde32bf%22%2C%22exportedName%22%3A%22getEditorialBoard%22%7D%2C%7B%22id%22%3A%2240418e33b258547c29d0d0a511a83d247326f4d72e%22%2C%22exportedName%22%3A%22getEditorialBoardMember%22%7D%2C%7B%22id%22%3A%22404c0ed046fa8d230d110356610ced19ac6ff0136e%22%2C%22exportedName%22%3A%22createBoardMember%22%7D%2C%7B%22id%22%3A%22409b7e464306434dfaddf4dbe9aa64721ca8e4a7c7%22%2C%22exportedName%22%3A%22deleteBoardMember%22%7D%2C%7B%22id%22%3A%2240a7ff5633f9dfcd3a47030b7d319f5b7056520715%22%2C%22exportedName%22%3A%22reorderBoardMembers%22%7D%2C%7B%22id%22%3A%22606ba3b1bb6fd67772bd6066a6a04bdc71c93ba7e8%22%2C%22exportedName%22%3A%22updateBoardMember%22%7D%5D%5D%5D&__client_imported__=true!",
           "async": false
         }
       },
       "layer": {
-        "app/admin/authors/page": "rsc"
+        "app/editorial-board/page": "action-browser",
+        "app/board-of-advisors/page": "action-browser"
+      }
+    },
+    "404c0ed046fa8d230d110356610ced19ac6ff0136e": {
+      "workers": {
+        "app/editorial-board/page": {
+          "moduleId": "(action-browser)/./node_modules/next/dist/build/webpack/loaders/next-flight-action-entry-loader.js?actions=%5B%5B%22%2FUsers%2Ftarun%2FProjects%2Fbusiness%2Fojlp-re%2Flib%2Factions%2Fnotification-actions.ts%22%2C%5B%7B%22id%22%3A%22002ea02c8ac11d225ab15aeb5147973fa03678a897%22%2C%22exportedName%22%3A%22getHighPriorityNotifications%22%7D%2C%7B%22id%22%3A%22006412eb5aec83e5e4257ca5f4a4720915d0b0e39d%22%2C%22exportedName%22%3A%22getAllNotifications%22%7D%2C%7B%22id%22%3A%224055ea384c2c3702ac7438c43b6cf8950ffb0b8cfb%22%2C%22exportedName%22%3A%22markNotificationAsRead%22%7D%5D%5D%2C%5B%22%2FUsers%2Ftarun%2FProjects%2Fbusiness%2Fojlp-re%2Flib%2Factions%2Feditorial-board-actions.ts%22%2C%5B%7B%22id%22%3A%2200b9f51393787848acd3daf01b15686a012cde32bf%22%2C%22exportedName%22%3A%22getEditorialBoard%22%7D%2C%7B%22id%22%3A%2240418e33b258547c29d0d0a511a83d247326f4d72e%22%2C%22exportedName%22%3A%22getEditorialBoardMember%22%7D%2C%7B%22id%22%3A%22404c0ed046fa8d230d110356610ced19ac6ff0136e%22%2C%22exportedName%22%3A%22createBoardMember%22%7D%2C%7B%22id%22%3A%22409b7e464306434dfaddf4dbe9aa64721ca8e4a7c7%22%2C%22exportedName%22%3A%22deleteBoardMember%22%7D%2C%7B%22id%22%3A%2240a7ff5633f9dfcd3a47030b7d319f5b7056520715%22%2C%22exportedName%22%3A%22reorderBoardMembers%22%7D%2C%7B%22id%22%3A%22606ba3b1bb6fd67772bd6066a6a04bdc71c93ba7e8%22%2C%22exportedName%22%3A%22updateBoardMember%22%7D%5D%5D%5D&__client_imported__=true!",
+          "async": false
+        },
+        "app/board-of-advisors/page": {
+          "moduleId": "(action-browser)/./node_modules/next/dist/build/webpack/loaders/next-flight-action-entry-loader.js?actions=%5B%5B%22%2FUsers%2Ftarun%2FProjects%2Fbusiness%2Fojlp-re%2Flib%2Factions%2Fnotification-actions.ts%22%2C%5B%7B%22id%22%3A%22002ea02c8ac11d225ab15aeb5147973fa03678a897%22%2C%22exportedName%22%3A%22getHighPriorityNotifications%22%7D%2C%7B%22id%22%3A%22006412eb5aec83e5e4257ca5f4a4720915d0b0e39d%22%2C%22exportedName%22%3A%22getAllNotifications%22%7D%2C%7B%22id%22%3A%224055ea384c2c3702ac7438c43b6cf8950ffb0b8cfb%22%2C%22exportedName%22%3A%22markNotificationAsRead%22%7D%5D%5D%2C%5B%22%2FUsers%2Ftarun%2FProjects%2Fbusiness%2Fojlp-re%2Flib%2Factions%2Feditorial-board-actions.ts%22%2C%5B%7B%22id%22%3A%2200b9f51393787848acd3daf01b15686a012cde32bf%22%2C%22exportedName%22%3A%22getEditorialBoard%22%7D%2C%7B%22id%22%3A%2240418e33b258547c29d0d0a511a83d247326f4d72e%22%2C%22exportedName%22%3A%22getEditorialBoardMember%22%7D%2C%7B%22id%22%3A%22404c0ed046fa8d230d110356610ced19ac6ff0136e%22%2C%22exportedName%22%3A%22createBoardMember%22%7D%2C%7B%22id%22%3A%22409b7e464306434dfaddf4dbe9aa64721ca8e4a7c7%22%2C%22exportedName%22%3A%22deleteBoardMember%22%7D%2C%7B%22id%22%3A%2240a7ff5633f9dfcd3a47030b7d319f5b7056520715%22%2C%22exportedName%22%3A%22reorderBoardMembers%22%7D%2C%7B%22id%22%3A%22606ba3b1bb6fd67772bd6066a6a04bdc71c93ba7e8%22%2C%22exportedName%22%3A%22updateBoardMember%22%7D%5D%5D%5D&__client_imported__=true!",
+          "async": false
+        }
+      },
+      "layer": {
+        "app/editorial-board/page": "action-browser",
+        "app/board-of-advisors/page": "action-browser"
+      }
+    },
+    "409b7e464306434dfaddf4dbe9aa64721ca8e4a7c7": {
+      "workers": {
+        "app/editorial-board/page": {
+          "moduleId": "(action-browser)/./node_modules/next/dist/build/webpack/loaders/next-flight-action-entry-loader.js?actions=%5B%5B%22%2FUsers%2Ftarun%2FProjects%2Fbusiness%2Fojlp-re%2Flib%2Factions%2Fnotification-actions.ts%22%2C%5B%7B%22id%22%3A%22002ea02c8ac11d225ab15aeb5147973fa03678a897%22%2C%22exportedName%22%3A%22getHighPriorityNotifications%22%7D%2C%7B%22id%22%3A%22006412eb5aec83e5e4257ca5f4a4720915d0b0e39d%22%2C%22exportedName%22%3A%22getAllNotifications%22%7D%2C%7B%22id%22%3A%224055ea384c2c3702ac7438c43b6cf8950ffb0b8cfb%22%2C%22exportedName%22%3A%22markNotificationAsRead%22%7D%5D%5D%2C%5B%22%2FUsers%2Ftarun%2FProjects%2Fbusiness%2Fojlp-re%2Flib%2Factions%2Feditorial-board-actions.ts%22%2C%5B%7B%22id%22%3A%2200b9f51393787848acd3daf01b15686a012cde32bf%22%2C%22exportedName%22%3A%22getEditorialBoard%22%7D%2C%7B%22id%22%3A%2240418e33b258547c29d0d0a511a83d247326f4d72e%22%2C%22exportedName%22%3A%22getEditorialBoardMember%22%7D%2C%7B%22id%22%3A%22404c0ed046fa8d230d110356610ced19ac6ff0136e%22%2C%22exportedName%22%3A%22createBoardMember%22%7D%2C%7B%22id%22%3A%22409b7e464306434dfaddf4dbe9aa64721ca8e4a7c7%22%2C%22exportedName%22%3A%22deleteBoardMember%22%7D%2C%7B%22id%22%3A%2240a7ff5633f9dfcd3a47030b7d319f5b7056520715%22%2C%22exportedName%22%3A%22reorderBoardMembers%22%7D%2C%7B%22id%22%3A%22606ba3b1bb6fd67772bd6066a6a04bdc71c93ba7e8%22%2C%22exportedName%22%3A%22updateBoardMember%22%7D%5D%5D%5D&__client_imported__=true!",
+          "async": false
+        },
+        "app/board-of-advisors/page": {
+          "moduleId": "(action-browser)/./node_modules/next/dist/build/webpack/loaders/next-flight-action-entry-loader.js?actions=%5B%5B%22%2FUsers%2Ftarun%2FProjects%2Fbusiness%2Fojlp-re%2Flib%2Factions%2Fnotification-actions.ts%22%2C%5B%7B%22id%22%3A%22002ea02c8ac11d225ab15aeb5147973fa03678a897%22%2C%22exportedName%22%3A%22getHighPriorityNotifications%22%7D%2C%7B%22id%22%3A%22006412eb5aec83e5e4257ca5f4a4720915d0b0e39d%22%2C%22exportedName%22%3A%22getAllNotifications%22%7D%2C%7B%22id%22%3A%224055ea384c2c3702ac7438c43b6cf8950ffb0b8cfb%22%2C%22exportedName%22%3A%22markNotificationAsRead%22%7D%5D%5D%2C%5B%22%2FUsers%2Ftarun%2FProjects%2Fbusiness%2Fojlp-re%2Flib%2Factions%2Feditorial-board-actions.ts%22%2C%5B%7B%22id%22%3A%2200b9f51393787848acd3daf01b15686a012cde32bf%22%2C%22exportedName%22%3A%22getEditorialBoard%22%7D%2C%7B%22id%22%3A%2240418e33b258547c29d0d0a511a83d247326f4d72e%22%2C%22exportedName%22%3A%22getEditorialBoardMember%22%7D%2C%7B%22id%22%3A%22404c0ed046fa8d230d110356610ced19ac6ff0136e%22%2C%22exportedName%22%3A%22createBoardMember%22%7D%2C%7B%22id%22%3A%22409b7e464306434dfaddf4dbe9aa64721ca8e4a7c7%22%2C%22exportedName%22%3A%22deleteBoardMember%22%7D%2C%7B%22id%22%3A%2240a7ff5633f9dfcd3a47030b7d319f5b7056520715%22%2C%22exportedName%22%3A%22reorderBoardMembers%22%7D%2C%7B%22id%22%3A%22606ba3b1bb6fd67772bd6066a6a04bdc71c93ba7e8%22%2C%22exportedName%22%3A%22updateBoardMember%22%7D%5D%5D%5D&__client_imported__=true!",
+          "async": false
+        }
+      },
+      "layer": {
+        "app/editorial-board/page": "action-browser",
+        "app/board-of-advisors/page": "action-browser"
+      }
+    },
+    "40a7ff5633f9dfcd3a47030b7d319f5b7056520715": {
+      "workers": {
+        "app/editorial-board/page": {
+          "moduleId": "(action-browser)/./node_modules/next/dist/build/webpack/loaders/next-flight-action-entry-loader.js?actions=%5B%5B%22%2FUsers%2Ftarun%2FProjects%2Fbusiness%2Fojlp-re%2Flib%2Factions%2Fnotification-actions.ts%22%2C%5B%7B%22id%22%3A%22002ea02c8ac11d225ab15aeb5147973fa03678a897%22%2C%22exportedName%22%3A%22getHighPriorityNotifications%22%7D%2C%7B%22id%22%3A%22006412eb5aec83e5e4257ca5f4a4720915d0b0e39d%22%2C%22exportedName%22%3A%22getAllNotifications%22%7D%2C%7B%22id%22%3A%224055ea384c2c3702ac7438c43b6cf8950ffb0b8cfb%22%2C%22exportedName%22%3A%22markNotificationAsRead%22%7D%5D%5D%2C%5B%22%2FUsers%2Ftarun%2FProjects%2Fbusiness%2Fojlp-re%2Flib%2Factions%2Feditorial-board-actions.ts%22%2C%5B%7B%22id%22%3A%2200b9f51393787848acd3daf01b15686a012cde32bf%22%2C%22exportedName%22%3A%22getEditorialBoard%22%7D%2C%7B%22id%22%3A%2240418e33b258547c29d0d0a511a83d247326f4d72e%22%2C%22exportedName%22%3A%22getEditorialBoardMember%22%7D%2C%7B%22id%22%3A%22404c0ed046fa8d230d110356610ced19ac6ff0136e%22%2C%22exportedName%22%3A%22createBoardMember%22%7D%2C%7B%22id%22%3A%22409b7e464306434dfaddf4dbe9aa64721ca8e4a7c7%22%2C%22exportedName%22%3A%22deleteBoardMember%22%7D%2C%7B%22id%22%3A%2240a7ff5633f9dfcd3a47030b7d319f5b7056520715%22%2C%22exportedName%22%3A%22reorderBoardMembers%22%7D%2C%7B%22id%22%3A%22606ba3b1bb6fd67772bd6066a6a04bdc71c93ba7e8%22%2C%22exportedName%22%3A%22updateBoardMember%22%7D%5D%5D%5D&__client_imported__=true!",
+          "async": false
+        },
+        "app/board-of-advisors/page": {
+          "moduleId": "(action-browser)/./node_modules/next/dist/build/webpack/loaders/next-flight-action-entry-loader.js?actions=%5B%5B%22%2FUsers%2Ftarun%2FProjects%2Fbusiness%2Fojlp-re%2Flib%2Factions%2Fnotification-actions.ts%22%2C%5B%7B%22id%22%3A%22002ea02c8ac11d225ab15aeb5147973fa03678a897%22%2C%22exportedName%22%3A%22getHighPriorityNotifications%22%7D%2C%7B%22id%22%3A%22006412eb5aec83e5e4257ca5f4a4720915d0b0e39d%22%2C%22exportedName%22%3A%22getAllNotifications%22%7D%2C%7B%22id%22%3A%224055ea384c2c3702ac7438c43b6cf8950ffb0b8cfb%22%2C%22exportedName%22%3A%22markNotificationAsRead%22%7D%5D%5D%2C%5B%22%2FUsers%2Ftarun%2FProjects%2Fbusiness%2Fojlp-re%2Flib%2Factions%2Feditorial-board-actions.ts%22%2C%5B%7B%22id%22%3A%2200b9f51393787848acd3daf01b15686a012cde32bf%22%2C%22exportedName%22%3A%22getEditorialBoard%22%7D%2C%7B%22id%22%3A%2240418e33b258547c29d0d0a511a83d247326f4d72e%22%2C%22exportedName%22%3A%22getEditorialBoardMember%22%7D%2C%7B%22id%22%3A%22404c0ed046fa8d230d110356610ced19ac6ff0136e%22%2C%22exportedName%22%3A%22createBoardMember%22%7D%2C%7B%22id%22%3A%22409b7e464306434dfaddf4dbe9aa64721ca8e4a7c7%22%2C%22exportedName%22%3A%22deleteBoardMember%22%7D%2C%7B%22id%22%3A%2240a7ff5633f9dfcd3a47030b7d319f5b7056520715%22%2C%22exportedName%22%3A%22reorderBoardMembers%22%7D%2C%7B%22id%22%3A%22606ba3b1bb6fd67772bd6066a6a04bdc71c93ba7e8%22%2C%22exportedName%22%3A%22updateBoardMember%22%7D%5D%5D%5D&__client_imported__=true!",
+          "async": false
+        }
+      },
+      "layer": {
+        "app/editorial-board/page": "action-browser",
+        "app/board-of-advisors/page": "action-browser"
+      }
+    },
+    "606ba3b1bb6fd67772bd6066a6a04bdc71c93ba7e8": {
+      "workers": {
+        "app/editorial-board/page": {
+          "moduleId": "(action-browser)/./node_modules/next/dist/build/webpack/loaders/next-flight-action-entry-loader.js?actions=%5B%5B%22%2FUsers%2Ftarun%2FProjects%2Fbusiness%2Fojlp-re%2Flib%2Factions%2Fnotification-actions.ts%22%2C%5B%7B%22id%22%3A%22002ea02c8ac11d225ab15aeb5147973fa03678a897%22%2C%22exportedName%22%3A%22getHighPriorityNotifications%22%7D%2C%7B%22id%22%3A%22006412eb5aec83e5e4257ca5f4a4720915d0b0e39d%22%2C%22exportedName%22%3A%22getAllNotifications%22%7D%2C%7B%22id%22%3A%224055ea384c2c3702ac7438c43b6cf8950ffb0b8cfb%22%2C%22exportedName%22%3A%22markNotificationAsRead%22%7D%5D%5D%2C%5B%22%2FUsers%2Ftarun%2FProjects%2Fbusiness%2Fojlp-re%2Flib%2Factions%2Feditorial-board-actions.ts%22%2C%5B%7B%22id%22%3A%2200b9f51393787848acd3daf01b15686a012cde32bf%22%2C%22exportedName%22%3A%22getEditorialBoard%22%7D%2C%7B%22id%22%3A%2240418e33b258547c29d0d0a511a83d247326f4d72e%22%2C%22exportedName%22%3A%22getEditorialBoardMember%22%7D%2C%7B%22id%22%3A%22404c0ed046fa8d230d110356610ced19ac6ff0136e%22%2C%22exportedName%22%3A%22createBoardMember%22%7D%2C%7B%22id%22%3A%22409b7e464306434dfaddf4dbe9aa64721ca8e4a7c7%22%2C%22exportedName%22%3A%22deleteBoardMember%22%7D%2C%7B%22id%22%3A%2240a7ff5633f9dfcd3a47030b7d319f5b7056520715%22%2C%22exportedName%22%3A%22reorderBoardMembers%22%7D%2C%7B%22id%22%3A%22606ba3b1bb6fd67772bd6066a6a04bdc71c93ba7e8%22%2C%22exportedName%22%3A%22updateBoardMember%22%7D%5D%5D%5D&__client_imported__=true!",
+          "async": false
+        },
+        "app/board-of-advisors/page": {
+          "moduleId": "(action-browser)/./node_modules/next/dist/build/webpack/loaders/next-flight-action-entry-loader.js?actions=%5B%5B%22%2FUsers%2Ftarun%2FProjects%2Fbusiness%2Fojlp-re%2Flib%2Factions%2Fnotification-actions.ts%22%2C%5B%7B%22id%22%3A%22002ea02c8ac11d225ab15aeb5147973fa03678a897%22%2C%22exportedName%22%3A%22getHighPriorityNotifications%22%7D%2C%7B%22id%22%3A%22006412eb5aec83e5e4257ca5f4a4720915d0b0e39d%22%2C%22exportedName%22%3A%22getAllNotifications%22%7D%2C%7B%22id%22%3A%224055ea384c2c3702ac7438c43b6cf8950ffb0b8cfb%22%2C%22exportedName%22%3A%22markNotificationAsRead%22%7D%5D%5D%2C%5B%22%2FUsers%2Ftarun%2FProjects%2Fbusiness%2Fojlp-re%2Flib%2Factions%2Feditorial-board-actions.ts%22%2C%5B%7B%22id%22%3A%2200b9f51393787848acd3daf01b15686a012cde32bf%22%2C%22exportedName%22%3A%22getEditorialBoard%22%7D%2C%7B%22id%22%3A%2240418e33b258547c29d0d0a511a83d247326f4d72e%22%2C%22exportedName%22%3A%22getEditorialBoardMember%22%7D%2C%7B%22id%22%3A%22404c0ed046fa8d230d110356610ced19ac6ff0136e%22%2C%22exportedName%22%3A%22createBoardMember%22%7D%2C%7B%22id%22%3A%22409b7e464306434dfaddf4dbe9aa64721ca8e4a7c7%22%2C%22exportedName%22%3A%22deleteBoardMember%22%7D%2C%7B%22id%22%3A%2240a7ff5633f9dfcd3a47030b7d319f5b7056520715%22%2C%22exportedName%22%3A%22reorderBoardMembers%22%7D%2C%7B%22id%22%3A%22606ba3b1bb6fd67772bd6066a6a04bdc71c93ba7e8%22%2C%22exportedName%22%3A%22updateBoardMember%22%7D%5D%5D%5D&__client_imported__=true!",
+          "async": false
+        }
+      },
+      "layer": {
+        "app/editorial-board/page": "action-browser",
+        "app/board-of-advisors/page": "action-browser"
       }
     },
     "00b5e170477333669609faac2b80b0cfdb324541da": {

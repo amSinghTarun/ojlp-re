@@ -160,7 +160,6 @@ export default function BoardOfAdvisorsPage() {
                   <ScrollReveal key={advisor.id}>
                     <div
                       className="border rounded-lg overflow-hidden bg-card cursor-pointer transition-all duration-300 hover:shadow-md"
-                      onClick={() => setSelectedAdvisor(advisor)}
                     >
                       {advisor.image ? (
                         <div className="relative h-48 w-full">

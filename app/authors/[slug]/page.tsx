@@ -19,9 +19,9 @@ export const revalidate = 3600 // Revalidate every hour
 export default async function AuthorPage({ params }: AuthorPageProps) {
   // UPDATED: Await params for Next.js 15
   const resolvedParams = await params
-  console.log(resolvedParams.slug)
+
   // UPDATED: Fetch author from database instead of static data
-  const author = await getAuthorBySlug(resolvedParams.slug)
+  const author = await getAuthorBySlug(decodeURIComponent(resolvedParams.slug))
   console.log(author)
   if (!author) {
     notFound()
@@ -77,8 +77,10 @@ export default async function AuthorPage({ params }: AuthorPageProps) {
 
                 {authorArticlesResult.length > 0 ? (
                   <div className="grid gap-6 sm:grid-cols-1 lg:grid-cols-2">
-                    {authorArticlesResult.map((articleRel, index) => {
-                      const article = articleRel.article
+                    {authorArticlesResult.map((article, index) => {
+                      console.log("````````````````````````````----------.............")
+                      // console.log(articleRel)
+                      // const article = articleRel.article
                       
                       // UPDATED: Handle multiple authors properly
                       const authors = article.Authors || []

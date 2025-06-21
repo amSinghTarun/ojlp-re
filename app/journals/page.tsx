@@ -1,4 +1,4 @@
-// app/journals/page.tsx - UPDATED for multiple authors
+// app/journals/page.tsx - UPDATED for multiple authors with JournalsPage100 styling
 import Link from "next/link"
 import Image from "next/image"
 import { Calendar, Clock, User, Users } from "lucide-react"
@@ -20,12 +20,17 @@ export default async function JournalsPage({ searchParams }: { searchParams: { v
 
   // If view is call-for-papers, render the call for papers content
   if (view === "call-for-papers") {
-    return redirect("/journals/call-for-papers")
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <h1 className="text-3xl font-bold mb-6">Call for Papers</h1>
+        <p>This is the call for papers page.</p>
+      </div>
+    )
   }
 
   // Otherwise, render the regular journals content or redirect to archive
   if (view === "archive") {
-    return redirect("/journals/archive")
+    redirect("/journals/archive")
   }
 
   // Default journals content
@@ -36,12 +41,21 @@ export default async function JournalsPage({ searchParams }: { searchParams: { v
       return (
         <div className="flex flex-col min-h-screen">
           <main className="flex-1">
-            <div className="container px-4 py-12 md:px-6">
+            <div className="container px-4 py-10 md:px-6">
               <div className="mb-8 animate-slide-up">
-                <DecorativeHeading level={1}>LegalInsight Journal</DecorativeHeading>
-                <p className="text-muted-foreground text-center max-w-2xl mx-auto">
-                  No journal issues available yet. Check back soon!
-                </p>
+                <DecorativeHeading level={1}>Journal</DecorativeHeading>
+                <div className="flex items-center justify-center w-full max-w-4xl mx-auto">
+                  {/* Left decorative line */}
+                  <div className="flex-1 h-px bg-gradient-to-r from-transparent via-gray-300 to-gray-300"></div>
+                  
+                  {/* Volume/Issue Info */}
+                  <div className="flex gap-2 px-8 font-medium">
+                    No Issues Available
+                  </div>
+                  
+                  {/* Right decorative line */}
+                  <div className="flex-1 h-px bg-gradient-to-l from-transparent via-gray-300 to-gray-300"></div>
+                </div>
               </div>
             </div>
           </main>
@@ -54,219 +68,105 @@ export default async function JournalsPage({ searchParams }: { searchParams: { v
     return (
       <div className="flex flex-col min-h-screen">
         <main className="flex-1">
-          <div className="container px-4 py-12 md:px-6">
+          <div className="container px-4 py-10 md:px-6">
             <div className="mb-8 animate-slide-up">
-              <DecorativeHeading level={1}>LegalInsight Journal</DecorativeHeading>
-              <p className="text-muted-foreground text-center max-w-2xl mx-auto">
-                Scholarly articles and analysis on constitutional law and legal developments.
-              </p>
+              <DecorativeHeading level={1}>Journal</DecorativeHeading>
+              <div className="flex items-center justify-center w-full max-w-4xl mx-auto">
+                {/* Left decorative line */}
+                <div className="flex-1 h-px bg-gradient-to-r from-transparent via-gray-300 to-gray-300"></div>
+                
+                {/* Volume/Issue Info */}
+                <div className="flex gap-2 px-8 font-medium">
+                  VOLUME {latestIssue.volume}, ISSUE {latestIssue.issue} ({latestIssue.year})
+                </div>
+                
+                {/* Right decorative line */}
+                <div className="flex-1 h-px bg-gradient-to-l from-transparent via-gray-300 to-gray-300"></div>
+              </div>
             </div>
 
             <div className="space-y-8">
-              <div className="grid gap-6 md:grid-cols-3">
-                <div className="md:col-span-1">
-                  <Card>
-                    <div className="relative aspect-[3/4] w-full overflow-hidden">
-                      <Image
-                        src={latestIssue.coverImage || "/placeholder.svg?height=600&width=400&query=law journal cover"}
-                        alt={latestIssue.title}
-                        fill
-                        className="object-cover"
-                      />
-                    </div>
-                    <CardHeader>
-                      <CardTitle className="text-xl">
-                        Volume {latestIssue.volume}, Issue {latestIssue.issue} ({latestIssue.year})
-                      </CardTitle>
-                      <p className="text-sm text-muted-foreground">
-                        Published{" "}
-                        {new Date(latestIssue.publishDate).toLocaleDateString("en-US", {
-                          year: "numeric",
-                          month: "long",
-                          day: "numeric",
-                        })}
-                      </p>
-                    </CardHeader>
-                    <CardContent>
-                      <h3 className="font-bold mb-2">{latestIssue.title}</h3>
-                      <p className="text-sm text-muted-foreground">{latestIssue.description}</p>
-                    </CardContent>
-                  </Card>
-                </div>
+              {/* Responsive grid: 1 column on mobile, 2 on lg, 3 on xl+ */}
+              <div className="grid gap-6 grid-cols-1 lg:grid-cols-2 xl:grid-cols-3">
+                {latestIssueArticles.length > 0 ? (
+                  latestIssueArticles.map((article, index) => {
+                    // UPDATED: Extract authors using the new authors array structure
+                    const authors = article.authors || []
 
-                <div className="md:col-span-2 space-y-6">
-                  <h2 className="text-2xl font-bold font-serif">In This Issue</h2>
-
-                  {latestIssueArticles.length > 0 ? (
-                    latestIssueArticles.map((article, index) => {
-                      // UPDATED: Extract authors using the new Authors array structure
-                      const authors = article.Authors || []
-                      const primaryAuthor = authors.length > 0 ? authors[0] : null
-                      const authorCount = authors.length
-
-                      return (
-                        <ScrollReveal key={article.id} delay={index * 100}>
-                          <Card>
-                            <CardHeader>
-                              <div className="flex justify-between items-start">
-                                <Link href={`/journals/${article.slug}`} className="hover:underline">
-                                  <CardTitle className="text-xl">{article.title}</CardTitle>
-                                </Link>
-                                <div className="flex gap-2">
-                                  <JournalCitation
-                                    article={{
-                                      title: article.title,
-                                      slug: article.slug,
-                                      date: article.date || article.createdAt,
-                                      doi: article.doi || "",
-                                      volume: latestIssue.volume,
-                                      issue: latestIssue.issue,
-                                      year: latestIssue.year,
-                                      // UPDATED: Use the new Authors array structure
-                                      authors: authors.map(author => ({
-                                        id: author.id,
-                                        name: author.name,
-                                        slug: author.slug || author.email,
-                                      })),
-                                      author: primaryAuthor?.name || "Unknown Author",
-                                      keywords: article.keywords || [],
-                                      content: article.content || "",
-                                      excerpt: article.excerpt || "",
-                                      image: article.image || "",
-                                      images: article.images || [],
-                                      readTime: article.readTime || 5,
-                                      draft: article.draft || false,
-                                      views: article.views || 0,
-                                      createdAt: article.createdAt,
-                                      updatedAt: article.updatedAt,
-                                      categories: article.categories || [],
-                                    }}
-                                  />
-                                  <JournalDownloadButton
-                                    article={{
-                                      title: article.title,
-                                      slug: article.slug,
-                                    }}
-                                  />
-                                </div>
-                              </div>
-                              
-                              {/* UPDATED: Author display for multiple authors */}
-                              <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
-                                <div className="flex items-center gap-1">
-                                  {authorCount > 1 ? (
-                                    <Users className="h-4 w-4" />
-                                  ) : (
-                                    <User className="h-4 w-4" />
-                                  )}
-                                  <div className="flex flex-wrap items-center gap-1">
-                                    {authors.length > 0 ? (
-                                      <>
-                                        {authors.map((author, i) => (
-                                          <span key={author.id}>
-                                            <Link
-                                              href={`/authors/${author.slug || author.email}`}
-                                              className="hover:underline hover:text-primary transition-colors"
-                                            >
-                                              {author.name}
-                                            </Link>
-                                            {i < authors.length - 1 && <span>, </span>}
-                                          </span>
-                                        ))}
-                                        {authorCount > 1 && (
-                                          <Badge variant="secondary" className="ml-2 text-xs">
-                                            {authorCount} authors
-                                          </Badge>
-                                        )}
-                                      </>
-                                    ) : (
-                                      <span>Unknown Author</span>
-                                    )}
-                                  </div>
-                                </div>
-                                
-                                <div className="flex items-center gap-1">
-                                  <Calendar className="h-4 w-4" />
-                                  <span>
-                                    {new Date(article.date || article.createdAt).toLocaleDateString("en-US", {
-                                      year: "numeric",
-                                      month: "long",
-                                      day: "numeric",
-                                    })}
-                                  </span>
-                                </div>
-                                
-                                <div className="flex items-center gap-1">
-                                  <Clock className="h-4 w-4" />
-                                  <span>{article.readTime || Math.ceil((article.content?.length || 0) / 1000)} min read</span>
-                                </div>
-                              </div>
-
-                              {/* Author details for multiple authors */}
-                              {authorCount > 1 && (
-                                <div className="mt-2 p-3 bg-muted/30 rounded-lg">
-                                  <h5 className="text-xs font-semibold text-muted-foreground mb-1">Authors:</h5>
+                    return (
+                      <ScrollReveal key={article.id} delay={index * 100}>
+                        <Card className="h-full flex flex-col hover:shadow-lg transition-shadow border-0 duration-300">
+                          <CardHeader className="flex-shrink-0 pb-4">
+                            <div className="flex justify-between items-start flex-row">
+                              <Link href={`/journals/${article.slug}`} className="hover:underline">
+                                <CardTitle className="text-lg text-red-800 leading-tight line-clamp-3">
+                                  {article.title}
+                                </CardTitle>
+                              </Link>
+                            </div>
+                            
+                            <div className="flex flex-col gap-1 text-sm text-muted-foreground mt-3">
+                              {/* Authors */}
+                              <div className="flex gap-1 text-red-800">
+                                {authors && authors.length > 0 ? (
                                   <div className="flex flex-wrap gap-1">
-                                    {authors.map((author, index) => (
-                                      <Badge key={author.id} variant="outline" className="text-xs">
-                                        {index + 1}. {author.name}
-                                      </Badge>
+                                    {authors.map((authorArticle, i) => (
+                                      <span key={authorArticle.author.id}>
+                                        <Link
+                                          href={`/authors/${authorArticle.author.slug || authorArticle.author.email}`}
+                                          className="hover:underline hover:text-primary transition-colors font-medium"
+                                        >
+                                          {authorArticle.author.name}
+                                        </Link>
+                                        {i < authors.length - 1 && <span>{` • `}</span>}
+                                      </span>
                                     ))}
                                   </div>
-                                </div>
-                              )}
-                            </CardHeader>
-                            
-                            <CardContent>
-                              <p className="text-muted-foreground">{article.excerpt}</p>
+                                ) : (
+                                  <span className="text-red-500">No Author Found</span>
+                                )}
+                              </div>
 
-                              {/* Display a preview of content with images if available */}
-                              {article.images && article.images.length > 0 && (
-                                <div className="mt-4">
-                                  <details className="group">
-                                    <summary className="cursor-pointer text-sm font-medium text-primary hover:underline">
-                                      Preview content with images
-                                    </summary>
-                                    <div className="mt-3 p-4 border rounded-lg bg-muted/50">
-                                      <ArticleContentProcessor
-                                        content={article.content?.substring(0, 500) + "..." || "No content available"}
-                                        images={article.images}
-                                        className="text-sm"
-                                      />
-                                    </div>
-                                  </details>
-                                </div>
-                              )}
-
-                              {/* Display keywords with amber styling */}
-                              <div className="flex flex-wrap gap-2 mt-4">
-                                {article.keywords?.map((keyword, idx) => (
-                                  <Badge key={idx} className="bg-amber-500 hover:bg-amber-600 text-white border-0">
+                              {/* Keywords/Categories */}
+                              <div className="flex flex-wrap gap-1 text-xs">
+                                {article.keywords?.map((keyword, i) => (
+                                  <span key={keyword} className="text-black">
                                     {keyword}
-                                  </Badge>
+                                    {i < ((article.keywords?.length ?? 0) - 1) && <span>{` • `}</span>}
+                                  </span>
                                 ))}
                                 {/* For backward compatibility, also display categories if keywords aren't available */}
                                 {(!article.keywords || article.keywords.length === 0) &&
-                                  article.categories?.map((categoryRel) => (
-                                    <Badge
-                                      key={categoryRel.categoryId}
-                                      className="bg-amber-500 hover:bg-amber-600 text-white border-0"
-                                    >
+                                  article.categories?.map((categoryRel, i) => (
+                                    <span key={categoryRel.categoryId} className="">
                                       {categoryRel.category?.name || "Uncategorized"}
-                                    </Badge>
-                                  ))}
+                                      {i < ((article.categories?.length ?? 0) - 1) && <span>{` • `}</span>}
+                                    </span>
+                                ))}
                               </div>
-                            </CardContent>
-                          </Card>
-                        </ScrollReveal>
-                      )
-                    })
-                  ) : (
-                    <div className="text-center py-12">
-                      <p className="text-muted-foreground">No articles found in this issue.</p>
-                    </div>
-                  )}
-                </div>
+                            </div>
+                          </CardHeader>
+                          
+                          <CardContent className="flex-grow h-fit">
+                            <p className="text-sm">
+                              <span className="text-muted-foreground text-sm">
+                                {new Date(article.date || article.createdAt).toLocaleDateString("en-US", {
+                                  year: "numeric",
+                                  month: "long",
+                                  day: "numeric",
+                                })}
+                              </span> • {article.excerpt}
+                            </p>
+                          </CardContent>
+                        </Card>
+                      </ScrollReveal>
+                    )
+                  })
+                ) : (
+                  <div className="col-span-full text-center py-12">
+                    <p className="text-muted-foreground">No articles found in this issue.</p>
+                  </div>
+                )}
               </div>
             </div>
           </div>

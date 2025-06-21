@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button"
 import type { Article } from "@/lib/types"
 
 interface ArticleCarouselProps {
-  articles: Article[]
+  articles: Partial<Article>[]
   issueInfo?: string
 }
 
@@ -33,7 +33,7 @@ export function ArticleCarousel({ articles, issueInfo }: ArticleCarouselProps) {
       if (!isHovering) {
         nextSlide()
       }
-    }, 5000)
+    }, 8000) // Slower transition for reading
 
     return () => clearInterval(intervalId)
   }, [isHovering])
@@ -48,21 +48,19 @@ export function ArticleCarousel({ articles, issueInfo }: ArticleCarouselProps) {
 
   const handleTouchEnd = () => {
     if (touchStart - touchEnd > 50) {
-      // Swipe left
       nextSlide()
     }
 
     if (touchStart - touchEnd < -50) {
-      // Swipe right
       prevSlide()
     }
   }
 
   return (
-    <div className="relative w-full overflow-hidden bg-black">
+    <div className="relative w-full h-full overflow-hidden bg-white">
       <div
         className="relative w-full"
-        style={{ height: "clamp(300px, 50vh, 700px)" }}
+        style={{ minHeight: "400px" }}
         onMouseEnter={() => setIsHovering(true)}
         onMouseLeave={() => setIsHovering(false)}
         onTouchStart={handleTouchStart}
@@ -72,34 +70,61 @@ export function ArticleCarousel({ articles, issueInfo }: ArticleCarouselProps) {
         {articles.map((article, index) => (
           <div
             key={article.slug}
-            className={`absolute inset-0 w-full h-full transition-opacity duration-1000 ${
+            className={` inset-0 w-full h-full transition-opacity duration-1000 ${
               index === currentSlide ? "opacity-100 z-10" : "opacity-0 z-0"
             }`}
           >
-            <div className="absolute inset-0 bg-black/30 z-10" />
-            <Image
-              src={article.image || "/placeholder.svg?height=800&width=1200&query=law journal article"}
-              alt={article.title}
-              fill
-              className="object-cover"
-              priority={index === 0}
-              onError={(e) => {
-                e.currentTarget.src = "/placeholder.svg?key=ohzxk"
-              }}
-            />
-            <div className="absolute inset-0 z-20 flex items-end">
-              <div className="container mx-auto px-4 pb-8 sm:pb-12 md:pb-16 lg:pb-24">
-                <div className="max-w-3xl bg-black/50 p-3 sm:p-6 backdrop-blur-sm rounded-lg">
-                  <div className="text-xs text-white/70 mb-1 sm:mb-2">
-                    {article.author} • {article.date} • {article.readTime} min read
+            {/* Clean white background */}
+            {/* <div className="absolute inset-0 bg-white" /> */}
+            
+            {/* Content Container */}
+            <div className="absolute inset-0 z-20 flex py-5">
+              <div className="container mx-auto px-4 max-w-4xl">
+                <div className="text-center space-y-4">
+                  
+                  {/* Article Type Label */}
+                  <div className="mb-6">
+                    <span className="text-xs font-semibold tracking-[0.3em] text-gray-800 uppercase">
+                      ARTICLE
+                    </span>
                   </div>
-                  <h2 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold text-white mb-1 sm:mb-2 font-serif">
-                    {article.title}
-                  </h2>
-                  <p className="text-white/90 mb-2 sm:mb-4 line-clamp-2 text-sm sm:text-base">{article.excerpt}</p>
-                  <Button asChild size="sm" className="transition-all duration-300 hover:scale-105">
-                    <Link href="/journals">Read Journal</Link>
-                  </Button>
+
+                  {/* Article Title */}
+                  <div className="space-y-3 mb-6">
+                    <h1 className="text-2xl md:text-3xl lg:text-4xl font-serif text-red-700 leading-tight max-w-4xl mx-auto px-4">
+                      {article.title}
+                    </h1>
+                  </div>
+
+                  {/* Author */}
+                  <div className="mb-6">
+                    <h2 className="text-base md:text-lg text-gray-800 font-normal">
+                      {article.author}
+                    </h2>
+                  </div>
+
+                  {/* Article Description/Excerpt */}
+                  <div className="max-w-3xl mx-auto mb-8">
+                    <p className="text-gray-700 text-sm md:text-base leading-relaxed px-6 font-light">
+                      {article.excerpt}
+                    </p>
+                  </div>
+
+                  {/* Article Metadata */}
+                  <div className="space-y-3 pt-2">
+                    <div className="text-xs text-gray-600 tracking-wide">
+                      <span className="font-medium">{article.date}</span>
+                    </div>
+                    
+                    {/* Categories/Tags */}
+                    <div className="flex flex-wrap justify-center gap-1 text-xs text-gray-600 uppercase tracking-wider">
+                      <span>DATA COLONIALISM</span>
+                      <span>•</span>
+                      <span>ECONOMIC INDEPENDENCE</span>
+                      <span>•</span>
+                      <span>GLOBAL TRADE</span>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -107,38 +132,49 @@ export function ArticleCarousel({ articles, issueInfo }: ArticleCarouselProps) {
         ))}
       </div>
 
+      {/* Navigation Arrows */}
       <Button
-        variant="outline"
+        variant="ghost"
         size="icon"
-        className="absolute left-2 sm:left-4 top-1/2 -translate-y-1/2 z-30 rounded-full bg-black/50 border-white/20 text-white hover:bg-black/70 hover:text-white carousel-nav-button w-8 h-8 sm:w-10 sm:h-10"
+        className="absolute left-4 md:left-8 top-1/2 -translate-y-1/2 z-30 w-12 h-12 rounded-full text-gray-400 hover:text-red-700 hover:bg-red-50 transition-all duration-300"
         onClick={prevSlide}
-        aria-label="Previous slide"
+        aria-label="Previous article"
       >
-        <ChevronLeft className="h-4 w-4 sm:h-6 sm:w-6" />
+        <ChevronLeft className="h-6 w-6" />
       </Button>
 
       <Button
-        variant="outline"
+        variant="ghost"
         size="icon"
-        className="absolute right-2 sm:right-4 top-1/2 -translate-y-1/2 z-30 rounded-full bg-black/50 border-white/20 text-white hover:bg-black/70 hover:text-white carousel-nav-button w-8 h-8 sm:w-10 sm:h-10"
+        className="absolute right-4 md:right-8 top-1/2 -translate-y-1/2 z-30 w-12 h-12 rounded-full text-gray-400 hover:text-red-700 hover:bg-red-50 transition-all duration-300"
         onClick={nextSlide}
-        aria-label="Next slide"
+        aria-label="Next article"
       >
-        <ChevronRight className="h-4 w-4 sm:h-6 sm:w-6" />
+        <ChevronRight className="h-6 w-6" />
       </Button>
 
-      <div className="absolute bottom-2 sm:bottom-4 left-1/2 -translate-x-1/2 z-30 flex space-x-1 sm:space-x-2">
+      {/* Pagination Dots */}
+      <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-30 flex space-x-3">
         {articles.map((_, index) => (
           <button
             key={index}
-            className={`w-2 h-2 sm:w-3 sm:h-3 rounded-full transition-all ${
-              index === currentSlide ? "bg-white scale-125" : "bg-white/50"
+            className={`w-2 h-2 rounded-full transition-all duration-300 ${
+              index === currentSlide 
+                ? "bg-red-700 scale-125" 
+                : "bg-gray-300 hover:bg-gray-400"
             }`}
             onClick={() => setCurrentSlide(index)}
-            aria-label={`Go to slide ${index + 1}`}
+            aria-label={`Go to article ${index + 1}`}
           />
         ))}
       </div>
+
+      {/* Progress Bar */}
+      {/* <div className="absolute bottom-0 left-0 w-full px-10 h-0.5 z-30">
+        <div 
+          className="h-full bg-red-700 transition-all duration-300 ease-out"
+        />
+      </div> */}
     </div>
   )
 }

@@ -1,39 +1,51 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
-import { z } from "zod"
-import { Loader2 } from "lucide-react"
+import { zodResolver } from "@hookform/resolvers/zod"
+import * as z from "zod"
+import { Loader2, Plus, X, User } from "lucide-react"
+
 import { Button } from "@/components/ui/button"
-import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
+import {
+  Form,
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Switch } from "@/components/ui/switch"
 import { toast } from "@/components/ui/use-toast"
-import { RichTextEditor } from "@/components/admin/rich-text-editor"
-import { MediaSelector } from "@/components/admin/media-selector"
-import { AuthorSelector } from "@/components/admin/author-selector"
-import { createPost, updatePost, getPost } from "@/lib/actions/post-actions"
+import { Badge } from "@/components/ui/badge"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { getPost, createPost, updatePost } from "@/lib/actions/post-actions"
+
+// Author schema for individual authors
+const authorSchema = z.object({
+  name: z.string()
+    .min(1, "Author name is required")
+    .min(2, "Author name must be at least 2 characters")
+    .max(100, "Author name must be less than 100 characters"),
+  email: z.string()
+    .min(1, "Author email is required")
+    .email("Please enter a valid email address"),
+})
 
 const formSchema = z.object({
-  title: z.string().min(3, {
-    message: "Title must be at least 3 characters.",
-  }),
-  content: z.string().min(10, {
-    message: "Content must be at least 10 characters.",
-  }),
+  title: z.string().min(1, "Title is required").max(200, "Title must be less than 200 characters"),
+  content: z.string().min(1, "Content is required"),
   excerpt: z.string().optional(),
-  type: z.enum(["blog", "journal"]),
-  image: z.string().optional(),
-  authorIds: z.array(z.string()).min(1, {
-    message: "At least one author is required.",
-  }),
+  type: z.enum(["blog", "journal"]).default("blog"),
+  authors: z.array(authorSchema).min(1, "At least one author is required"),
   featured: z.boolean().default(false),
   keywords: z.array(z.string()).optional(),
   doi: z.string().optional(),
-  journalIssueId: z.string().optional().nullable(),
+  issueId: z.string().optional().nullable(),
 })
 
 interface PostFormProps {
@@ -45,8 +57,6 @@ export function PostForm({ slug, type = "blog" }: PostFormProps) {
   const router = useRouter()
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isLoading, setIsLoading] = useState(!!slug)
-  const [selectedImage, setSelectedImage] = useState<string>("")
-  const [selectedAuthors, setSelectedAuthors] = useState<{ id: string; name: string }[]>([])
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -55,42 +65,48 @@ export function PostForm({ slug, type = "blog" }: PostFormProps) {
       content: "",
       excerpt: "",
       type: type,
-      image: "",
-      authorIds: [],
+      authors: [{ name: "", email: "" }],
       featured: false,
       keywords: [],
       doi: "",
-      journalIssueId: null,
+      issueId: null,
     },
   })
 
+  // Load existing post data if editing
   useEffect(() => {
     if (slug) {
       const fetchPost = async () => {
         try {
+          setIsLoading(true)
           const result = await getPost(slug)
           if (result.success && result.data) {
             const post = result.data
+            
+            // Reset form with post data
             form.reset({
               title: post.title,
               content: post.content,
               excerpt: post.excerpt || "",
               type: post.type as "blog" | "journal",
-              image: post.image || "",
-              authorIds: post.authors.map((a) => a.author.id),
+              authors: post.authors?.map((a: any) => ({
+                name: a.author?.name || a.name,
+                email: a.author?.email || a.email,
+              })) || [{ name: "", email: "" }],
               featured: post.featured || false,
               keywords: post.keywords || [],
               doi: post.doi || "",
-              journalIssueId: post.journalIssueId,
+              issueId: post.issueId,
             })
-            setSelectedImage(post.image || "")
-            setSelectedAuthors(post.authors.map((a) => ({ id: a.author.id, name: a.author.name })))
+            
+            // Set UI state - no longer needed for images
           } else {
             toast({
               title: "Error",
               description: (result.error as string) || "Failed to fetch post",
               variant: "destructive",
             })
+            router.push("/admin/posts")
           }
         } catch (error) {
           console.error("Failed to fetch post:", error)
@@ -99,6 +115,7 @@ export function PostForm({ slug, type = "blog" }: PostFormProps) {
             description: "Failed to fetch post. Please try again.",
             variant: "destructive",
           })
+          router.push("/admin/posts")
         } finally {
           setIsLoading(false)
         }
@@ -108,7 +125,7 @@ export function PostForm({ slug, type = "blog" }: PostFormProps) {
     } else {
       setIsLoading(false)
     }
-  }, [slug, form])
+  }, [slug, form, router])
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsSubmitting(true)
@@ -123,6 +140,7 @@ export function PostForm({ slug, type = "blog" }: PostFormProps) {
             description: "Your post has been updated successfully.",
           })
           router.push("/admin/posts")
+          router.refresh()
         } else {
           toast({
             title: "Error",
@@ -139,6 +157,7 @@ export function PostForm({ slug, type = "blog" }: PostFormProps) {
             description: "Your post has been created successfully.",
           })
           router.push("/admin/posts")
+          router.refresh()
         } else {
           toast({
             title: "Error",
@@ -164,12 +183,24 @@ export function PostForm({ slug, type = "blog" }: PostFormProps) {
     form.setValue("image", url)
   }
 
-  function handleAuthorsChange(authors: { id: string; name: string }[]) {
-    setSelectedAuthors(authors)
-    form.setValue(
-      "authorIds",
-      authors.map((a) => a.id),
-    )
+  // Author management functions
+  const addAuthor = () => {
+    const currentAuthors = form.getValues("authors")
+    form.setValue("authors", [...currentAuthors, { name: "", email: "" }])
+  }
+
+  const removeAuthor = (index: number) => {
+    const currentAuthors = form.getValues("authors")
+    if (currentAuthors.length > 1) {
+      form.setValue("authors", currentAuthors.filter((_, i) => i !== index))
+    }
+  }
+
+  const updateAuthor = (index: number, field: "name" | "email", value: string) => {
+    const currentAuthors = form.getValues("authors")
+    const updatedAuthors = [...currentAuthors]
+    updatedAuthors[index] = { ...updatedAuthors[index], [field]: value }
+    form.setValue("authors", updatedAuthors)
   }
 
   if (isLoading) {
@@ -184,144 +215,211 @@ export function PostForm({ slug, type = "blog" }: PostFormProps) {
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-        <div className="grid gap-6 md:grid-cols-2">
-          <div className="space-y-6">
-            <FormField
-              control={form.control}
-              name="title"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Title</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Enter post title" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="excerpt"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Excerpt</FormLabel>
-                  <FormControl>
-                    <Textarea
-                      placeholder="Brief summary of the post"
-                      className="resize-none h-20"
-                      {...field}
-                      value={field.value || ""}
-                    />
-                  </FormControl>
-                  <FormDescription>A short summary that appears in previews.</FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="authorIds"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Authors</FormLabel>
-                  <FormControl>
-                    <AuthorSelector selectedAuthors={selectedAuthors} onChange={handleAuthorsChange} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="featured"
-              render={({ field }) => (
-                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                  <div className="space-y-0.5">
-                    <FormLabel className="text-base">Featured</FormLabel>
-                    <FormDescription>
-                      Featured posts will appear on the homepage and be highlighted throughout the site.
-                    </FormDescription>
-                  </div>
-                  <FormControl>
-                    <Switch checked={field.value} onCheckedChange={field.onChange} />
-                  </FormControl>
-                </FormItem>
-              )}
-            />
-
-            {type === "journal" && (
-              <>
-                <FormField
-                  control={form.control}
-                  name="doi"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>DOI</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Digital Object Identifier" {...field} value={field.value || ""} />
-                      </FormControl>
-                      <FormDescription>The Digital Object Identifier for this article.</FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                {/* Add journal issue selector here if needed */}
-              </>
+        <div className="space-y-6">
+          <FormField
+            control={form.control}
+            name="title"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Title</FormLabel>
+                <FormControl>
+                  <Input placeholder="Enter post title" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
             )}
-          </div>
+          />
 
-          <div className="space-y-6">
-            <FormField
-              control={form.control}
-              name="image"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Featured Image</FormLabel>
-                  <FormControl>
-                    <div className="space-y-2">
-                      <MediaSelector onSelect={handleImageSelect} selectedImage={selectedImage} />
-                      <Input type="hidden" {...field} />
-                    </div>
-                  </FormControl>
-                  <FormDescription>Select a featured image for the post.</FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+          <FormField
+            control={form.control}
+            name="excerpt"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Excerpt</FormLabel>
+                <FormControl>
+                  <Textarea
+                    placeholder="Brief summary of the post"
+                    className="resize-none h-20"
+                    {...field}
+                    value={field.value || ""}
+                  />
+                </FormControl>
+                <FormDescription>A short summary that appears in previews.</FormDescription>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
 
-            {/* Add keywords input here if needed */}
-          </div>
+          {/* Authors Section */}
+          <FormField
+            control={form.control}
+            name="authors"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Authors</FormLabel>
+                <FormControl>
+                  <Card>
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-sm font-medium flex items-center gap-2">
+                        <User className="h-4 w-4" />
+                        Post Authors
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      {field.value.map((author, index) => (
+                        <div key={index} className="flex gap-2 p-3 border rounded-lg bg-muted/50">
+                          <div className="flex-1 space-y-2">
+                            <div className="flex gap-2">
+                              <div className="flex-1">
+                                <Input
+                                  placeholder="Author name"
+                                  value={author.name}
+                                  onChange={(e) => updateAuthor(index, "name", e.target.value)}
+                                  className="h-8"
+                                />
+                              </div>
+                              <div className="flex-1">
+                                <Input
+                                  placeholder="Author email"
+                                  type="email"
+                                  value={author.email}
+                                  onChange={(e) => updateAuthor(index, "email", e.target.value)}
+                                  className="h-8"
+                                />
+                              </div>
+                            </div>
+                          </div>
+                          {field.value.length > 1 && (
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => removeAuthor(index)}
+                              className="h-8 w-8 p-0 shrink-0"
+                            >
+                              <X className="h-4 w-4" />
+                            </Button>
+                          )}
+                        </div>
+                      ))}
+                      
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={addAuthor}
+                        className="w-full"
+                      >
+                        <Plus className="h-4 w-4 mr-2" />
+                        Add Author
+                      </Button>
+                    </CardContent>
+                  </Card>
+                </FormControl>
+                <FormDescription>
+                  Add authors by name and email. If an author doesn't exist, they will be created automatically.
+                </FormDescription>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="featured"
+            render={({ field }) => (
+              <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                <div className="space-y-0.5">
+                  <FormLabel className="text-base">Featured</FormLabel>
+                  <FormDescription>
+                    Featured posts will appear on the homepage and be highlighted throughout the site.
+                  </FormDescription>
+                </div>
+                <FormControl>
+                  <Switch checked={field.value} onCheckedChange={field.onChange} />
+                </FormControl>
+              </FormItem>
+            )}
+          />
+
+          {type === "journal" && (
+            <>
+              <FormField
+                control={form.control}
+                name="doi"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>DOI</FormLabel>
+                    <FormControl>
+                      <Input placeholder="10.1000/xyz123" {...field} value={field.value || ""} />
+                    </FormControl>
+                    <FormDescription>Digital Object Identifier for the article.</FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="keywords"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Keywords</FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder="keyword1, keyword2, keyword3"
+                        value={field.value?.join(", ") || ""}
+                        onChange={(e) => {
+                          const keywords = e.target.value
+                            .split(",")
+                            .map((k) => k.trim())
+                            .filter(Boolean)
+                          field.onChange(keywords)
+                        }}
+                      />
+                    </FormControl>
+                    <FormDescription>Comma-separated keywords for the article.</FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </>
+          )}
         </div>
 
-        <FormField
-          control={form.control}
-          name="content"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Content</FormLabel>
-              <FormControl>
-                <RichTextEditor
-                  value={field.value}
-                  onChange={field.onChange}
-                  placeholder="Write your post content here..."
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+        {/* Content */}
+        <div className="space-y-6">
+          <h3 className="text-lg font-semibold">Content</h3>
+          
+          <FormField
+            control={form.control}
+            name="content"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Content *</FormLabel>
+                <FormControl>
+                  <Textarea
+                    placeholder="Enter the full post content..."
+                    className="min-h-[300px]"
+                    {...field}
+                  />
+                </FormControl>
+                <FormDescription>
+                  The full content of your post (minimum 1 character)
+                </FormDescription>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
 
-        <div className="flex justify-end gap-4">
-          <Button type="button" variant="outline" onClick={() => router.push("/admin/posts")}>
-            Cancel
-          </Button>
+        <div className="flex items-center space-x-4">
           <Button type="submit" disabled={isSubmitting}>
             {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            {slug ? "Update" : "Create"} Post
+            {slug ? "Update Post" : "Create Post"}
+          </Button>
+          <Button type="button" variant="outline" onClick={() => router.push("/admin/posts")}>
+            Cancel
           </Button>
         </div>
       </form>
