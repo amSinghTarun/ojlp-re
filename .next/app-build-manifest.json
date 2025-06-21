@@ -6,15 +6,15 @@
       "static/css/app/layout.css",
       "static/chunks/app/layout.js"
     ],
+    "/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/page.js"
+    ],
     "/journals/layout": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
       "static/chunks/app/journals/layout.js"
-    ],
-    "/journals/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/journals/page.js"
     ],
     "/journals/[slug]/page": [
       "static/chunks/webpack.js",
@@ -31,15 +31,25 @@
       "static/chunks/main-app.js",
       "static/chunks/app/admin/login/page.js"
     ],
-    "/about/page": [
+    "/journals/call-for-papers/loading": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/about/page.js"
+      "static/chunks/app/journals/call-for-papers/loading.js"
     ],
-    "/submit/page": [
+    "/journals/call-for-papers/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/submit/page.js"
+      "static/chunks/app/journals/call-for-papers/page.js"
+    ],
+    "/board-of-advisors/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/board-of-advisors/page.js"
+    ],
+    "/editorial-board/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/editorial-board/page.js"
     ],
     "/contact/page": [
       "static/chunks/webpack.js",
@@ -56,30 +66,40 @@
       "static/chunks/main-app.js",
       "static/chunks/app/journals/archive/page.js"
     ],
-    "/editorial-board/page": [
+    "/journals/archive/volume/[number]/loading": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/editorial-board/page.js"
+      "static/chunks/app/journals/archive/volume/[number]/loading.js"
     ],
-    "/board-of-advisors/page": [
+    "/journals/archive/volume/[number]/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/board-of-advisors/page.js"
+      "static/chunks/app/journals/archive/volume/[number]/page.js"
     ],
-    "/page": [
+    "/about/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/page.js"
+      "static/chunks/app/about/page.js"
     ],
-    "/journals/call-for-papers/loading": [
+    "/submit/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/journals/call-for-papers/loading.js"
+      "static/chunks/app/submit/page.js"
     ],
-    "/journals/call-for-papers/page": [
+    "/notifications/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/journals/call-for-papers/page.js"
+      "static/chunks/app/notifications/page.js"
+    ],
+    "/blogs/[slug]/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/blogs/[slug]/page.js"
+    ],
+    "/authors/[slug]/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/authors/[slug]/page.js"
     ]
   }
 }

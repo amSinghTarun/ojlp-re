@@ -81,6 +81,7 @@ model AuthorArticle {
   @@map("article_authors")
 }
 
+// Updated models with contentLink field
 model Article {
   id              String            @id
   slug            String            @unique
@@ -93,15 +94,37 @@ model Article {
   images          String[]
   type            ArticleType
   draft           Boolean           @default(false)
+  published       Boolean           @default(true)   // NEW: Controls public visibility
   views           Int               @default(0)
   doi             String?           @unique
   keywords        String[]
+  contentLink     String?           // NEW: Link to article content
   createdAt       DateTime          @default(now())
   updatedAt       DateTime
   issueId         String?
   JournalIssue    JournalIssue?     @relation(fields: [issueId], references: [id])
   CategoryArticle CategoryArticle[]
   authors         AuthorArticle[]
+}
+
+model CallForPapers {
+  id            String   @id
+  title         String
+  thematicFocus String
+  description   String
+  deadline      DateTime
+  volume        Int
+  issue         Int
+  year          Int
+  guidelines    String
+  fee           String?
+  image         String?
+  topics        String[]
+  eligibility   String?
+  contact       String?
+  contentLink   String?  // NEW: Link to call for papers content
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime
 }
 
 model Author {
@@ -129,25 +152,6 @@ model Author {
   userId         String?         @unique
   User           User?           @relation(fields: [userId], references: [id])
   authorArticles AuthorArticle[]
-}
-
-model CallForPapers {
-  id            String   @id
-  title         String
-  thematicFocus String
-  description   String
-  deadline      DateTime
-  volume        Int
-  issue         Int
-  year          Int
-  guidelines    String
-  fee           String?
-  image         String?
-  topics        String[]
-  eligibility   String?
-  contact       String?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime
 }
 
 model Category {

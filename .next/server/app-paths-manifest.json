@@ -1,8 +1,7 @@
 {
-  "/about/page": "app/about/page.js",
-  "/board-of-advisors/page": "app/board-of-advisors/page.js",
-  "/submit/page": "app/submit/page.js",
-  "/editorial-board/page": "app/editorial-board/page.js",
-  "/admin/login/page": "app/admin/login/page.js",
-  "/journals/call-for-papers/page": "app/journals/call-for-papers/page.js"
+  "/notifications/page": "app/notifications/page.js",
+  "/page": "app/page.js",
+  "/blogs/[slug]/page": "app/blogs/[slug]/page.js",
+  "/journals/[slug]/page": "app/journals/[slug]/page.js",
+  "/authors/[slug]/page": "app/authors/[slug]/page.js"
 }

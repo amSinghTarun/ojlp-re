@@ -67,10 +67,10 @@ export function NotificationTicker() {
   if (isLoading) {
     return (
       <div className="relative overflow-hidden px-5 py-10">
-        <div className="py-4 bg-gray-600 container px-4 rounded-lg relative">
+        <div className="py-4 bg-red-900 container px-4 rounded-lg relative">
           <div className="flex items-center justify-center gap-2 text-white">
-            <Loader2 className="h-4 w-4 animate-spin" />
-            <span className="text-sm">Loading notifications...</span>
+            {/* <Loader2 className="h-4 w-4 animate-spin" /> */}
+            <span className="text-sm">Notifications</span>
           </div>
         </div>
       </div>
@@ -118,7 +118,7 @@ export function NotificationTicker() {
               </div>
             </div>
           </div>
-          <div className="flex-shrink-0 hidden sm:block">
+          {/* <div className="flex-shrink-0 hidden sm:block">
             <Button
               asChild
               variant="outline"
@@ -130,7 +130,7 @@ export function NotificationTicker() {
                 <ChevronRight className="ml-1 h-3 w-3" />
               </Link>
             </Button>
-          </div>
+          </div> */}
         </div>
 
         {/* Progress bar */}

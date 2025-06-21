@@ -96,34 +96,34 @@ export function NotificationButton() {
     <DropdownMenu open={open} onOpenChange={setOpen}>
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" className="relative">
-          <Bell className="h-4 w-4 mr-2" />
+          {/* <Bell className="h-4 w-4 mr-2" /> */}
           Notifications
-          {unreadCount > 0 && (
+          {/* {unreadCount > 0 && (
             <Badge 
               variant="destructive" 
               className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center text-xs rounded-full"
             >
               {unreadCount > 99 ? "99+" : unreadCount}
             </Badge>
-          )}
+          )} */}
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-[350px]">
         <DropdownMenuLabel className="flex items-center justify-between">
           <span>Notifications</span>
-          {unreadCount > 0 && (
+          {/* {unreadCount > 0 && (
             <Badge variant="secondary" className="text-xs">
               {unreadCount} unread
             </Badge>
-          )}
+          )} */}
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         
         <div className="max-h-[300px] overflow-y-auto">
           {isLoading ? (
             <div className="flex items-center justify-center p-4 text-muted-foreground">
-              <Loader2 className="h-4 w-4 animate-spin mr-2" />
-              Loading notifications...
+              {/* <Loader2 className="h-4 w-4 animate-spin mr-2" /> */}
+              Notifications
             </div>
           ) : error ? (
             <div className="flex items-center justify-center p-4 text-destructive">

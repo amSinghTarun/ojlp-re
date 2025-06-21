@@ -58,72 +58,63 @@ export default async function BlogPage({ params }: BlogPageProps) {
   return (
     <div className="flex min-h-screen flex-col">
       <main className="flex-1">
-        <article className="container max-w-3xl px-4 py-12 md:px-6">
+        <article className="container max-w-6xl px-4 py-8 md:px-6">
+          {/* Header Section */}
           <div className="mb-8 space-y-4 animate-slide-up">
-            <Link
-              href="/blogs"
-              className="text-sm text-muted-foreground hover:text-primary transition-colors flex items-center"
-            >
-              ← Back to Blogs
-            </Link>
-            <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold tracking-tight font-serif">
+            <h1 className="text-4xl lg:text-5xl text-primary font-bold font-serif">
               {article.title}
             </h1>
-            <div className="space-y-2 text-sm text-muted-foreground">
-              {/* First row: date and read time */}
-              <div className="flex flex-wrap items-center gap-4">
+            
+            <div className="space-y-2">
+              {/* Authors */}
+              <div className="flex flex-wrap items-center gap-4 text-base text-muted-foreground">
                 <div className="flex items-center gap-1">
-                  <Calendar className="h-4 w-4" />
-                  <span>
-                    {new Date(article.createdAt).toLocaleDateString("en-US", {
-                      year: "numeric",
-                      month: "long",
-                      day: "numeric",
-                    })}
-                  </span>
-                </div>
-                <div className="flex items-center gap-1">
-                  <Clock className="h-4 w-4" />
-                  <span>{Math.ceil((article.content?.length || 0) / 1000)} min read</span>
+                  {article.authors && article.authors.length > 0 ? (
+                    <div className="flex flex-wrap gap-1">
+                      {article.authors.map((authorRel, i) => (
+                        <span key={authorRel.authorId}>
+                          {authorRel.author?.slug ? (
+                            <Link
+                              href={`/authors/${authorRel.author.slug}`}
+                              className="hover:underline hover:text-primary font-medium transition-colors text-primary"
+                            >
+                              {authorRel.author.name || "Unknown Author"}
+                            </Link>
+                          ) : (
+                            <span className="font-medium text-primary">{authorRel.author?.name || "Unknown Author"}</span>
+                          )}
+                          {i < article.authors.length - 1 && <span> • </span>}
+                        </span>
+                      ))}
+                    </div>
+                  ) : (
+                    <span className="font-medium text-primary">Unknown Author</span>
+                  )}
                 </div>
               </div>
 
-              {/* Second row: authors */}
-              <div className="flex flex-wrap items-center gap-1">
-                <User className="h-4 w-4" />
-                <div className="flex flex-wrap">
-                  {article.authors.map((authorRel, i) => (
-                    <span key={authorRel.authorId}>
-                      {authorRel.author?.slug ? (
-                        <Link
-                          href={`/authors/${authorRel.author.slug}`}
-                          className="hover:underline hover:text-primary transition-colors"
-                        >
-                          {authorRel.author.name || "Unknown Author"}
-                        </Link>
-                      ) : (
-                        <span>{authorRel.author?.name || "Unknown Author"}</span>
-                      )}
-                      {i < article.authors.length - 1 && <span>, </span>}
-                    </span>
-                  ))}
+              {/* Keywords/Tags if available */}
+              {article.keywords && article.keywords.length > 0 && (
+                <div className="flex flex-wrap items-center gap-4 text-base text-muted-foreground mt-2">
+                  <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap gap-1">
+                      {article.keywords.map((keyword, index) => (
+                        <span key={index} className="text-muted-foreground hover:text-primary transition-colors">
+                          {keyword}
+                          {index < article.keywords.length - 1 && " •"}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
           </div>
 
-          <div className="relative w-full h-[250px] sm:h-[300px] md:h-[400px] mb-8 rounded-lg overflow-hidden ornamental-corners animate-fade-in">
-            <Image
-              src={article.image || "/placeholder.svg?height=600&width=800"}
-              alt={article.title}
-              fill
-              className="object-cover"
-            />
-          </div>
-
+          {/* Article Content */}
           <div
-            className="prose prose-slate max-w-none dark:prose-invert animate-fade-in md:-mx-8 lg:-mx-16 mx-auto"
-            style={{ animationDelay: "0.3s", maxWidth: "calc(100% + 8rem)" }}
+            className="flex flex-col max-w-none items-center animate-fade-in"
+            style={{ animationDelay: "0.3s" }}
           >
             {article.content.split("\n\n").map((paragraph, index) => {
               // Check if the paragraph contains an image tag
@@ -137,7 +128,7 @@ export default async function BlogPage({ params }: BlogPageProps) {
               }
 
               return (
-                <p key={index} className={index === 0 ? "drop-cap text-justify" : "text-justify"}>
+                <p key={index} className={index === 0 ? "drop-cap text-justify max-w-4xl" : "max-w-4xl text-justify"}>
                   {paragraph}
                 </p>
               )

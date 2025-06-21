@@ -35,43 +35,8 @@ export default async function AuthorPage({ params }: AuthorPageProps) {
       <main className="flex-1">
         <div className="container px-4 py-12 md:px-6">
           <div className="mb-8">
-            <Link
-              href="/authors"
-              className="text-sm text-muted-foreground hover:text-primary transition-colors flex items-center mb-4"
-            >
-              ← Back to Authors
-            </Link>
 
             <div className="grid gap-8 md:grid-cols-3">
-              <div className="md:col-span-1">
-                <AuthorProfile
-                  author={{
-                    id: author.id,
-                    name: author.name,
-                    slug: author.slug,
-                    title: author.title || "",
-                    bio: author.bio || "",
-                    detailedBio: author.detailedBio || "",
-                    image: author.image || "/professional-headshot.png",
-                    expertise: author.expertise || [],
-                    education: author.education || [],
-                    achievements: author.achievements || [],
-                    publications: author.publications || [],
-                    location: author.location || "",
-                    affiliation: author.affiliation || "",
-                    website: author.website || "",
-                    socialLinks: {
-                      // UPDATED: Use correct field names from database
-                      twitter: author.twitter || "",
-                      linkedin: author.linkedin || "",
-                      email: author.socialEmail || author.email,
-                      orcid: author.orcid || "",
-                    },
-                  }}
-                  articleCount={authorArticlesResult.length}
-                />
-              </div>
-
               <div className="md:col-span-2">
                 <DecorativeHeading>Articles by {author.name}</DecorativeHeading>
 

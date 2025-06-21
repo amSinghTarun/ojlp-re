@@ -70,8 +70,8 @@ export function NotificationBanner() {
       <div className="bg-primary/10 text-primary border-b border-primary/20">
         <div className="container px-4 py-2">
           <div className="flex items-center justify-center gap-2 text-sm">
-            <Loader2 className="h-4 w-4 animate-spin" />
-            <span>Loading notifications...</span>
+            {/* <Loader2 className="h-4 w-4 animate-spin" /> */}
+            <span>Notifications</span>
           </div>
         </div>
       </div>
