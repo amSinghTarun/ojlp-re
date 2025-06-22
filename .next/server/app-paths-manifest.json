@@ -1,7 +1,7 @@
 {
   "/notifications/page": "app/notifications/page.js",
-  "/page": "app/page.js",
-  "/blogs/[slug]/page": "app/blogs/[slug]/page.js",
-  "/journals/[slug]/page": "app/journals/[slug]/page.js",
-  "/authors/[slug]/page": "app/authors/[slug]/page.js"
+  "/admin/editorial-board/page": "app/admin/editorial-board/page.js",
+  "/admin/media/page": "app/admin/media/page.js",
+  "/admin/users/page": "app/admin/users/page.js",
+  "/admin/editorial-board/new/page": "app/admin/editorial-board/new/page.js"
 }

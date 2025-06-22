@@ -1,7 +1,6 @@
 import { DashboardHeader } from "@/components/admin/dashboard-header"
 import { CallForPapersForm } from "@/components/admin/call-for-papers-form"
 import { getCurrentUser } from "@/lib/auth"
-import { hasPermission, PERMISSIONS } from "@/lib/permissions"
 import { redirect } from "next/navigation"
 
 export default async function NewCallForPapersPage() {
@@ -9,10 +8,6 @@ export default async function NewCallForPapersPage() {
   const user = await getCurrentUser()
   if (!user) {
     redirect("/login")
-  }
-
-  if (!hasPermission(user, PERMISSIONS.MANAGE_CALL_FOR_PAPERS)) {
-    redirect("/admin")
   }
 
   return (

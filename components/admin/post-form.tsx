@@ -230,26 +230,6 @@ export function PostForm({ slug, type = "blog" }: PostFormProps) {
             )}
           />
 
-          <FormField
-            control={form.control}
-            name="excerpt"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Excerpt</FormLabel>
-                <FormControl>
-                  <Textarea
-                    placeholder="Brief summary of the post"
-                    className="resize-none h-20"
-                    {...field}
-                    value={field.value || ""}
-                  />
-                </FormControl>
-                <FormDescription>A short summary that appears in previews.</FormDescription>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
           {/* Authors Section */}
           <FormField
             control={form.control}

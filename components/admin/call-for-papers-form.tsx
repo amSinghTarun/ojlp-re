@@ -21,14 +21,14 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { toast } from "@/components/ui/use-toast"
 import { createCallForPapers, updateCallForPapers } from "@/lib/actions/call-for-papers-actions"
-import { CalendarIcon, Loader2, Plus, X, Bell, CheckCircle, AlertTriangle, XCircle } from "lucide-react"
+import { CalendarIcon, Loader2, Plus, X, Bell, CheckCircle, AlertTriangle, XCircle, ExternalLink } from "lucide-react"
 import { Calendar } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { cn } from "@/lib/utils"
 import { Badge } from "@/components/ui/badge"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 
-// Schema with enhanced validation messages
+// Schema with enhanced validation messages and contentLink
 const formSchema = z.object({
   title: z.string()
     .min(1, "Title is required")
@@ -42,6 +42,30 @@ const formSchema = z.object({
     .min(1, "Description is required")
     .min(20, "Description must be at least 20 characters")
     .max(2000, "Description must be less than 2000 characters"),
+  contentLink: z.string()
+    .min(1, "Content link is required for call for papers")
+    .url("Please enter a valid URL")
+    .refine((url) => {
+      // Allow common academic/submission platform URL patterns
+      const validPatterns = [
+        /^https?:\/\/.*\.pdf$/i,
+        /^https?:\/\/.*doi\.org\//i,
+        /^https?:\/\/.*easychair\.org\//i,
+        /^https?:\/\/.*edas\.info\//i,
+        /^https?:\/\/.*conftools\.net\//i,
+        /^https?:\/\/.*openconf\.org\//i,
+        /^https?:\/\/.*scholarone\.com\//i,
+        /^https?:\/\/.*manuscript\.com\//i,
+        /^https?:\/\/.*editorialmanager\.com\//i,
+        /^https?:\/\/.*journals\..*\//i,
+        /^https?:\/\/.*conference\..*\//i,
+        /^https?:\/\/.*submission\..*\//i,
+        /^https?:\/\/.*call-for-papers\..*\//i,
+        /^https?:\/\/.*forms\..*\//i,
+        /^https?:\/\/.+/i, // Allow any HTTPS URL as fallback
+      ];
+      return validPatterns.some(pattern => pattern.test(url));
+    }, "Please provide a valid link to submission instructions, submission system, or detailed call for papers"),
   deadline: z.date({ 
     required_error: "Deadline is required",
     invalid_type_error: "Please select a valid date"
@@ -95,6 +119,7 @@ interface CallForPapersFormProps {
     title: string
     thematicFocus: string
     description: string
+    contentLink?: string
     deadline: Date
     volume: number
     issue: number
@@ -119,6 +144,7 @@ export function CallForPapersForm({ cfp }: CallForPapersFormProps) {
       title: cfp?.title || "",
       thematicFocus: cfp?.thematicFocus || "",
       description: cfp?.description || "",
+      contentLink: cfp?.contentLink || "",
       deadline: cfp?.deadline || new Date(),
       volume: cfp?.volume || new Date().getFullYear() - 2020 + 1,
       issue: cfp?.issue || 1,
@@ -133,6 +159,7 @@ export function CallForPapersForm({ cfp }: CallForPapersFormProps) {
   })
 
   const topics = form.watch("topics")
+  const contentLink = form.watch("contentLink")
 
   const addTopic = () => {
     if (newTopic.trim() && !topics.includes(newTopic.trim())) {
@@ -277,6 +304,10 @@ export function CallForPapersForm({ cfp }: CallForPapersFormProps) {
                   <CheckCircle className="h-4 w-4 text-green-500" />
                   <span>Now visible on public notifications page</span>
                 </div>
+                <div className="flex items-center gap-2 text-sm">
+                  <ExternalLink className="h-4 w-4 text-purple-500" />
+                  <span>Submission link included in notification</span>
+                </div>
                 <div className="text-xs text-muted-foreground mt-2">
                   Notification expires: {format(data.deadline, "PPP")}
                 </div>
@@ -364,7 +395,7 @@ export function CallForPapersForm({ cfp }: CallForPapersFormProps) {
         <Alert>
           <Bell className="h-4 w-4" />
           <AlertDescription>
-            <strong>Auto-Notification:</strong> When you create this call for papers, a high-priority notification will automatically be published to inform visitors about the submission opportunity. The notification will expire on the submission deadline.
+            <strong>Auto-Notification:</strong> When you create this call for papers, a high-priority notification will automatically be published to inform visitors about the submission opportunity. The notification will include the submission link and expire on the deadline.
           </AlertDescription>
         </Alert>
       )}
@@ -385,7 +416,7 @@ export function CallForPapersForm({ cfp }: CallForPapersFormProps) {
           <CardDescription>
             {cfp
               ? "Update the details for your call for papers."
-              : "Create a new call for papers for your journal."}
+              : "Create a new call for papers for your journal with submission instructions."}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -452,6 +483,43 @@ export function CallForPapersForm({ cfp }: CallForPapersFormProps) {
                         This description will be included in the auto-generated notification (20-2000 characters)
                       </FormDescription>
                       <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="contentLink"
+                  render={({ field }) => (
+                    <FormItem className="md:col-span-2">
+                      <FormLabel>Submission Link *</FormLabel>
+                      <FormControl>
+                        <div className="relative">
+                          <ExternalLink className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                          <Input 
+                            placeholder="https://easychair.org/conferences/?conf=yourconf or https://example.com/submit" 
+                            {...field} 
+                            className="pl-10"
+                          />
+                        </div>
+                      </FormControl>
+                      <FormDescription>
+                        Link to submission system, detailed call for papers, or submission instructions. This is required and will be included in notifications.
+                      </FormDescription>
+                      <FormMessage />
+                      {contentLink && (
+                        <div className="flex items-center gap-2 text-sm text-green-600">
+                          <ExternalLink className="h-3 w-3" />
+                          <a 
+                            href={contentLink} 
+                            target="_blank" 
+                            rel="noopener noreferrer" 
+                            className="hover:underline"
+                          >
+                            Preview link
+                          </a>
+                        </div>
+                      )}
                     </FormItem>
                   )}
                 />

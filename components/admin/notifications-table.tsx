@@ -1,3 +1,4 @@
+// components/admin/notifications-table.tsx - Updated to handle server action responses
 "use client"
 
 import { useState, useEffect, useCallback, useMemo } from "react"
@@ -76,24 +77,38 @@ export function NotificationsTable() {
   // Load notifications
   const loadNotifications = useCallback(async () => {
     setLoading(true)
+    setError(null)
+    
     try {
       const result = await getAllNotifications()
+      console.log('Notifications result:', result)
+      
       if (result.success) {
-        setNotifications(result.data)
+        // Transform dates from server response
+        const transformedNotifications = result.data.map(notification => ({
+          ...notification,
+          date: new Date(notification.date),
+          createdAt: new Date(notification.createdAt),
+          updatedAt: new Date(notification.updatedAt),
+          expiresAt: notification.expiresAt ? new Date(notification.expiresAt) : null,
+        }))
+        
+        setNotifications(transformedNotifications)
       } else {
-        setError(result.error)
+        setError(result.error || 'Failed to fetch notifications')
         toast({
           title: "Error",
-          description: result.error,
+          description: result.error || 'Failed to fetch notifications',
           variant: "destructive",
         })
       }
     } catch (err) {
       console.error("Failed to fetch notifications:", err)
-      setError("Failed to fetch notifications. Please try again.")
+      const errorMessage = "Failed to fetch notifications. Please try again."
+      setError(errorMessage)
       toast({
         title: "Error",
-        description: "Failed to fetch notifications. Please try again.",
+        description: errorMessage,
         variant: "destructive",
       })
     } finally {
@@ -112,13 +127,13 @@ export function NotificationsTable() {
       if (result.success) {
         setNotifications(prev => prev.filter((notification) => notification.id !== id))
         toast({
-          title: "Notification deleted",
-          description: "The notification has been deleted successfully.",
+          title: "Success",
+          description: result.message || "Notification deleted successfully",
         })
       } else {
         toast({
           title: "Error",
-          description: result.error,
+          description: result.error || "Failed to delete notification",
           variant: "destructive",
         })
       }
@@ -142,18 +157,19 @@ export function NotificationsTable() {
       const result = await updateExistingNotification(notification.id, {
         read: !notification.read,
       })
+      
       if (result.success) {
         setNotifications(prev => prev.map((n) => 
           n.id === notification.id ? { ...n, read: !n.read } : n
         ))
         toast({
-          title: notification.read ? "Marked as unread" : "Marked as read",
-          description: `"${notification.title}" has been marked as ${notification.read ? "unread" : "read"}.`,
+          title: "Success",
+          description: `Notification marked as ${!notification.read ? "read" : "unread"}`,
         })
       } else {
         toast({
           title: "Error",
-          description: result.error,
+          description: result.error || "Failed to update notification",
           variant: "destructive",
         })
       }
@@ -343,8 +359,8 @@ export function NotificationsTable() {
   if (loading) {
     return (
       <div className="flex justify-center items-center h-64">
-        {/* <Loader2 className="h-8 w-8 animate-spin text-primary" /> */}
-        <span className="ml-2">Notifications</span>
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <span className="ml-2">Loading notifications...</span>
       </div>
     )
   }

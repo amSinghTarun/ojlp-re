@@ -136,13 +136,6 @@ export default async function JournalsPage({ searchParams }: { searchParams: { v
                                   </span>
                                 ))}
                                 {/* For backward compatibility, also display categories if keywords aren't available */}
-                                {(!article.keywords || article.keywords.length === 0) &&
-                                  article.categories?.map((categoryRel, i) => (
-                                    <span key={categoryRel.categoryId} className="">
-                                      {categoryRel.category?.name || "Uncategorized"}
-                                      {i < ((article.categories?.length ?? 0) - 1) && <span>{` • `}</span>}
-                                    </span>
-                                ))}
                               </div>
                             </div>
                           </CardHeader>

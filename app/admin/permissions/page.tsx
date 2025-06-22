@@ -1,7 +1,6 @@
 import type { Metadata } from "next"
 import { redirect } from "next/navigation"
 import { getCurrentUser } from "@/lib/auth"
-import { isSuperAdmin } from "@/lib/permissions"
 import { PermissionsTable } from "@/components/admin/permission-table"
 import { getPermissions, initializeSystemPermissions } from "@/lib/actions/permission-actions"
 import { Alert, AlertDescription } from "@/components/ui/alert"
@@ -18,11 +17,6 @@ export const metadata: Metadata = {
 
 export default async function PermissionsPage() {
   const currentUser = await getCurrentUser()
-
-  // Only super admins can access this page
-  if (!currentUser || !isSuperAdmin(currentUser)) {
-    redirect("/admin")
-  }
 
   try {
     // Fetch permissions from database

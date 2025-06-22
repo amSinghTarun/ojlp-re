@@ -44,7 +44,7 @@ export function NotificationButton() {
         setIsLoading(true)
         setError(null)
         const fetchedNotifications = await getAllNotifications()
-        setNotifications(fetchedNotifications)
+        setNotifications(fetchedNotifications.data)
       } catch (err) {
         console.error("Failed to fetch notifications:", err)
         setError("Failed to load notifications")

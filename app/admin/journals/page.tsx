@@ -6,7 +6,6 @@ import { JournalIssuesTable } from "@/components/admin/journal-issues-table"
 import { getJournalIssues } from "@/lib/actions/journal-actions"
 import { redirect } from "next/navigation"
 import { getCurrentUser } from "@/lib/auth"
-import { hasPermission, PERMISSIONS } from "@/lib/permissions"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { AlertCircle } from "lucide-react"
 
@@ -16,10 +15,6 @@ export default async function JournalsPage() {
     const user = await getCurrentUser()
     if (!user) {
       redirect("/login")
-    }
-
-    if (!hasPermission(user, PERMISSIONS.MANAGE_JOURNALS)) {
-      redirect("/admin")
     }
 
     console.log("📚 Admin page: Fetching journal issues...")

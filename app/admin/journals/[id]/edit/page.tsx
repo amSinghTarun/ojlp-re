@@ -2,7 +2,6 @@ import { DashboardHeader } from "@/components/admin/dashboard-header"
 import { JournalIssueForm } from "@/components/admin/journal-issue-form"
 import { getJournalIssue } from "@/lib/actions/journal-actions"
 import { getCurrentUser } from "@/lib/auth"
-import { hasPermission, PERMISSIONS } from "@/lib/permissions"
 import { notFound, redirect } from "next/navigation"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { AlertCircle } from "lucide-react"
@@ -18,10 +17,6 @@ export default async function EditJournalIssuePage({ params }: EditJournalIssueP
   const user = await getCurrentUser()
   if (!user) {
     redirect("/login")
-  }
-
-  if (!hasPermission(user, PERMISSIONS.MANAGE_JOURNALS)) {
-    redirect("/admin")
   }
 
   // Fetch journal issue from database

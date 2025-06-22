@@ -27,12 +27,10 @@ const formSchema = z.object({
   }),
   slug: z
     .string()
-    .min(2, {
-      message: "Slug must be at least 2 characters.",
-    })
-    .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, {
-      message: "Slug must contain only lowercase letters, numbers, and hyphens.",
-    }),
+    .optional(),
+    // .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, {
+    //   message: "Slug must contain only lowercase letters, numbers, and hyphens.",
+    // }),
   title: z.string().optional(),
   bio: z.string().optional(),
   image: z.string().optional(),
@@ -302,12 +300,6 @@ export function AuthorForm({ slug }: AuthorFormProps) {
                     <Input
                       placeholder="Enter author name"
                       {...field}
-                      onChange={(e) => {
-                        field.onChange(e)
-                        if (!slug && !form.getValues("slug")) {
-                          generateSlug(e.target.value)
-                        }
-                      }}
                     />
                   </FormControl>
                   <FormDescription>
@@ -339,7 +331,7 @@ export function AuthorForm({ slug }: AuthorFormProps) {
               )}
             />
 
-            <FormField
+            {/* <FormField
               control={form.control}
               name="slug"
               render={({ field }) => (
@@ -357,7 +349,7 @@ export function AuthorForm({ slug }: AuthorFormProps) {
                   <FormMessage />
                 </FormItem>
               )}
-            />
+            /> */}
 
             <FormField
               control={form.control}

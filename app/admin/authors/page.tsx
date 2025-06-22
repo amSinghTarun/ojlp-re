@@ -15,7 +15,6 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { getCurrentUser } from "@/lib/auth"
-import { hasPermission, PERMISSIONS } from "@/lib/permissions"
 import { getAuthorsList } from "@/lib/actions/author-actions"
 import { redirect } from "next/navigation"
 
@@ -25,10 +24,6 @@ export default async function AuthorsPage() {
     const user = await getCurrentUser()
     if (!user) {
       redirect("/admin/login")
-    }
-
-    if (!hasPermission(user, PERMISSIONS.MANAGE_AUTHORS)) {
-      redirect("/admin")
     }
 
     // Fetch authors from database

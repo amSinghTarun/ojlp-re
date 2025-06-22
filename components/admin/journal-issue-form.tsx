@@ -25,14 +25,8 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 
 // Enhanced schema matching the database
 const formSchema = z.object({
-  title: z.string()
-    .min(1, "Title is required")
-    .min(5, "Title must be at least 5 characters")
-    .max(200, "Title must be less than 200 characters"),
-  description: z.string()
-    .min(1, "Description is required")
-    .min(20, "Description must be at least 20 characters")
-    .max(2000, "Description must be less than 2000 characters"),
+  title: z.string().optional(),
+  description: z.string().optional(),
   volume: z.coerce.number()
     .min(1, "Volume must be at least 1")
     .max(999, "Volume must be less than 999")
@@ -55,8 +49,8 @@ type FormData = z.infer<typeof formSchema>
 interface JournalIssueFormProps {
   issue?: {
     id: string
-    title: string
-    description: string
+    title?: string
+    description?: string
     volume: number
     issue: number
     year: number

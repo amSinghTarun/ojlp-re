@@ -1,12 +1,11 @@
 // lib/controllers/articles.ts - UPDATED for multiple authors support
-import { PrismaClient, ArticleType } from "@prisma/client"
+import prisma from "@/lib/prisma"
 
-const prisma = new PrismaClient()
 
 interface GetArticlesOptions {
   type?: "blog" | "journal"
   limit?: number
-  categoryId?: string
+  keywords?: string[]
   authorId?: string
   featured?: boolean
 }
@@ -28,7 +27,7 @@ export async function getArticleBySlug(slug: string) {
             authorOrder: 'asc'
           }
         },
-        journalIssue: {
+        JournalIssue: {
           select: {
             id: true,
             title: true,
@@ -38,17 +37,7 @@ export async function getArticleBySlug(slug: string) {
             publishDate: true
           }
         },
-        categories: {
-          include: {
-            category: {
-              select: {
-                id: true,
-                name: true,
-                slug: true
-              }
-            }
-          }
-        }
+        
       }
     })
 
@@ -74,7 +63,7 @@ export async function getArticleBySlug(slug: string) {
  */
 export async function getArticles(options: GetArticlesOptions = {}) {
   try {
-    const { type, limit, categoryId, authorId, featured } = options
+    const { type, limit, keywords, authorId, featured } = options
 
     const where: any = {}
 
@@ -82,10 +71,10 @@ export async function getArticles(options: GetArticlesOptions = {}) {
       where.type = type
     }
 
-    if (categoryId) {
+    if (keywords) {
       where.categories = {
         some: {
-          categoryId: categoryId
+          keywords: keywords
         }
       }
     }
@@ -126,7 +115,7 @@ export async function getArticles(options: GetArticlesOptions = {}) {
             authorOrder: 'asc'
           }
         },
-        journalIssue: {
+        JournalIssue: {
           select: {
             id: true,
             title: true,
@@ -136,17 +125,7 @@ export async function getArticles(options: GetArticlesOptions = {}) {
             publishDate: true
           }
         },
-        categories: {
-          include: {
-            category: {
-              select: {
-                id: true,
-                name: true,
-                slug: true
-              }
-            }
-          }
-        }
+        
       },
       orderBy: {
         createdAt: 'desc'
@@ -197,17 +176,7 @@ export async function getArticlesByJournalIssue(issueId: string) {
             authorOrder: 'asc'
           }
         },
-        categories: {
-          include: {
-            category: {
-              select: {
-                id: true,
-                name: true,
-                slug: true
-              }
-            }
-          }
-        }
+        
       },
       orderBy: {
         createdAt: 'desc'
@@ -266,7 +235,7 @@ export async function getArticlesByAuthor(authorId: string, options: { limit?: n
             authorOrder: 'asc'
           }
         },
-        journalIssue: {
+        JournalIssue: {
           select: {
             id: true,
             title: true,
@@ -275,17 +244,7 @@ export async function getArticlesByAuthor(authorId: string, options: { limit?: n
             year: true
           }
         },
-        categories: {
-          include: {
-            category: {
-              select: {
-                id: true,
-                name: true,
-                slug: true
-              }
-            }
-          }
-        }
+        
       },
       orderBy: {
         createdAt: 'desc'
@@ -382,7 +341,7 @@ export async function searchArticles(query: string, options: { limit?: number; t
             authorOrder: 'asc'
           }
         },
-        journalIssue: {
+        JournalIssue: {
           select: {
             id: true,
             title: true,
@@ -391,17 +350,7 @@ export async function searchArticles(query: string, options: { limit?: number; t
             year: true
           }
         },
-        categories: {
-          include: {
-            category: {
-              select: {
-                id: true,
-                name: true,
-                slug: true
-              }
-            }
-          }
-        }
+        
       },
       orderBy: {
         createdAt: 'desc'
@@ -452,7 +401,7 @@ export async function getFeaturedArticles(limit: number = 3) {
             authorOrder: 'asc'
           }
         },
-        journalIssue: {
+        JournalIssue: {
           select: {
             id: true,
             title: true,

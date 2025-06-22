@@ -6,7 +6,6 @@ import { CallForPapersTable } from "@/components/admin/call-for-papers-table"
 import { getCallsForPapers } from "@/lib/actions/call-for-papers-actions"
 import { redirect } from "next/navigation"
 import { getCurrentUser } from "@/lib/auth"
-import { hasPermission, PERMISSIONS } from "@/lib/permissions"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { AlertCircle } from "lucide-react"
 
@@ -16,10 +15,6 @@ export default async function CallForPapersPage() {
     const user = await getCurrentUser()
     if (!user) {
       redirect("/login")
-    }
-
-    if (!hasPermission(user, PERMISSIONS.MANAGE_CALL_FOR_PAPERS)) {
-      redirect("/admin")
     }
 
     console.log("📋 Admin page: Fetching calls for papers...")

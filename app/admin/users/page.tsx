@@ -2,7 +2,6 @@
 import type { Metadata } from "next"
 import { redirect } from "next/navigation"
 import { getCurrentUser } from "@/lib/auth"
-import { hasPermission, PERMISSIONS } from "@/lib/permissions"
 import { UsersTable } from "@/components/admin/users-table"
 import { getUsers } from "@/lib/actions/user-actions"
 import { Alert, AlertDescription } from "@/components/ui/alert"
@@ -17,11 +16,6 @@ export const metadata: Metadata = {
 
 export default async function UsersPage() {
   const currentUser = await getCurrentUser()
-
-  // Only users with MANAGE_USERS permission can access this page
-  if (!currentUser || !hasPermission(currentUser, PERMISSIONS.MANAGE_USERS)) {
-    redirect("/admin")
-  }
 
   try {
     // Fetch users from the database using the proper action

@@ -100,12 +100,12 @@ export async function getPosts(type?: "blog" | "journal") {
             authorOrder: 'asc'
           }
         },
-        categories: {
-          include: {
-            category: true
-          }
-        },
-        journalIssue: true
+        // categories: {
+        //   include: {
+        //     category: true
+        //   }
+        // },
+        // journalIssue: true
       },
       orderBy: {
         createdAt: 'desc'
@@ -136,12 +136,6 @@ export async function getPost(slug: string) {
             authorOrder: 'asc'
           }
         },
-        categories: {
-          include: {
-            category: true
-          }
-        },
-        journalIssue: true
       }
     })
 
@@ -183,7 +177,6 @@ export async function createPost(data: z.infer<typeof postSchema>) {
         title: validatedData.title,
         slug,
         content: validatedData.content,
-        excerpt: validatedData.excerpt || "",
         type: validatedData.type,
         keywords: validatedData.keywords || [],
         doi: validatedData.doi || null,

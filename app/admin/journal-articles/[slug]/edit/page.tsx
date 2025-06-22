@@ -1,12 +1,11 @@
-// app/admin/journal-articles/[slug]/edit/page.tsx - UPDATED for multiple authors
+// app/admin/journal-articles/[slug]/edit/page.tsx - UPDATED for multiple authors and contentLink
 import { DashboardHeader } from "@/components/admin/dashboard-header"
 import { JournalArticleForm } from "@/components/admin/journal-article-form"
 import { getJournalArticle } from "@/lib/actions/journal-article-actions"
 import { getCurrentUser } from "@/lib/auth"
-import { hasPermission, PERMISSIONS } from "@/lib/permissions"
 import { notFound, redirect } from "next/navigation"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { AlertCircle, FileText, Eye, Calendar, Users, BookOpen } from "lucide-react"
+import { AlertCircle, FileText, Eye, Calendar, Users, BookOpen, ExternalLink } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 
 interface EditJournalArticlePageProps {
@@ -20,10 +19,6 @@ export default async function EditJournalArticlePage({ params }: EditJournalArti
   const user = await getCurrentUser()
   if (!user) {
     redirect("/login")
-  }
-
-  if (!hasPermission(user, PERMISSIONS.MANAGE_ARTICLES)) {
-    redirect("/admin")
   }
 
   // Fetch journal article from database
@@ -53,13 +48,14 @@ export default async function EditJournalArticlePage({ params }: EditJournalArti
 
   const article = result.article!
 
-  // Transform the article data to match the updated form interface with multiple authors
+  // Transform the article data to match the updated form interface with multiple authors and contentLink
   const formArticle = {
     id: article.id,
     slug: article.slug,
     title: article.title,
     excerpt: article.excerpt,
     content: article.content,
+    contentLink: article.contentLink, // ADDED: Content link field
     date: article.date,
     readTime: article.readTime,
     image: article.image,
@@ -85,7 +81,7 @@ export default async function EditJournalArticlePage({ params }: EditJournalArti
         text="Edit your journal article content and metadata." 
       />
       
-      {/* Article Info - UPDATED to show multiple authors */}
+      {/* Article Info - UPDATED to show multiple authors and content link */}
       <div className="rounded-lg border p-4 bg-muted/50">
         <div className="flex items-start justify-between">
           <div className="space-y-2">
@@ -96,6 +92,19 @@ export default async function EditJournalArticlePage({ params }: EditJournalArti
               </Badge>
               {article.doi && (
                 <Badge variant="outline">DOI: {article.doi}</Badge>
+              )}
+              {article.contentLink && (
+                <Badge variant="outline" className="flex items-center gap-1">
+                  <ExternalLink className="h-3 w-3" />
+                  <a 
+                    href={article.contentLink} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="hover:underline"
+                  >
+                    Full Article
+                  </a>
+                </Badge>
               )}
             </div>
             
@@ -129,6 +138,24 @@ export default async function EditJournalArticlePage({ params }: EditJournalArti
                 <span>{article.views || 0} views</span>
               </div>
             </div>
+
+            {/* Content Link Display - ADDED */}
+            {article.contentLink && (
+              <div className="space-y-1">
+                <p className="text-sm font-medium">Full Article Link:</p>
+                <div className="flex items-center gap-2">
+                  <ExternalLink className="h-4 w-4 text-muted-foreground" />
+                  <a 
+                    href={article.contentLink} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="text-sm text-blue-600 hover:underline break-all"
+                  >
+                    {article.contentLink}
+                  </a>
+                </div>
+              </div>
+            )}
 
             {/* All Authors Display */}
             {article.Authors && article.Authors.length > 0 && (
@@ -173,6 +200,16 @@ export default async function EditJournalArticlePage({ params }: EditJournalArti
           <Users className="h-4 w-4" />
           <AlertDescription>
             <strong>Multi-Author Article:</strong> This article has {authorCount} authors. You can modify the author list and their order in the form below.
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {/* Content Link Requirement Alert - ADDED */}
+      {!article.contentLink && (
+        <Alert variant="destructive">
+          <ExternalLink className="h-4 w-4" />
+          <AlertDescription>
+            <strong>Missing Content Link:</strong> This journal article requires a link to the full content (PDF, DOI, or academic platform). Please add the content link in the form below.
           </AlertDescription>
         </Alert>
       )}

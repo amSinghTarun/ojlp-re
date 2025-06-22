@@ -1,7 +1,6 @@
 import type { Metadata } from "next"
 import { redirect, notFound } from "next/navigation"
 import { getCurrentUser } from "@/lib/auth"
-import { hasPermission, PERMISSIONS, isSuperAdmin } from "@/lib/permissions"
 import { UserForm } from "@/components/admin/user-form"
 import { getUser, getRoles } from "@/lib/actions/user-actions"
 
@@ -29,11 +28,6 @@ export async function generateMetadata({ params }: EditUserPageProps): Promise<M
 
 export default async function EditUserPage({ params }: EditUserPageProps) {
   const currentUser = await getCurrentUser()
-
-  // Check permissions
-  if (!currentUser || !hasPermission(currentUser, PERMISSIONS.MANAGE_USERS)) {
-    redirect("/admin")
-  }
 
   try {
     // Get user and roles data

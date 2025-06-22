@@ -6,7 +6,7 @@ import { z } from "zod"
 
 const journalIssueSchema = z.object({
   id: z.string().optional(),
-  title: z.string().min(1, "Title is required"),
+  title: z.string().optional(),
   volume: z.coerce.number().min(1, "Volume must be at least 1"),
   issue: z.coerce.number().min(1, "Issue must be at least 1"),
   year: z.coerce.number().min(1900, "Year must be valid"),
@@ -24,7 +24,7 @@ export async function getJournalIssues() {
     const issues = await prisma.journalIssue.findMany({
       orderBy: [{ year: "desc" }, { volume: "desc" }, { issue: "desc" }],
       include: {
-        articles: true,
+        Article: true,
       },
     })
 
@@ -40,7 +40,7 @@ export async function getJournalIssue(id: string) {
     const issue = await prisma.journalIssue.findUnique({
       where: { id },
       include: {
-        articles: true,
+        Article: true,
       },
     })
 
@@ -64,7 +64,7 @@ export async function createJournalIssue(data: JournalIssueFormData) {
     const issue = await prisma.journalIssue.create({
       data: {
         ...issueData,
-        articles:
+        Article:
           articles && articles.length > 0
             ? {
                 connect: articles.map((id) => ({ id })),
@@ -94,7 +94,7 @@ export async function updateJournalIssue(id: string, data: JournalIssueFormData)
     await prisma.journalIssue.update({
       where: { id },
       data: {
-        articles: {
+        Article: {
           set: [],
         },
       },
@@ -105,7 +105,7 @@ export async function updateJournalIssue(id: string, data: JournalIssueFormData)
       where: { id },
       data: {
         ...issueData,
-        articles:
+        Article:
           articles && articles.length > 0
             ? {
                 connect: articles.map((articleId) => ({ id: articleId })),
@@ -132,7 +132,7 @@ export async function deleteJournalIssue(id: string) {
     await prisma.journalIssue.update({
       where: { id },
       data: {
-        articles: {
+        Article: {
           set: [],
         },
       },

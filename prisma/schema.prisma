@@ -1,3 +1,5 @@
+// STEP 1: Updated Prisma Schema (what your schema.prisma should look like)
+
 generator client {
   provider = "prisma-client-js"
 }
@@ -17,45 +19,58 @@ model User {
   roleId        String
   createdAt     DateTime     @default(now())
   updatedAt     DateTime     @updatedAt
+  
+  // CHANGED: Remove the many-to-many Permission relation
+  // permissions   Permission[] @relation("PermissionToUser")
+  
+  // ADDED: Direct user permissions as string array (optional - overrides role permissions)
+  permissions   String[]     @default([])
+  
   Author        Author?
   sessions      Session[]
   role          Role         @relation(fields: [roleId], references: [id])
-  permissions   Permission[] @relation("PermissionToUser")
 }
 
 model Role {
-  id          String           @id @default(cuid())
-  name        String           @unique
+  id          String    @id @default(cuid())
+  name        String    @unique
   description String?
-  isSystem    Boolean          @default(false)
-  createdAt   DateTime         @default(now())
-  updatedAt   DateTime         @updatedAt
-  permissions RolePermission[]
+  isSystem    Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  
+  // REMOVED: Complex junction table relation
+  // permissions RolePermission[]
+  
+  // ADDED: Simple permissions array storing strings like ["article.CREATE", "user.ALL", "SYSTEM.ADMIN"]
+  permissions String[]  @default([])
+  
   users       User[]
 }
 
-model RolePermission {
-  id           String     @id @default(cuid())
-  roleId       String
-  permissionId String
-  createdAt    DateTime   @default(now())
-  updatedAt    DateTime   @updatedAt
-  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
-  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+// REMOVED: Delete these models entirely
+// model RolePermission {
+//   id           String     @id @default(cuid())
+//   roleId       String
+//   permissionId String
+//   createdAt    DateTime   @default(now())
+//   updatedAt    DateTime   @updatedAt
+//   permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+//   role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+//   @@unique([roleId, permissionId])
+// }
 
-  @@unique([roleId, permissionId])
-}
+// model Permission {
+//   id          String           @id @default(cuid())
+//   name        String           @unique
+//   description String?
+//   createdAt   DateTime         @default(now())
+//   updatedAt   DateTime         @updatedAt
+//   roles       RolePermission[]
+//   users       User[]           @relation("PermissionToUser")
+// }
 
-model Permission {
-  id          String           @id @default(cuid())
-  name        String           @unique
-  description String?
-  createdAt   DateTime         @default(now())
-  updatedAt   DateTime         @updatedAt
-  roles       RolePermission[]
-  users       User[]           @relation("PermissionToUser")
-}
-
+// UNCHANGED: Keep all your other models as they are
 model Session {
   id           String   @id @default(cuid())
   userId       String
@@ -81,26 +96,25 @@ model AuthorArticle {
   @@map("article_authors")
 }
 
-// Updated models with contentLink field
 model Article {
-  id              String            @id
+  id              String            @id @default(cuid())
   slug            String            @unique
   title           String
-  excerpt         String
+  excerpt         String?
   content         String
   date            DateTime
-  readTime        Int
+  readTime        Int?
   image           String?
   images          String[]
   type            ArticleType
   draft           Boolean           @default(false)
-  published       Boolean           @default(true)   // NEW: Controls public visibility
+  published       Boolean           @default(true)
   views           Int               @default(0)
   doi             String?           @unique
   keywords        String[]
-  contentLink     String?           // NEW: Link to article content
+  contentLink     String?
   createdAt       DateTime          @default(now())
-  updatedAt       DateTime
+  updatedAt       DateTime          @updatedAt
   issueId         String?
   JournalIssue    JournalIssue?     @relation(fields: [issueId], references: [id])
   CategoryArticle CategoryArticle[]
@@ -108,7 +122,7 @@ model Article {
 }
 
 model CallForPapers {
-  id            String   @id
+  id            String   @id @default(cuid())
   title         String
   thematicFocus String
   description   String
@@ -122,13 +136,13 @@ model CallForPapers {
   topics        String[]
   eligibility   String?
   contact       String?
-  contentLink   String?  // NEW: Link to call for papers content
+  contentLink   String?
   createdAt     DateTime @default(now())
-  updatedAt     DateTime
+  updatedAt     DateTime @updatedAt
 }
 
 model Author {
-  id             String          @id
+  id             String          @id @default(cuid())
   slug           String          @unique
   name           String
   email          String          @unique
@@ -148,19 +162,19 @@ model Author {
   instagram      String?
   orcid          String?
   createdAt      DateTime        @default(now())
-  updatedAt      DateTime
+  updatedAt      DateTime        @updatedAt
   userId         String?         @unique
   User           User?           @relation(fields: [userId], references: [id])
   authorArticles AuthorArticle[]
 }
 
 model Category {
-  id              String            @id
+  id              String            @id @default(cuid())
   name            String
   slug            String            @unique
   description     String?
   createdAt       DateTime          @default(now())
-  updatedAt       DateTime
+  updatedAt       DateTime          @updatedAt
   CategoryArticle CategoryArticle[]
 }
 
@@ -175,7 +189,7 @@ model CategoryArticle {
 }
 
 model EditorialBoardMember {
-  id           String          @id
+  id           String          @id @default(cuid())
   name         String
   designation  String
   image        String
@@ -196,27 +210,27 @@ model EditorialBoardMember {
   instagram    String?
   orcid        String?
   createdAt    DateTime        @default(now())
-  updatedAt    DateTime
+  updatedAt    DateTime        @updatedAt
 }
 
 model JournalIssue {
-  id          String    @id
-  title       String
-  description String
+  id          String    @id @default(cuid())
+  title       String?
+  description String?
   volume      Int
   issue       Int
   year        Int
-  publishDate String
+  publishDate String?
   coverImage  String?
   createdAt   DateTime  @default(now())
-  updatedAt   DateTime
+  updatedAt   DateTime  @updatedAt
   Article     Article[]
 
   @@unique([volume, issue, year])
 }
 
 model Media {
-  id          String   @id
+  id          String   @id @default(cuid())
   name        String
   url         String
   type        String
@@ -225,11 +239,11 @@ model Media {
   description String?
   uploadedBy  String?
   createdAt   DateTime @default(now())
-  updatedAt   DateTime
+  updatedAt   DateTime @updatedAt
 }
 
 model Notification {
-  id        String           @id
+  id        String           @id @default(cuid())
   title     String
   content   String
   date      DateTime
@@ -240,7 +254,7 @@ model Notification {
   expiresAt DateTime?
   image     String?
   createdAt DateTime         @default(now())
-  updatedAt DateTime
+  updatedAt DateTime         @updatedAt
 }
 
 enum ArticleType {

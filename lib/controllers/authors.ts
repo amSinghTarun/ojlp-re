@@ -1,21 +1,10 @@
-// lib/controllers/authors.ts - FIXED
-import { PrismaClient } from "@prisma/client"
-import { slugify } from "../utils"
-
-const prisma = new PrismaClient()
+import prisma from "@/lib/prisma"
+import { slugify } from "@/lib/utils"
 
 export async function getAuthors() {
   try {
     return await prisma.author.findMany({
       include: {
-        user: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            image: true,
-          },
-        },
         // UPDATED: Include articles through the new AuthorArticle junction
         authorArticles: {
           include: {
@@ -53,14 +42,6 @@ export async function getAuthorBySlug(slug: string) {
     return await prisma.author.findUnique({
       where: { slug },
       include: {
-        user: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            image: true,
-          },
-        },
         // UPDATED: Include articles through the new AuthorArticle junction
         authorArticles: {
           include: {
@@ -98,16 +79,6 @@ export async function getAuthorById(id: string) {
   try {
     return await prisma.author.findUnique({
       where: { id },
-      include: {
-        user: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            image: true,
-          },
-        },
-      },
     })
   } catch (error) {
     console.error("Error fetching author by ID:", error)
@@ -138,7 +109,7 @@ export async function createAuthor(data: {
     const cleanData: any = {
       name: authorData.name.trim(),
       email: authorData.email.toLowerCase().trim(),
-      slug: slugify(authorData.name),
+      slug: slugify(authorData.email.toLowerCase().trim()),
       
       // Only include optional fields if they have actual values
       ...(authorData.title && authorData.title.trim() && { title: authorData.title.trim() }),
@@ -161,16 +132,7 @@ export async function createAuthor(data: {
 
     const author = await prisma.author.create({
       data: cleanData,
-      include: {
-        user: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            image: true,
-          },
-        },
-      },
+
     })
 
     console.log("✅ Author created successfully:", author.name)
@@ -275,16 +237,7 @@ export async function updateAuthor(
     const author = await prisma.author.update({
       where: { slug },
       data: cleanData,
-      include: {
-        user: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            image: true,
-          },
-        },
-      },
+
     })
 
     console.log("✅ Author updated successfully:", author.name)

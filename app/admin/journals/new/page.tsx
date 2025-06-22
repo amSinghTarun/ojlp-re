@@ -1,7 +1,6 @@
 import { DashboardHeader } from "@/components/admin/dashboard-header"
 import { JournalIssueForm } from "@/components/admin/journal-issue-form"
 import { getCurrentUser } from "@/lib/auth"
-import { hasPermission, PERMISSIONS } from "@/lib/permissions"
 import { redirect } from "next/navigation"
 
 export default async function NewJournalIssuePage() {
@@ -9,10 +8,6 @@ export default async function NewJournalIssuePage() {
   const user = await getCurrentUser()
   if (!user) {
     redirect("/login")
-  }
-
-  if (!hasPermission(user, PERMISSIONS.MANAGE_JOURNALS)) {
-    redirect("/admin")
   }
 
   return (

@@ -1,0 +1,3 @@
+-- AlterTable
+ALTER TABLE "Article" ALTER COLUMN "excerpt" DROP NOT NULL,
+ALTER COLUMN "readTime" DROP NOT NULL;

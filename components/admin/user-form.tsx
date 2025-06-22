@@ -21,7 +21,6 @@ import { toast } from "@/components/ui/use-toast"
 
 // Types and Utils
 import type { User, Role } from "@prisma/client"
-import { hasPermission, isSuperAdmin, PERMISSIONS } from "@/lib/permissions"
 
 // Form validation schema
 const userFormSchema = z.object({
@@ -62,21 +61,6 @@ export function UserForm({ user, currentUser, availableRoles, mode }: UserFormPr
   const router = useRouter()
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
-
-  // Check permissions
-  const canManageUsers = hasPermission(currentUser, PERMISSIONS.MANAGE_USERS)
-  
-  // Filter roles based on current user permissions
-  const assignableRoles = availableRoles.filter(role => {
-    // Super Admin can assign any role
-    if (isSuperAdmin(currentUser)) return true
-    
-    // Regular admins cannot assign Super Admin roles
-    if (role.name === "Super Admin") return false
-    
-    // Check if user has permission to assign roles
-    return hasPermission(currentUser, PERMISSIONS.ASSIGN_ROLES)
-  })
 
   // Initialize form
   const form = useForm<z.infer<typeof userFormSchema>>({

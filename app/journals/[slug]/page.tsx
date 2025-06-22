@@ -33,7 +33,7 @@ export default async function JournalPage({ params }: JournalPageProps) {
   const relatedArticles = await getArticles({
     type: "journal",
     limit: 3,
-    categoryId: article.categories[0]?.categoryId,
+    // categoryId: article.categories[0]?.categoryId,
   })
 
   // Filter out the current article
@@ -116,9 +116,9 @@ export default async function JournalPage({ params }: JournalPageProps) {
                     slug: article.slug,
                     date: article.date || article.createdAt,
                     doi: article.doi || "",
-                    volume: article.journalIssue?.volume || 1,
-                    issue: article.journalIssue?.issue || 1,
-                    year: article.journalIssue?.year || new Date().getFullYear(),
+                    volume: article.JournalIssue?.volume || 1,
+                    issue: article.JournalIssue?.issue || 1,
+                    year: article.JournalIssue?.year || new Date().getFullYear(),
                     // UPDATED: Use the new authors array structure
                     authors: authors.map(authorArticle => ({
                       id: authorArticle.author.id,
@@ -136,7 +136,7 @@ export default async function JournalPage({ params }: JournalPageProps) {
                     views: article.views || 0,
                     createdAt: article.createdAt,
                     updatedAt: article.updatedAt,
-                    categories: article.categories || [],
+                    // categories: article.categories || [],
                   }}
                 />
                 <JournalDownloadButton

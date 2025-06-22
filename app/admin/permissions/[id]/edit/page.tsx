@@ -5,7 +5,6 @@ import { Suspense } from "react"
 import Link from "next/link"
 import { ArrowLeft, Loader2, AlertTriangle } from "lucide-react"
 import { getCurrentUser } from "@/lib/auth"
-import { isSuperAdmin } from "@/lib/permissions"
 import { PermissionForm } from "@/components/admin/permission-form"
 import { getPermission } from "@/lib/actions/permission-actions"
 import { Button } from "@/components/ui/button"
@@ -32,12 +31,6 @@ export async function generateMetadata({ params }: EditPermissionPageProps): Pro
   try {
     // Check user permissions first
     const currentUser = await getCurrentUser()
-    if (!currentUser || !isSuperAdmin(currentUser)) {
-      return {
-        title: "Access Denied",
-        description: "Unauthorized access to permission management",
-      }
-    }
 
     const { permission, error } = await getPermission(params.id)
     

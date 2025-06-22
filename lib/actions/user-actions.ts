@@ -14,7 +14,6 @@ import {
   getRoles as getRolesFromDB,
 } from "@/lib/controllers/users"
 import { getCurrentUser } from "@/lib/auth"
-import { hasPermission, PERMISSIONS, isSuperAdmin } from "@/lib/permissions"
 
 // Validation schemas
 const userSchema = z.object({

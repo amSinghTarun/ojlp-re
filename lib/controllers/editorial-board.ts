@@ -1,4 +1,4 @@
-import prisma from "../prisma"
+import prisma from "@/lib/prisma"
 import { BoardMemberType } from "@prisma/client"
 
 export async function getEditorialBoardMembers() {

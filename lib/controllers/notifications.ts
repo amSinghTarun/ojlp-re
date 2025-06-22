@@ -1,4 +1,7 @@
-import prisma from "../prisma"
+'use server'
+
+import prisma from "@/lib/prisma"
+import { NotificationType } from "@prisma/client"
 
 export async function getNotifications() {
   return prisma.notification.findMany({
@@ -39,7 +42,9 @@ export async function createNotification(data: {
   return prisma.notification.create({
     data: {
       ...data,
+      date: new Date(),
       priority: data.priority || "medium",
+      type: data.type as NotificationType,
     },
   })
 }
@@ -49,7 +54,7 @@ export async function updateNotification(
   data: {
     title?: string
     content?: string
-    type?: string
+    type?: NotificationType
     priority?: "low" | "medium" | "high"
     link?: string
     image?: string
@@ -69,36 +74,10 @@ export async function deleteNotification(id: string) {
 }
 
 export async function markNotificationAsRead(id: string, userId: string) {
-  return prisma.notificationRead.create({
+  return prisma.notification.update({
+    where: { id },
     data: {
-      notificationId: id,
-      userId,
+      read: true,
     },
   })
-}
-
-export async function getUnreadNotificationsForUser(userId: string) {
-  const now = new Date()
-
-  // Get all active notifications
-  const allNotifications = await prisma.notification.findMany({
-    where: {
-      OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
-    },
-  })
-
-  // Get all notifications that the user has read
-  const readNotifications = await prisma.notificationRead.findMany({
-    where: {
-      userId,
-    },
-    select: {
-      notificationId: true,
-    },
-  })
-
-  const readNotificationIds = new Set(readNotifications.map((n) => n.notificationId))
-
-  // Filter out the read notifications
-  return allNotifications.filter((notification) => !readNotificationIds.has(notification.id))
 }

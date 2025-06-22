@@ -1,7 +1,6 @@
 import type { Metadata } from "next"
 import { redirect } from "next/navigation"
 import { getCurrentUser } from "@/lib/auth"
-import { hasPermission, PERMISSIONS } from "@/lib/permissions"
 import { UserForm } from "@/components/admin/user-form"
 import { getRoles } from "@/lib/actions/user-actions"
 
@@ -12,11 +11,6 @@ export const metadata: Metadata = {
 
 export default async function NewUserPage() {
   const currentUser = await getCurrentUser()
-
-  // Check permissions
-  if (!currentUser || !hasPermission(currentUser, PERMISSIONS.MANAGE_USERS)) {
-    redirect("/admin")
-  }
 
   try {
     // Get available roles

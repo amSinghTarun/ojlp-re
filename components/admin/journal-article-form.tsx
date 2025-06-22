@@ -26,7 +26,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { CalendarIcon, Loader2, Plus, X, FileText, AlertTriangle, Mail, BookOpen, UserPlus, Users } from "lucide-react"
+import { CalendarIcon, Loader2, Plus, X, FileText, AlertTriangle, Mail, BookOpen, UserPlus, Users, ExternalLink } from "lucide-react"
 import { Calendar } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { cn } from "@/lib/utils"
@@ -52,7 +52,7 @@ const authorSchema = z.object({
     .email("Please enter a valid email address"),
 })
 
-// Enhanced schema with multiple authors
+// Enhanced schema with multiple authors and contentLink
 const formSchema = z.object({
   title: z.string()
     .min(1, "Title is required")
@@ -70,6 +70,29 @@ const formSchema = z.object({
   content: z.string()
     .min(1, "Content is required")
     .min(100, "Content must be at least 100 characters"),
+  contentLink: z.string()
+    .min(1, "Content link is required for journal articles")
+    .url("Please enter a valid URL")
+    .refine((url) => {
+      // Allow common academic/journal URL patterns
+      const validPatterns = [
+        /^https?:\/\/.*\.pdf$/i,
+        /^https?:\/\/.*doi\.org\//i,
+        /^https?:\/\/.*arxiv\.org\//i,
+        /^https?:\/\/.*pubmed\.ncbi\.nlm\.nih\.gov\//i,
+        /^https?:\/\/.*scholar\.google\./i,
+        /^https?:\/\/.*researchgate\.net\//i,
+        /^https?:\/\/.*jstor\.org\//i,
+        /^https?:\/\/.*sciencedirect\.com\//i,
+        /^https?:\/\/.*springer\.com\//i,
+        /^https?:\/\/.*wiley\.com\//i,
+        /^https?:\/\/.*nature\.com\//i,
+        /^https?:\/\/.*science\.org\//i,
+        /^https?:\/\/.*ieee\.org\//i,
+        /^https?:\/\/.+/i, // Allow any HTTPS URL as fallback
+      ];
+      return validPatterns.some(pattern => pattern.test(url));
+    }, "Please provide a valid link to the full article content (PDF, DOI, or academic platform)"),
   date: z.date({ required_error: "Publication date is required" }),
   readTime: z.coerce.number()
     .min(1, "Read time must be at least 1 minute")
@@ -97,6 +120,7 @@ interface JournalArticleFormProps {
     title: string
     excerpt: string
     content: string
+    contentLink?: string
     date: Date | string
     readTime: number
     image: string
@@ -149,6 +173,7 @@ export function JournalArticleForm({ article }: JournalArticleFormProps) {
       slug: article?.slug || "",
       excerpt: article?.excerpt || "",
       content: article?.content || "",
+      contentLink: article?.contentLink || "",
       date: article?.date ? new Date(article.date) : new Date(),
       readTime: article?.readTime || 5,
       image: article?.image || "",
@@ -173,6 +198,7 @@ export function JournalArticleForm({ article }: JournalArticleFormProps) {
   const images = form.watch("images")
   const title = form.watch("title")
   const authors = form.watch("authors")
+  const contentLink = form.watch("contentLink")
 
   // Auto-generate slug from title
   useEffect(() => {
@@ -449,7 +475,7 @@ export function JournalArticleForm({ article }: JournalArticleFormProps) {
         <Alert>
           <FileText className="h-4 w-4" />
           <AlertDescription>
-            <strong>New Journal Article:</strong> Add authors below. If an author doesn't exist, a new author record will be created automatically based on their email.
+            <strong>New Journal Article:</strong> Add authors and provide a link to the full article content. This could be a PDF, DOI link, or link to an academic platform.
           </AlertDescription>
         </Alert>
       )}
@@ -519,6 +545,43 @@ export function JournalArticleForm({ article }: JournalArticleFormProps) {
                           URL-friendly version of the title (lowercase, hyphens only)
                         </FormDescription>
                         <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="contentLink"
+                    render={({ field }) => (
+                      <FormItem className="md:col-span-2">
+                        <FormLabel>Full Article Link *</FormLabel>
+                        <FormControl>
+                          <div className="relative">
+                            <ExternalLink className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                            <Input 
+                              placeholder="https://doi.org/10.1000/journal.article or https://example.com/article.pdf" 
+                              {...field} 
+                              className="pl-10"
+                            />
+                          </div>
+                        </FormControl>
+                        <FormDescription>
+                          Link to the full article content (PDF, DOI, arxiv, PubMed, etc.). This is required for journal articles.
+                        </FormDescription>
+                        <FormMessage />
+                        {contentLink && (
+                          <div className="flex items-center gap-2 text-sm text-green-600">
+                            <ExternalLink className="h-3 w-3" />
+                            <a 
+                              href={contentLink} 
+                              target="_blank" 
+                              rel="noopener noreferrer" 
+                              className="hover:underline"
+                            >
+                              Preview link
+                            </a>
+                          </div>
+                        )}
                       </FormItem>
                     )}
                   />

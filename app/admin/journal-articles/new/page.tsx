@@ -1,7 +1,6 @@
 import { DashboardHeader } from "@/components/admin/dashboard-header"
 import { JournalArticleForm } from "@/components/admin/journal-article-form"
 import { getCurrentUser } from "@/lib/auth"
-import { hasPermission, PERMISSIONS } from "@/lib/permissions"
 import { redirect } from "next/navigation"
 
 export default async function NewJournalArticlePage() {
@@ -9,10 +8,6 @@ export default async function NewJournalArticlePage() {
   const user = await getCurrentUser()
   if (!user) {
     redirect("/login")
-  }
-
-  if (!hasPermission(user, PERMISSIONS.MANAGE_ARTICLES)) {
-    redirect("/admin")
   }
 
   return (

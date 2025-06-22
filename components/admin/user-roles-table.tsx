@@ -9,7 +9,6 @@ import { toast } from "@/components/ui/use-toast"
 import { updateUserRole } from "@/lib/actions/user-actions"
 import { getRoles } from "@/lib/actions/role-actions"
 import { getCurrentUser } from "@/lib/auth"
-import { hasPermission, PERMISSIONS, canAssignRole } from "@/lib/permissions"
 import type { User, Role } from "@prisma/client"
 
 interface UserRolesTableProps {
@@ -33,16 +32,6 @@ export function UserRolesTable({ initialUsers }: UserRolesTableProps) {
         // Get current user
         const user = await getCurrentUser()
         setCurrentUser(user)
-
-        // Check if user has permission to assign roles
-        if (!user || !(await hasPermission(user, PERMISSIONS.ASSIGN_ROLES))) {
-          toast({
-            title: "Permission Denied",
-            description: "You don't have permission to assign roles",
-            variant: "destructive",
-          })
-          return
-        }
 
         // Get available roles
         const { roles: availableRoles } = await getRoles()

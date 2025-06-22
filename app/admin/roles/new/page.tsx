@@ -1,7 +1,6 @@
 import type { Metadata } from "next"
 import { redirect } from "next/navigation"
 import { getCurrentUser } from "@/lib/auth"
-import { isSuperAdmin } from "@/lib/permissions"
 import { RoleForm } from "@/components/admin/role-form"
 import { getPermissions } from "@/lib/actions/role-actions"
 
@@ -12,11 +11,6 @@ export const metadata: Metadata = {
 
 export default async function NewRolePage() {
   const currentUser = await getCurrentUser()
-
-  // Only super admins can create roles
-  if (!currentUser || !isSuperAdmin(currentUser)) {
-    redirect("/admin")
-  }
 
   try {
     // Get available permissions

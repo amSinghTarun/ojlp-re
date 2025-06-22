@@ -28,6 +28,7 @@ const journalArticleSchema = z.object({
   doi: z.string().optional(),
   keywords: z.array(z.string()).default([]),
   draft: z.boolean().default(false),
+  contentLink: z.string().optional(),
   categories: z.array(z.string()).default([]),
 })
 
@@ -105,12 +106,7 @@ export async function getJournalArticle(slug: string) {
             authorOrder: 'asc'
           }
         },
-        journalIssue: true,
-        categories: {
-          include: {
-            category: true,
-          },
-        },
+        JournalIssue: true,
       },
     })
 
@@ -158,12 +154,7 @@ export async function getJournalArticles() {
             authorOrder: 'asc'
           }
         },
-        journalIssue: true,
-        categories: {
-          include: {
-            category: true,
-          },
-        },
+        JournalIssue: true
       },
       orderBy: {
         createdAt: 'desc',
@@ -240,6 +231,7 @@ export async function createJournalArticle(data: JournalArticleFormData) {
           slug: validatedData.slug,
           excerpt: validatedData.excerpt,
           content: validatedData.content,
+          contentLink: validatedData.contentLink,
           date: validatedData.date,
           readTime: validatedData.readTime,
           image: validatedData.image || null,
@@ -351,6 +343,7 @@ export async function updateJournalArticle(slug: string, data: JournalArticleFor
           title: validatedData.title,
           slug: validatedData.slug,
           excerpt: validatedData.excerpt,
+          contentLink: validatedData.contentLink,
           content: validatedData.content,
           date: validatedData.date,
           readTime: validatedData.readTime,

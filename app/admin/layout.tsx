@@ -1,11 +1,7 @@
 import type React from "react"
-import { redirect } from "next/navigation"
 import { AdminSidebar } from "@/components/admin/sidebar"
-import { AdminHeader } from "@/components/admin/header"
 import { getCurrentUser } from "@/lib/auth"
-import { hasPermission } from "@/lib/permissions"
-import { PERMISSIONS } from "@/lib/permissions"
-import { User } from "@/lib/types"
+import { User } from "@prisma/client"
 
 export default async function AdminLayout({
   children,

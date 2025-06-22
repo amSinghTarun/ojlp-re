@@ -1,10 +1,10 @@
-import prisma from "../prisma"
+import prisma from "@/lib/prisma"
 
 export async function getJournalIssues() {
   return prisma.journalIssue.findMany({
     orderBy: [{ year: "desc" }, { volume: "desc" }, { issue: "desc" }],
     include: {
-      articles: {
+      Article: {
         include: {
           authors: {
             include: {
@@ -21,18 +21,13 @@ export async function getJournalIssueById(id: string) {
   return prisma.journalIssue.findUnique({
     where: { id },
     include: {
-      articles: {
+      Article: {
         include: {
           authors: {
             include: {
               author: true,
             },
-          },
-          categories: {
-            include: {
-              category: true,
-            },
-          },
+          }
         },
       },
     },
@@ -46,18 +41,13 @@ export async function getJournalIssueByVolume(volume: number, issue: number) {
       issue,
     },
     include: {
-      articles: {
+      Article: {
         include: {
           authors: {
             include: {
               author: true,
             },
-          },
-          categories: {
-            include: {
-              category: true,
-            },
-          },
+          }
         },
       },
     },
@@ -70,13 +60,13 @@ export async function createJournalIssue(data: {
   volume: number
   issue: number
   year: number
-  publishDate: Date | string
+  publishDate: string
   coverImage?: string
 }) {
   return prisma.journalIssue.create({
     data,
     include: {
-      articles: true,
+      Article: true,
     },
   })
 }
@@ -89,7 +79,7 @@ export async function updateJournalIssue(
     volume?: number
     issue?: number
     year?: number
-    publishDate?: Date | string
+    publishDate?: string
     coverImage?: string
   },
 ) {
@@ -97,7 +87,7 @@ export async function updateJournalIssue(
     where: { id },
     data,
     include: {
-      articles: true,
+      Article: true,
     },
   })
 }
@@ -112,7 +102,7 @@ export async function getLatestIssue() {
   return prisma.journalIssue.findFirst({
     orderBy: [{ year: "desc" }, { volume: "desc" }, { issue: "desc" }],
     include: {
-      articles: {
+      Article: {
         include: {
           authors: {
             include: {
@@ -173,7 +163,7 @@ export async function getVolumeByNumber(volumeNumber: number) {
       issue: "asc",
     },
     include: {
-      articles: {
+      Article: {
         include: {
           authors: {
             include: {

@@ -2,7 +2,6 @@
 import { notFound, redirect } from "next/navigation"
 import { AuthorForm } from "@/components/admin/author-form"
 import { getCurrentUser } from "@/lib/auth"
-import { hasPermission, PERMISSIONS } from "@/lib/permissions"
 import { getAuthorDetail } from "@/lib/actions/author-actions"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { AlertCircle } from "lucide-react"
@@ -21,13 +20,8 @@ export default async function EditAuthorPage({ params }: EditAuthorPageProps) {
     redirect("/admin/login")
   }
 
-  // Check if user has permission to manage authors
-  if (!hasPermission(user, PERMISSIONS.MANAGE_AUTHORS)) {
-    redirect("/admin")
-  }
-
   // Fetch author from database
-  const result = await getAuthorDetail(params.slug)
+  const result = await getAuthorDetail(decodeURIComponent(params.slug))
 
   if (result.error) {
     if (result.error.includes("not found") || result.error.includes("Author not found")) {

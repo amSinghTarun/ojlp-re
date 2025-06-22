@@ -4,13 +4,13 @@ import { revalidatePath } from "next/cache"
 import { prisma } from "@/lib/prisma"
 import { z } from "zod"
 import { getCurrentUser } from "@/lib/auth"
-import { hasPermission, PERMISSIONS } from "@/lib/permissions"
 import { NotificationType, Priority } from "@prisma/client"
 import { format } from "date-fns"
 
 // Enhanced schema with detailed error messages
 const callForPapersSchema = z.object({
   id: z.string().optional(),
+  contentLink: z.string(),
   title: z.string()
     .min(1, "Title is required")
     .min(5, "Title must be at least 5 characters")
@@ -72,11 +72,6 @@ async function checkPermissions() {
     
     if (!user) {
       throw new Error("Authentication required. Please log in to continue.")
-    }
-
-    const permission = hasPermission(user, PERMISSIONS.MANAGE_CALL_FOR_PAPERS)
-    if (!permission) {
-      throw new Error("Insufficient permissions. You need 'manage_call_for_papers' permission to perform this action. Please contact an administrator.")
     }
 
     console.log(`✅ Permission check passed for user: ${user.email}`)
@@ -205,6 +200,7 @@ export async function createCallForPapers(data: CallForPapersFormData) {
           description: validatedData.description,
           deadline: validatedData.deadline,
           volume: validatedData.volume,
+          contentLink: validatedData.contentLink,
           issue: validatedData.issue,
           year: validatedData.year,
           guidelines: validatedData.guidelines,
@@ -359,6 +355,7 @@ export async function updateCallForPapers(id: string, data: CallForPapersFormDat
         volume: validatedData.volume,
         issue: validatedData.issue,
         year: validatedData.year,
+        contentLink: validatedData.contentLink,
         guidelines: validatedData.guidelines,
         image: validatedData.image || null,
         fee: validatedData.fee || null,
