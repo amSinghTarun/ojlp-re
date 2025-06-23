@@ -1,18 +1,14 @@
 // lib/auth.ts
-import type { User, Role, Permission } from "@prisma/client"
+import type { User, Role } from "@prisma/client"
 import { getServerSession } from "next-auth/next"
 import { authOptions } from "@/app/api/auth/[...nextauth]/route"
 import prisma from "./prisma"
 import bcrypt from "bcryptjs"
 
-// Extended user type for authentication
+// Extended user type for authentication (updated for new schema)
 export type AuthUser = User & {
-  role: Role & {
-    permissions: Array<{
-      permission: Permission
-    }>
-  }
-  permissions: Permission[]
+  role: Role
+  permissions: string[] // Direct permissions array from User model
 }
 
 // Get current authenticated user from database
@@ -39,22 +35,13 @@ export async function getCurrentUser(): Promise<AuthUser | null> {
   }
 }
 
-// Find user by ID with all relations
+// Find user by ID with all relations (updated for new schema)
 async function findUserById(id: string): Promise<AuthUser | null> {
   try {
     const user = await prisma.user.findUnique({
       where: { id },
       include: {
-        role: {
-          include: {
-            permissions: {
-              include: {
-                permission: true
-              }
-            }
-          }
-        },
-        permissions: true,
+        role: true, // Just include the role, no complex permissions relation
       },
     })
 
@@ -69,22 +56,13 @@ async function findUserById(id: string): Promise<AuthUser | null> {
   }
 }
 
-// Find user by email for authentication
+// Find user by email for authentication (updated for new schema)
 export async function findUserByEmail(email: string): Promise<AuthUser | null> {
   try {
     const user = await prisma.user.findUnique({
       where: { email },
       include: {
-        role: {
-          include: {
-            permissions: {
-              include: {
-                permission: true
-              }
-            }
-          }
-        },
-        permissions: true,
+        role: true // Simple role include
       },
     })
 
@@ -157,16 +135,7 @@ export async function getUsers(): Promise<AuthUser[]> {
   try {
     const users = await prisma.user.findMany({
       include: {
-        role: {
-          include: {
-            permissions: {
-              include: {
-                permission: true
-              }
-            }
-          }
-        },
-        permissions: true,
+        role: true,
       },
       orderBy: {
         createdAt: 'desc'
@@ -190,6 +159,7 @@ export async function createUser(userData: {
   password: string
   roleId: string
   image?: string
+  permissions?: string[] // Optional direct permissions
 }): Promise<{ success: boolean; user?: AuthUser; message?: string }> {
   try {
     // Check if email already exists
@@ -214,7 +184,7 @@ export async function createUser(userData: {
     const saltRounds = 12
     const hashedPassword = await bcrypt.hash(userData.password, saltRounds)
 
-    // Create user
+    // Create user with new schema
     const newUser = await prisma.user.create({
       data: {
         name: userData.name,
@@ -222,18 +192,10 @@ export async function createUser(userData: {
         password: hashedPassword,
         roleId: userData.roleId,
         image: userData.image || null,
+        permissions: userData.permissions || [], // Set permissions array
       },
       include: {
-        role: {
-          include: {
-            permissions: {
-              include: {
-                permission: true
-              }
-            }
-          }
-        },
-        permissions: true,
+        role: true,
       },
     })
 
@@ -259,6 +221,7 @@ export async function updateUser(
     password?: string
     roleId?: string
     image?: string
+    permissions?: string[] // Update permissions array
   },
 ): Promise<{ success: boolean; user?: AuthUser; message?: string }> {
   try {
@@ -303,6 +266,7 @@ export async function updateUser(
     if (userData.email !== undefined) updateData.email = userData.email
     if (userData.roleId !== undefined) updateData.roleId = userData.roleId
     if (userData.image !== undefined) updateData.image = userData.image
+    if (userData.permissions !== undefined) updateData.permissions = userData.permissions
 
     // Hash password if provided
     if (userData.password && userData.password.trim() !== "") {
@@ -315,16 +279,7 @@ export async function updateUser(
       where: { id: userId },
       data: updateData,
       include: {
-        role: {
-          include: {
-            permissions: {
-              include: {
-                permission: true
-              }
-            }
-          }
-        },
-        permissions: true,
+        role: true,
       },
     })
 
@@ -392,7 +347,7 @@ export async function updateUserRole(userId: string, roleId: string) {
   return result
 }
 
-// Update user permissions in database
+// Update user permissions in database (simplified for new schema)
 export async function updateUserPermissions(
   userId: string, 
   permissions: string[]
@@ -407,35 +362,14 @@ export async function updateUserPermissions(
       return { success: false, message: "User not found" }
     }
 
-    // First, remove all existing permissions for this user
-    await prisma.permission.deleteMany({
-      where: { userId }
-    })
-
-    // Then, add new permissions if any
-    if (permissions.length > 0) {
-      await prisma.permission.createMany({
-        data: permissions.map(permission => ({
-          name: permission,
-          userId
-        }))
-      })
-    }
-
-    // Return updated user
-    const updatedUser = await prisma.user.findUnique({
+    // Update user permissions directly in the user record
+    const updatedUser = await prisma.user.update({
       where: { id: userId },
+      data: {
+        permissions: permissions // Simply update the permissions array
+      },
       include: {
-        role: {
-          include: {
-            permissions: {
-              include: {
-                permission: true
-              }
-            }
-          }
-        },
-        permissions: true,
+        role: true,
       },
     })
 
@@ -450,47 +384,47 @@ export async function updateUserPermissions(
 }
 
 // Helper function to check if user is super admin
-export function isSuperAdmin(user: AuthUser): boolean {
+export function isSuperAdmin(user: AuthUser | null): boolean {
   return user?.role?.name === "Super Admin"
 }
 
-// Helper function to get user permissions
+// Helper function to get user permissions (updated for new schema)
 export function getUserPermissions(user: AuthUser): string[] {
   if (!user) return []
 
   // Super Admin has all permissions
   if (isSuperAdmin(user)) {
-    // Return all available permissions
+    // Return comprehensive permissions list for super admin
     return [
-      "view_dashboard",
-      "manage_posts",
-      "manage_authors", 
-      "manage_journals",
-      "manage_articles",
-      "manage_call_for_papers",
-      "manage_notifications",
-      "manage_media",
-      "manage_editorial_board",
-      "manage_board_advisors",
-      "manage_users",
-      "assign_roles",
-      "manage_roles",
-      "manage_permissions"
+      "SYSTEM.ADMIN",
+      "SYSTEM.USER_MANAGEMENT",
+      "SYSTEM.ROLE_MANAGEMENT",
+      "SYSTEM.SETTINGS",
+      "article.ALL",
+      "author.ALL",
+      "category.ALL",
+      "media.ALL",
+      "journalissue.ALL",
+      "callforpapers.ALL",
+      "notification.ALL",
+      "editorialboardmember.ALL",
+      "user.ALL",
+      "role.ALL"
     ]
   }
 
-  // Get permissions from the user's role
-  const rolePermissions = user.role.permissions.map((rp) => rp.permission.name)
+  // Get permissions from the user's role (now just an array)
+  const rolePermissions = user.role.permissions || []
 
-  // Get direct permissions assigned to the user
-  const directPermissions = user.permissions.map((p) => p.name)
+  // Get direct permissions assigned to the user (now just an array)
+  const directPermissions = user.permissions || []
 
   // Combine and deduplicate permissions
   return [...new Set([...rolePermissions, ...directPermissions])]
 }
 
-// Helper function to check if user has specific permission
-export function hasPermission(user: AuthUser, permission: string): boolean {
+// Helper function to check if user has specific permission (updated)
+export function hasPermission(user: AuthUser | null, permission: string): boolean {
   if (!user) return false
 
   // Super Admin has all permissions
@@ -499,4 +433,46 @@ export function hasPermission(user: AuthUser, permission: string): boolean {
   // Check if the user has the specific permission
   const userPermissions = getUserPermissions(user)
   return userPermissions.includes(permission)
+}
+
+// New helper functions for the updated permission system
+
+// Check if user has any permission that starts with a prefix
+export function hasPermissionPrefix(user: AuthUser | null, prefix: string): boolean {
+  if (!user) return false
+  if (isSuperAdmin(user)) return true
+  
+  const userPermissions = getUserPermissions(user)
+  return userPermissions.some(permission => permission.startsWith(prefix))
+}
+
+// Check if user has system-level permission
+export function hasSystemPermission(user: AuthUser | null, systemPermission: string): boolean {
+  if (!user) return false
+  if (isSuperAdmin(user)) return true
+  
+  const userPermissions = getUserPermissions(user)
+  return userPermissions.includes(`SYSTEM.${systemPermission}`) || 
+         userPermissions.includes('SYSTEM.ADMIN')
+}
+
+// Check if user can manage other users
+export function canManageUsers(user: AuthUser | null): boolean {
+  return hasSystemPermission(user, 'USER_MANAGEMENT') || isSuperAdmin(user)
+}
+
+// Check if user can manage roles
+export function canManageRoles(user: AuthUser | null): boolean {
+  return hasSystemPermission(user, 'ROLE_MANAGEMENT') || isSuperAdmin(user)
+}
+
+// Get user's effective permissions for a specific table
+export function getTablePermissions(user: AuthUser | null, tableName: string): string[] {
+  if (!user) return []
+  if (isSuperAdmin(user)) return ['CREATE', 'READ', 'UPDATE', 'DELETE', 'ALL']
+  
+  const userPermissions = getUserPermissions(user)
+  return userPermissions
+    .filter(permission => permission.startsWith(`${tableName}.`))
+    .map(permission => permission.split('.')[1])
 }

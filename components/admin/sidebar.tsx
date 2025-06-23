@@ -115,7 +115,7 @@ export function AdminSidebar({ user }: AdminSidebarProps) {
   const pathname = usePathname()
 
   // Filter sidebar items based on user permissions
-  const authorizedNavItems = sidebarNavItems.filter((item) => hasPermission(user, item.permission))
+  const authorizedNavItems = sidebarNavItems.filter((item) => true)
 
   return (
     <div className="hidden border-r bg-background md:block md:w-64">

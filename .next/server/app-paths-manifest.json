@@ -1,7 +1,8 @@
 {
   "/notifications/page": "app/notifications/page.js",
-  "/admin/editorial-board/page": "app/admin/editorial-board/page.js",
-  "/admin/media/page": "app/admin/media/page.js",
-  "/admin/users/page": "app/admin/users/page.js",
-  "/admin/editorial-board/new/page": "app/admin/editorial-board/new/page.js"
+  "/admin/roles/new/page": "app/admin/roles/new/page.js",
+  "/admin/roles/page": "app/admin/roles/page.js",
+  "/admin/login/page": "app/admin/login/page.js",
+  "/admin/roles/[id]/edit/page": "app/admin/roles/[id]/edit/page.js",
+  "/admin/page": "app/admin/page.js"
 }

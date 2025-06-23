@@ -33,7 +33,7 @@ export default async function JournalPage({ params }: JournalPageProps) {
   const relatedArticles = await getArticles({
     type: "journal",
     limit: 3,
-    // categoryId: article.categories[0]?.categoryId,
+    categoryId: article.categories[0]?.categoryId,
   })
 
   // Filter out the current article

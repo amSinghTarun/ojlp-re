@@ -23,7 +23,7 @@ export async function sendEmail({ to, subject, text, html }: EmailOptions) {
 }
 
 // Generate a random OTP of specified length
-export function generateOTP(length = 6): string {
+export async function generateOTP(length = 6): Promise<string> {
   const digits = "0123456789"
   let otp = ""
 

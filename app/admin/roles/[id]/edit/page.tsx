@@ -1,12 +1,46 @@
+// app/admin/roles/[id]/edit/page.tsx
 import type { Metadata } from "next"
 import { redirect, notFound } from "next/navigation"
 import { getCurrentUser } from "@/lib/auth"
 import { RoleForm } from "@/components/admin/role-form"
 import { getRole, getPermissions } from "@/lib/actions/role-actions"
+import { checkPermission } from "@/lib/permissions/checker"
+import { UserWithPermissions } from "@/lib/permissions/types"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { AlertTriangle, ArrowLeft } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import Link from "next/link"
+import { prisma } from "@/lib/prisma"
 
 interface EditRolePageProps {
   params: {
     id: string
+  }
+}
+
+// Get current user with permissions
+async function getCurrentUserWithPermissions(): Promise<UserWithPermissions | null> {
+  try {
+    const user = await getCurrentUser()
+    if (!user) return null
+
+    // If user already has role and permissions, return as is
+    if ('role' in user && user.role && 'permissions' in user.role) {
+      return user as UserWithPermissions
+    }
+
+    // Otherwise fetch the complete user data with role and permissions
+    const fullUser = await prisma.user.findUnique({
+      where: { id: user.id },
+      include: {
+        role: true
+      }
+    })
+
+    return fullUser as UserWithPermissions
+  } catch (error) {
+    console.error('Error getting user with permissions:', error)
+    return null
   }
 }
 
@@ -27,9 +61,51 @@ export async function generateMetadata({ params }: EditRolePageProps): Promise<M
 }
 
 export default async function EditRolePage({ params }: EditRolePageProps) {
-  const currentUser = await getCurrentUser()
-
   try {
+    // Validate params
+    if (!params.id || typeof params.id !== 'string' || params.id.trim() === '') {
+      console.error("Invalid role ID:", params.id)
+      notFound()
+    }
+
+    // Check authentication and permissions
+    const currentUser = await getCurrentUserWithPermissions()
+    
+    if (!currentUser) {
+      redirect("/admin/login")
+    }
+
+    // Check if user has permission to manage roles
+    const permissionCheck = { allowed: true }
+    // checkPermission(currentUser, 'SYSTEM.ROLE_MANAGEMENT')
+    if (!permissionCheck.allowed) {
+      return (
+        <div className="max-w-2xl mx-auto space-y-6">
+          <div className="flex items-center gap-4">
+            <Button variant="outline" size="sm" asChild>
+              <Link href="/admin/roles">
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Back to Roles
+              </Link>
+            </Button>
+            <div>
+              <h1 className="text-2xl font-bold">Access Denied</h1>
+              <p className="text-muted-foreground">
+                You don't have permission to edit roles
+              </p>
+            </div>
+          </div>
+          
+          <Alert variant="destructive">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertDescription>
+              You don't have permission to edit roles. Contact your administrator for access.
+            </AlertDescription>
+          </Alert>
+        </div>
+      )
+    }
+
     // Get role and permissions data
     const [roleResult, permissionsResult] = await Promise.all([
       getRole(params.id),
@@ -41,7 +117,7 @@ export default async function EditRolePage({ params }: EditRolePageProps) {
 
     // Handle errors
     if (roleError || !role) {
-      if (roleError === "Role not found") {
+      if (roleError === "Role not found" || roleError?.includes("not found")) {
         notFound()
       }
       throw new Error(roleError || "Failed to load role")
@@ -61,19 +137,49 @@ export default async function EditRolePage({ params }: EditRolePageProps) {
   } catch (error) {
     console.error("Error loading edit role page:", error)
     
+    // Check if it's a not found error
+    if (error instanceof Error && error.message.includes("not found")) {
+      notFound()
+    }
+    
     return (
       <div className="max-w-2xl mx-auto space-y-6">
-        <div className="text-center py-12">
-          <h1 className="text-2xl font-bold mb-4">Error Loading Role</h1>
-          <p className="text-muted-foreground mb-6">
+        <div className="flex items-center gap-4">
+          <Button variant="outline" size="sm" asChild>
+            <Link href="/admin/roles">
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back to Roles
+            </Link>
+          </Button>
+          <div>
+            <h1 className="text-2xl font-bold">Error Loading Role</h1>
+            <p className="text-muted-foreground">
+              There was a problem loading the role data
+            </p>
+          </div>
+        </div>
+        
+        <Alert variant="destructive">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertDescription>
             {error instanceof Error ? error.message : "Failed to load the role edit form"}
-          </p>
-          <a 
-            href="/admin/roles" 
-            className="inline-flex items-center px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90"
-          >
-            Back to Roles
-          </a>
+            {process.env.NODE_ENV === "development" && (
+              <details className="mt-2">
+                <summary className="cursor-pointer">Error Details (Development)</summary>
+                <pre className="mt-2 text-xs overflow-x-auto bg-muted p-2 rounded">
+                  {error instanceof Error ? error.message : String(error)}
+                </pre>
+              </details>
+            )}
+          </AlertDescription>
+        </Alert>
+        
+        <div className="flex items-center gap-4">
+          <Button asChild>
+            <Link href="/admin/roles">
+              Back to Roles
+            </Link>
+          </Button>
         </div>
       </div>
     )

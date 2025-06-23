@@ -3,9 +3,9 @@ import { Overview } from "@/components/admin/overview"
 import { RecentPosts } from "@/components/admin/recent-posts"
 import { DashboardHeader } from "@/components/admin/dashboard-header"
 import { articles } from "@/lib/data"
+import { LogoutButton } from "@/components/admin/logout-button"
 
 export default function AdminDashboard() {
-  // In a real application, you would fetch this data from your database
   const stats = {
     totalPosts: articles.length,
     publishedPosts: articles.filter((article) => !article.draft).length,
@@ -16,7 +16,7 @@ export default function AdminDashboard() {
   return (
     <div className="space-y-6">
       <DashboardHeader heading="Dashboard" text="Overview of your blog content and performance." />
-
+      <LogoutButton />
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
