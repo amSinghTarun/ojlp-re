@@ -7,7 +7,7 @@ import { getCurrentUser } from '@/lib/auth'
 import { 
   checkPermission, 
   hasSystemAccess,
-  getAllUserPermissions 
+  getUserPermissions 
 } from '@/lib/permissions/checker'
 import { 
   generateAllPermissions, 
@@ -468,7 +468,7 @@ export async function getUserPermissionsSummary(userId: string) {
       return createErrorResponse("User not found")
     }
 
-    const allPermissions = getAllUserPermissions(targetUser)
+    const allPermissions = getUserPermissions(targetUser)
     const rolePermissions = targetUser.role.permissions || []
     const directPermissions = targetUser.permissions || []
 

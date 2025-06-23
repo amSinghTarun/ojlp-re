@@ -130,11 +130,7 @@ async function getCurrentUserWithPermissions(): Promise<UserWithPermissions | nu
     include: {
       role: {
         include: {
-          permissions: {
-            include: {
-              permission: true
-            }
-          }
+          permissions: true
         }
       },
       permissions: true
