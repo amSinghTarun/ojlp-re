@@ -60,7 +60,7 @@ export function NotificationButton() {
 
     return () => clearInterval(refreshInterval)
   }, [])
-
+  console.log(notifications)
   const unreadCount = notifications.filter((notification) => !notification.read).length
 
   // Group notifications by type

@@ -5,16 +5,7 @@ export async function getUsers() {
   try {
     return await prisma.user.findMany({
       include: {
-        role: {
-          include: {
-            permissions: {
-              include: {
-                permission: true
-              }
-            }
-          }
-        },
-        permissions: true,
+        role:  true,
       },
       orderBy: {
         createdAt: 'desc'
@@ -31,16 +22,7 @@ export async function getUserById(id: string) {
     const user = await prisma.user.findUnique({
       where: { id },
       include: {
-        role: {
-          include: {
-            permissions: {
-              include: {
-                permission: true
-              }
-            }
-          }
-        },
-        permissions: true,
+        role: true,
       },
     })
 
@@ -60,16 +42,7 @@ export async function getUserByEmail(email: string) {
     return await prisma.user.findUnique({
       where: { email },
       include: {
-        role: {
-          include: {
-            permissions: {
-              include: {
-                permission: true
-              }
-            }
-          }
-        },
-        permissions: true,
+        role: true,
       },
     })
   } catch (error) {
@@ -118,16 +91,7 @@ export async function createUser(data: {
         image: data.image || null,
       },
       include: {
-        role: {
-          include: {
-            permissions: {
-              include: {
-                permission: true
-              }
-            }
-          }
-        },
-        permissions: true,
+        role: true,
       },
     })
 
@@ -198,16 +162,7 @@ export async function updateUser(
       where: { id },
       data: updateData,
       include: {
-        role: {
-          include: {
-            permissions: {
-              include: {
-                permission: true
-              }
-            }
-          }
-        },
-        permissions: true,
+        role: true,
       },
     })
 
@@ -252,33 +207,33 @@ export async function deleteUser(id: string) {
   }
 }
 
-export async function updateUserPermissions(userId: string, permissions: string[]) {
-  try {
-    // Check if user exists
-    await getUserById(userId)
+// export async function updateUserPermissions(userId: string, permissions: string[]) {
+//   try {
+//     // Check if user exists
+//     await getUserById(userId)
 
-    // First, remove all existing permissions for this user
-    await prisma.permission.deleteMany({
-      where: { userId }
-    })
+//     // First, remove all existing permissions for this user
+//     await prisma.permission.deleteMany({
+//       where: { userId }
+//     })
 
-    // Then, add new permissions if any
-    if (permissions.length > 0) {
-      await prisma.permission.createMany({
-        data: permissions.map(permission => ({
-          name: permission,
-          userId
-        }))
-      })
-    }
+//     // Then, add new permissions if any
+//     if (permissions.length > 0) {
+//       await prisma.permission.createMany({
+//         data: permissions.map(permission => ({
+//           name: permission,
+//           userId
+//         }))
+//       })
+//     }
 
-    // Return updated user
-    return await getUserById(userId)
-  } catch (error) {
-    console.error("Error updating user permissions:", error)
-    throw error
-  }
-}
+//     // Return updated user
+//     return await getUserById(userId)
+//   } catch (error) {
+//     console.error("Error updating user permissions:", error)
+//     throw error
+//   }
+// }
 
 export async function authenticateUser(email: string, password: string) {
   try {
@@ -306,13 +261,6 @@ export async function authenticateUser(email: string, password: string) {
 export async function getRoles() {
   try {
     return await prisma.role.findMany({
-      include: {
-        permissions: {
-          include: {
-            permission: true
-          }
-        }
-      },
       orderBy: {
         name: 'asc'
       }

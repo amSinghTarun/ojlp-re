@@ -1,4 +1,4 @@
-// lib/actions/role-actions.ts - WORKING VERSION
+// lib/actions/role-actions.ts - COMPLETE VERSION
 "use server"
 
 import { 
@@ -10,7 +10,7 @@ import {
   duplicateRole
 } from './role-permission-actions'
 
-// Hardcoded permissions that will definitely work
+// Complete permissions that match your schema.prisma file
 const WORKING_PERMISSIONS = {
   "System": [
     {
@@ -29,6 +29,12 @@ const WORKING_PERMISSIONS = {
       value: "SYSTEM.ROLE_MANAGEMENT",
       label: "Role Management",
       description: "Create and manage roles and permissions",
+      category: "System"
+    },
+    {
+      value: "SYSTEM.SETTINGS",
+      label: "System Settings",
+      description: "Access and modify system settings",
       category: "System"
     }
   ],
@@ -122,6 +128,12 @@ const WORKING_PERMISSIONS = {
       category: "Article"
     },
     {
+      value: "article.PUBLISH",
+      label: "Publish Articles",
+      description: "Publish and unpublish articles",
+      category: "Article"
+    },
+    {
       value: "article.ALL",
       label: "All Article Operations",
       description: "Full access to article management",
@@ -160,6 +172,140 @@ const WORKING_PERMISSIONS = {
       category: "Author"
     }
   ],
+  "CallForPapers": [
+    {
+      value: "callforpapers.CREATE",
+      label: "Create Call for Papers",
+      description: "Create new call for papers",
+      category: "CallForPapers"
+    },
+    {
+      value: "callforpapers.READ",
+      label: "View Call for Papers",
+      description: "View call for papers",
+      category: "CallForPapers"
+    },
+    {
+      value: "callforpapers.UPDATE",
+      label: "Edit Call for Papers",
+      description: "Edit existing call for papers",
+      category: "CallForPapers"
+    },
+    {
+      value: "callforpapers.DELETE",
+      label: "Delete Call for Papers",
+      description: "Delete call for papers",
+      category: "CallForPapers"
+    },
+    {
+      value: "callforpapers.ALL",
+      label: "All Call for Papers Operations",
+      description: "Full access to call for papers management",
+      category: "CallForPapers"
+    }
+  ],
+  "Category": [
+    {
+      value: "category.CREATE",
+      label: "Create Categories",
+      description: "Create new article categories",
+      category: "Category"
+    },
+    {
+      value: "category.READ",
+      label: "View Categories",
+      description: "View article categories",
+      category: "Category"
+    },
+    {
+      value: "category.UPDATE",
+      label: "Edit Categories",
+      description: "Edit existing categories",
+      category: "Category"
+    },
+    {
+      value: "category.DELETE",
+      label: "Delete Categories",
+      description: "Delete article categories",
+      category: "Category"
+    },
+    {
+      value: "category.ALL",
+      label: "All Category Operations",
+      description: "Full access to category management",
+      category: "Category"
+    }
+  ],
+  "EditorialBoardMember": [
+    {
+      value: "editorialboardmember.CREATE",
+      label: "Add Board Members",
+      description: "Add new editorial board members",
+      category: "EditorialBoardMember"
+    },
+    {
+      value: "editorialboardmember.READ",
+      label: "View Board Members",
+      description: "View editorial board members",
+      category: "EditorialBoardMember"
+    },
+    {
+      value: "editorialboardmember.UPDATE",
+      label: "Edit Board Members",
+      description: "Edit editorial board member information",
+      category: "EditorialBoardMember"
+    },
+    {
+      value: "editorialboardmember.DELETE",
+      label: "Remove Board Members",
+      description: "Remove editorial board members",
+      category: "EditorialBoardMember"
+    },
+    {
+      value: "editorialboardmember.ALL",
+      label: "All Board Member Operations",
+      description: "Full access to editorial board management",
+      category: "EditorialBoardMember"
+    }
+  ],
+  "JournalIssue": [
+    {
+      value: "journalissue.CREATE",
+      label: "Create Journal Issues",
+      description: "Create new journal issues",
+      category: "JournalIssue"
+    },
+    {
+      value: "journalissue.READ",
+      label: "View Journal Issues",
+      description: "View journal issues",
+      category: "JournalIssue"
+    },
+    {
+      value: "journalissue.UPDATE",
+      label: "Edit Journal Issues",
+      description: "Edit existing journal issues",
+      category: "JournalIssue"
+    },
+    {
+      value: "journalissue.DELETE",
+      label: "Delete Journal Issues",
+      description: "Delete journal issues",
+      category: "JournalIssue"
+    },
+    {
+      value: "journalissue.PUBLISH",
+      label: "Publish Journal Issues",
+      description: "Publish and manage journal issue releases",
+      category: "JournalIssue"
+    },
+    {
+      value: "journalissue.ALL",
+      label: "All Journal Issue Operations",
+      description: "Full access to journal issue management",
+      category: "JournalIssue"
+    }
+  ],
   "Media": [
     {
       value: "media.CREATE",
@@ -190,6 +336,44 @@ const WORKING_PERMISSIONS = {
       label: "All Media Operations",
       description: "Full access to media management",
       category: "Media"
+    }
+  ],
+  "Notification": [
+    {
+      value: "notification.CREATE",
+      label: "Create Notifications",
+      description: "Create new system notifications",
+      category: "Notification"
+    },
+    {
+      value: "notification.READ",
+      label: "View Notifications",
+      description: "View system notifications",
+      category: "Notification"
+    },
+    {
+      value: "notification.UPDATE",
+      label: "Edit Notifications",
+      description: "Edit existing notifications",
+      category: "Notification"
+    },
+    {
+      value: "notification.DELETE",
+      label: "Delete Notifications",
+      description: "Delete system notifications",
+      category: "Notification"
+    },
+    {
+      value: "notification.SEND",
+      label: "Send Notifications",
+      description: "Send notifications to users",
+      category: "Notification"
+    },
+    {
+      value: "notification.ALL",
+      label: "All Notification Operations",
+      description: "Full access to notification management",
+      category: "Notification"
     }
   ]
 }
@@ -250,7 +434,7 @@ export async function getRole(roleId: string) {
 
 export async function getPermissions() {
   try {
-    console.log("🔄 getPermissions bridge called - using hardcoded permissions")
+    console.log("🔄 getPermissions bridge called - using complete hardcoded permissions")
     
     // Calculate totals for logging
     const totalPermissions = Object.values(WORKING_PERMISSIONS).reduce((total, perms) => total + perms.length, 0)
@@ -262,7 +446,7 @@ export async function getPermissions() {
       samplePermission: WORKING_PERMISSIONS.System[0]
     })
 
-    // Return the hardcoded permissions directly
+    // Return the complete hardcoded permissions
     return { 
       permissions: WORKING_PERMISSIONS, 
       error: null 

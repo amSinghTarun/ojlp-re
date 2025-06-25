@@ -1,8 +1,5 @@
 {
-  "/notifications/page": "app/notifications/page.js",
-  "/admin/roles/new/page": "app/admin/roles/new/page.js",
+  "/admin/users/page": "app/admin/users/page.js",
   "/admin/roles/page": "app/admin/roles/page.js",
-  "/admin/login/page": "app/admin/login/page.js",
-  "/admin/roles/[id]/edit/page": "app/admin/roles/[id]/edit/page.js",
   "/admin/page": "app/admin/page.js"
 }

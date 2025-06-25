@@ -14,6 +14,7 @@ import {
   getRoles as getRolesFromDB,
 } from "@/lib/controllers/users"
 import { getCurrentUser } from "@/lib/auth"
+import { checkPermission } from "@/lib/permissions/checker"
 
 // Validation schemas
 const userSchema = z.object({
@@ -37,7 +38,7 @@ export async function getUsers() {
   try {
     const currentUser = await getCurrentUser()
 
-    if (!currentUser || !hasPermission(currentUser, PERMISSIONS.MANAGE_USERS)) {
+    if (!currentUser || !checkPermission(currentUser, "")) {
       return { users: null, error: "Unauthorized access" }
     }
 

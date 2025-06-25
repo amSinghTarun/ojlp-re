@@ -43,6 +43,8 @@ export const authOptions = {
           },
         })
 
+        console.log("USER", credentials, user)
+
         // If no user or password doesn't match
         if (!user || !(await comparePassword(credentials.password, user.password))) {
           // We don't want to reveal which part was wrong for security reasons
@@ -50,7 +52,7 @@ export const authOptions = {
         }
 
         // Only allow users with admin roles to login
-        const adminRoles = ["Super Admin", "Admin", "Editor"]
+        const adminRoles = ["SUPER_ADMIN", "Admin", "Editor"]
         if (!adminRoles.includes(user.role.name)) {
           return null
         }

@@ -22,7 +22,7 @@ const formSchema = z.object({
   password: z.string().min(8, {
     message: "Password must be at least 8 characters.",
   }),
-})
+});
 
 export function LoginForm() {
   const router = useRouter();
@@ -42,6 +42,7 @@ export function LoginForm() {
     setIsLoading(true)
 
     try {
+      console.log("VALUES", values)
       const result = await signIn("credentials", {
         email: values.email,
         password: values.password,

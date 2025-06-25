@@ -1,5 +1,6 @@
 // lib/controllers/articles.ts - UPDATED for multiple authors support
 import prisma from "@/lib/prisma"
+import { ArticleType } from "@prisma/client"
 
 
 interface GetArticlesOptions {

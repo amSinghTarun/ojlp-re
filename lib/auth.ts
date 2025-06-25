@@ -81,6 +81,7 @@ export async function findUserByEmail(email: string): Promise<AuthUser | null> {
 export async function authenticateUser(email: string, password: string): Promise<AuthUser | null> {
   try {
     const user = await findUserByEmail(email)
+    console.log("USER", user)
     
     if (!user || !user.password) {
       return null
@@ -102,6 +103,7 @@ export async function authenticateUser(email: string, password: string): Promise
 // Login function (for compatibility with existing code)
 export async function login(email: string, password: string) {
   try {
+    console.log("LOGIN", email, password)
     const user = await authenticateUser(email, password)
 
     if (!user) {

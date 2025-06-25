@@ -22,14 +22,14 @@ import {
   ShieldCheck,
   Lock,
 } from "lucide-react"
-import { PERMISSIONS, hasPermission } from "@/lib/permissions"
+// import { PERMISSIONS, hasPermission } from "@/lib/permissions"
 import type { User } from "@/lib/types"
 
 interface SidebarNavItem {
   title: string
   href: string
   icon: React.ElementType
-  permission: string
+  permissions: string
 }
 
 const sidebarNavItems: SidebarNavItem[] = [
@@ -37,74 +37,68 @@ const sidebarNavItems: SidebarNavItem[] = [
     title: "Dashboard",
     href: "/admin",
     icon: LayoutDashboard,
-    permission: PERMISSIONS.VIEW_DASHBOARD,
+    permissions: ""
   },
   {
     title: "Blog Posts",
     href: "/admin/posts",
     icon: FileText,
-    permission: PERMISSIONS.MANAGE_POSTS,
+    permissions: "article"
   },
   {
     title: "Authors",
     href: "/admin/authors",
     icon: Users,
-    permission: PERMISSIONS.MANAGE_AUTHORS,
+    permissions: "author"
   },
   {
     title: "Journal Issues",
     href: "/admin/journals",
     icon: BookOpen,
-    permission: PERMISSIONS.MANAGE_JOURNALS,
+    permissions: "article"
   },
   {
     title: "Journal Articles",
     href: "/admin/journal-articles",
     icon: BookText,
-    permission: PERMISSIONS.MANAGE_ARTICLES,
+    permissions: "article"
   },
   {
     title: "Call for Papers",
     href: "/admin/call-for-papers",
     icon: FileQuestion,
-    permission: PERMISSIONS.MANAGE_CALL_FOR_PAPERS,
+    permissions: "callforpaper"
   },
   {
     title: "Notifications",
     href: "/admin/notifications",
     icon: Bell,
-    permission: PERMISSIONS.MANAGE_NOTIFICATIONS,
+    permissions: "notification"
   },
   {
     title: "Media",
     href: "/admin/media",
     icon: ImageIcon,
-    permission: PERMISSIONS.MANAGE_MEDIA,
+    permissions: "media"
   },
   {
     title: "Editorial Board",
     href: "/admin/editorial-board",
     icon: UserCog,
-    permission: PERMISSIONS.MANAGE_EDITORIAL_BOARD,
+    permissions: "editorialboardmember"
   },
   {
     title: "Users",
     href: "/admin/users",
     icon: Users,
-    permission: PERMISSIONS.MANAGE_USERS,
+    permissions: "user"
   },
   {
     title: "Role Management",
     href: "/admin/roles",
-    icon: ShieldCheck,
-    permission: PERMISSIONS.MANAGE_ROLES,
-  },
-  {
-    title: "Permissions",
-    href: "/admin/permissions",
-    icon: Lock,
-    permission: PERMISSIONS.MANAGE_PERMISSIONS,
-  },
+    icon: ShieldCheck,  
+    permissions: "role"
+  }
 ]
 
 interface AdminSidebarProps {
