@@ -8,7 +8,7 @@ async function main() {
   // Create default roles
   const roles = [
     {
-      name: "Super Admin",
+      name: "SUPER_ADMIN",
       description: "Has full access to all features and settings",
       isSystem: true,
     },

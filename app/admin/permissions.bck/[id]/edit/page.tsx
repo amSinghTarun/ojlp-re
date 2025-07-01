@@ -234,7 +234,7 @@
 //     }
 
 //     if (!isSuperAdmin(currentUser)) {
-//       console.warn(`User ${currentUser.id} attempted to access permission edit without Super Admin role`)
+//       console.warn(`User ${currentUser.id} attempted to access permission edit without SUPER_ADMIN role`)
 //       redirect("/admin")
 //     }
 

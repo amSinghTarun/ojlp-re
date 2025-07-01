@@ -180,18 +180,18 @@ export async function deleteUser(id: string) {
     // Check if user exists and get role info
     const user = await getUserById(id)
     
-    // Prevent deletion of the last Super Admin
-    if (user.role.name === "Super Admin") {
+    // Prevent deletion of the last SUPER_ADMIN
+    if (user.role.name === "SUPER_ADMIN") {
       const superAdminCount = await prisma.user.count({
         where: {
           role: {
-            name: "Super Admin"
+            name: "SUPER_ADMIN"
           }
         }
       })
 
       if (superAdminCount <= 1) {
-        throw new Error("Cannot delete the last Super Admin. Create another Super Admin first.")
+        throw new Error("Cannot delete the last SUPER_ADMIN. Create another SUPER_ADMIN first.")
       }
     }
 
@@ -207,33 +207,33 @@ export async function deleteUser(id: string) {
   }
 }
 
-// export async function updateUserPermissions(userId: string, permissions: string[]) {
-//   try {
-//     // Check if user exists
-//     await getUserById(userId)
+/**
+ * Update user permissions (simplified for array-based permissions schema)
+ */
+export async function updateUserPermissions(userId: string, permissions: string[]) {
+  try {
+    // Check if user exists
+    const existingUser = await getUserById(userId)
 
-//     // First, remove all existing permissions for this user
-//     await prisma.permission.deleteMany({
-//       where: { userId }
-//     })
+    // Update user permissions directly in the user record
+    const updatedUser = await prisma.user.update({
+      where: { id: userId },
+      data: {
+        permissions: permissions // Update the permissions array
+      },
+      include: {
+        role: true,
+      },
+    })
 
-//     // Then, add new permissions if any
-//     if (permissions.length > 0) {
-//       await prisma.permission.createMany({
-//         data: permissions.map(permission => ({
-//           name: permission,
-//           userId
-//         }))
-//       })
-//     }
-
-//     // Return updated user
-//     return await getUserById(userId)
-//   } catch (error) {
-//     console.error("Error updating user permissions:", error)
-//     throw error
-//   }
-// }
+    // Return user without password
+    const { password: _, ...userWithoutPassword } = updatedUser
+    return userWithoutPassword
+  } catch (error) {
+    console.error("Error updating user permissions:", error)
+    throw error
+  }
+}
 
 export async function authenticateUser(email: string, password: string) {
   try {

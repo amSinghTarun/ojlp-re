@@ -1,17 +1,21 @@
-// app/admin/roles/page.tsx
+// app/admin/roles/page.tsx - WITH SIMPLE PERMISSION CHECKS
 import type { Metadata } from "next"
 import { redirect } from "next/navigation"
 import { getCurrentUser } from "@/lib/auth"
 import { RolesTable } from "@/components/admin/roles-table"
 import { getRoles } from "@/lib/actions/role-actions"
 import { checkPermission } from "@/lib/permissions/checker"
-import { UserWithPermissions } from "@/lib/permissions/types"
+import { 
+  UserWithPermissions, 
+  SYSTEM_PERMISSIONS, 
+  PERMISSION_ERRORS 
+} from "@/lib/permissions/types"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { AlertTriangle, Shield, Users, Key } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { PlusCircle } from "lucide-react"
+import { PlusCircle, AlertCircle } from "lucide-react"
 import { prisma } from "@/lib/prisma"
 
 export const metadata: Metadata = {
@@ -19,23 +23,19 @@ export const metadata: Metadata = {
   description: "Create and manage custom roles with specific permissions",
 }
 
-// Get current user with permissions
+// Get current user with permissions helper
 async function getCurrentUserWithPermissions(): Promise<UserWithPermissions | null> {
   try {
     const user = await getCurrentUser()
     if (!user) return null
 
-    // If user already has role and permissions, return as is
-    if ('role' in user && user.role && 'permissions' in user.role) {
+    if ('role' in user && user.role) {
       return user as UserWithPermissions
     }
 
-    // Otherwise fetch the complete user data with role and permissions
     const fullUser = await prisma.user.findUnique({
       where: { id: user.id },
-      include: {
-        role: true
-      }
+      include: { role: true }
     })
 
     return fullUser as UserWithPermissions
@@ -47,16 +47,16 @@ async function getCurrentUserWithPermissions(): Promise<UserWithPermissions | nu
 
 export default async function RolesPage() {
   try {
-    // Check authentication and permissions
+    // Check authentication
     const currentUser = await getCurrentUserWithPermissions()
-    
     if (!currentUser) {
       redirect("/admin/login")
     }
 
     // Check if user has permission to manage roles
-    const permissionCheck = checkPermission(currentUser, 'SYSTEM.ROLE_MANAGEMENT')
-    if (!permissionCheck.allowed) {
+    const roleManagementCheck = checkPermission(currentUser, SYSTEM_PERMISSIONS.ROLE_MANAGEMENT)
+    
+    if (!roleManagementCheck.allowed) {
       return (
         <div className="space-y-6">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -69,9 +69,9 @@ export default async function RolesPage() {
           </div>
           
           <Alert variant="destructive">
-            <AlertTriangle className="h-4 w-4" />
+            <AlertCircle className="h-4 w-4" />
             <AlertDescription>
-              You don't have permission to manage roles. Contact your administrator for access.
+              {PERMISSION_ERRORS.INSUFFICIENT_PERMISSIONS} - You need 'SYSTEM.ROLE_MANAGEMENT' permission to manage roles.
             </AlertDescription>
           </Alert>
         </div>
@@ -95,6 +95,7 @@ export default async function RolesPage() {
     const customRoles = roles.filter(role => !(role.isSystemRole || role.isSystem)).length
     const totalUsers = roles.reduce((sum, role) => sum + (role.userCount || 0), 0)
 
+    // User has permission - show the actual component
     return (
       <div className="space-y-6">
         {/* Page Header */}
@@ -185,7 +186,7 @@ export default async function RolesPage() {
               Create and manage custom roles with specific permissions
             </p>
           </div>
-          <Button asChild>
+          <Button asChild disabled>
             <Link href="/admin/roles/new">
               <PlusCircle className="mr-2 h-4 w-4" />
               Create Role

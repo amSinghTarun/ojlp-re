@@ -1,12 +1,16 @@
-import { DashboardHeader } from "@/components/admin/dashboard-header"
+// app/admin/call-for-papers/[id]/edit/page.tsx
+import type { Metadata } from "next"
+import { redirect, notFound } from "next/navigation"
+import { getCurrentUser } from "@/lib/auth"
 import { CallForPapersForm } from "@/components/admin/call-for-papers-form"
 import { getCallForPapers } from "@/lib/actions/call-for-papers-actions"
-import { getCurrentUser } from "@/lib/auth"
-import { notFound, redirect } from "next/navigation"
+import { checkPermission } from "@/lib/permissions/checker"
+import { UserWithPermissions } from "@/lib/permissions/types"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { AlertCircle, ExternalLink, Calendar, Bell, AlertTriangle } from "lucide-react"
-import { Badge } from "@/components/ui/badge"
-import { format } from "date-fns"
+import { AlertTriangle, ArrowLeft } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import Link from "next/link"
+import { prisma } from "@/lib/prisma"
 
 interface EditCallForPapersPageProps {
   params: {
@@ -14,209 +18,195 @@ interface EditCallForPapersPageProps {
   }
 }
 
-export default async function EditCallForPapersPage({ params }: EditCallForPapersPageProps) {
-  // Check authentication and permissions
-  const user = await getCurrentUser()
-  if (!user) {
-    redirect("/login")
-  }
+// Get current user with permissions
+async function getCurrentUserWithPermissions(): Promise<UserWithPermissions | null> {
+  try {
+    const user = await getCurrentUser()
+    if (!user) return null
 
-  // Fetch call for papers from database
-  const result = await getCallForPapers(params.id)
-  
-  if (result.error) {
-    if (result.error.includes("not found")) {
+    // If user already has role and permissions, return as is
+    if ('role' in user && user.role && 'permissions' in user.role) {
+      return user as UserWithPermissions
+    }
+
+    // Otherwise fetch the complete user data with role and permissions
+    const fullUser = await prisma.user.findUnique({
+      where: { id: user.id },
+      include: {
+        role: true
+      }
+    })
+
+    return fullUser as UserWithPermissions
+  } catch (error) {
+    console.error('Error getting user with permissions:', error)
+    return null
+  }
+}
+
+export async function generateMetadata({ params }: EditCallForPapersPageProps): Promise<Metadata> {
+  try {
+    const result = await getCallForPapers(params.id)
+    const cfp = result.call
+    
+    return {
+      title: cfp ? `Edit Call for Papers: ${cfp.title}` : "Edit Call for Papers",
+      description: cfp ? `Edit call for papers for ${cfp.title}` : "Edit call for papers details",
+    }
+  } catch {
+    return {
+      title: "Edit Call for Papers",
+      description: "Edit call for papers details",
+    }
+  }
+}
+
+export default async function EditCallForPapersPage({ params }: EditCallForPapersPageProps) {
+  try {
+    // Validate params
+    if (!params.id || typeof params.id !== 'string' || params.id.trim() === '') {
+      console.error("Invalid call for papers ID:", params.id)
       notFound()
     }
+
+    // Check authentication and permissions
+    const currentUser = await getCurrentUserWithPermissions()
     
-    // Show error page for other errors
-    return (
-      <div className="space-y-6">
-        <DashboardHeader 
-          heading="Edit Call for Papers" 
-          text="Edit call for papers details and submission information." 
-        />
-        <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription>
-            Failed to load call for papers: {result.error}
-          </AlertDescription>
-        </Alert>
-      </div>
-    )
-  }
+    if (!currentUser) {
+      redirect("/admin/login")
+    }
 
-  const cfp = result.call!
-
-  // Transform the data to match the updated form interface with contentLink
-  const formCfp = {
-    id: cfp.id,
-    title: cfp.title,
-    thematicFocus: cfp.thematicFocus,
-    description: cfp.description,
-    contentLink: cfp.contentLink, // ADDED: Content link field
-    deadline: cfp.deadline,
-    volume: cfp.volume,
-    issue: cfp.issue,
-    year: cfp.year,
-    guidelines: cfp.guidelines,
-    image: cfp.image,
-    fee: cfp.fee,
-    topics: cfp.topics,
-    eligibility: cfp.eligibility,
-    contact: cfp.contact,
-  }
-
-  // Check if deadline has passed
-  const isExpired = new Date(cfp.deadline) < new Date()
-  const daysUntilDeadline = Math.ceil((new Date(cfp.deadline).getTime() - new Date().getTime()) / (1000 * 3600 * 24))
-
-  return (
-    <div className="space-y-6">
-      <DashboardHeader 
-        heading={`Edit Call for Papers: ${cfp.title}`} 
-        text="Edit your call for papers details and submission information." 
-      />
-      
-      {/* Call for Papers Info - UPDATED to show content link */}
-      <div className="rounded-lg border p-4 bg-muted/50">
-        <div className="flex items-start justify-between">
-          <div className="space-y-2">
-            <div className="flex items-center gap-2 flex-wrap">
-              <h3 className="font-semibold">{cfp.title}</h3>
-              <Badge variant={isExpired ? "destructive" : "default"}>
-                {isExpired ? "Expired" : "Active"}
-              </Badge>
-              {cfp.fee && (
-                <Badge variant="outline">Fee: {cfp.fee}</Badge>
-              )}
-              {cfp.contentLink && (
-                <Badge variant="outline" className="flex items-center gap-1">
-                  <ExternalLink className="h-3 w-3" />
-                  <a 
-                    href={cfp.contentLink} 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className="hover:underline"
-                  >
-                    Submission Link
-                  </a>
-                </Badge>
-              )}
+    // Check if user has permission to edit call for papers
+    const permissionCheck = checkPermission(currentUser, 'callforpapers.UPDATE')
+    
+    if (!permissionCheck.allowed) {
+      return (
+        <div className="max-w-2xl mx-auto space-y-6">
+          <div className="flex items-center gap-4">
+            <Button variant="outline" size="sm" asChild>
+              <Link href="/admin/call-for-papers">
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Back to Call for Papers
+              </Link>
+            </Button>
+            <div>
+              <h1 className="text-2xl font-bold">Access Denied</h1>
+              <p className="text-muted-foreground">
+                You don't have permission to edit call for papers
+              </p>
             </div>
-            
-            <div className="flex items-center gap-4 text-sm text-muted-foreground flex-wrap">
-              <div className="flex items-center gap-1">
-                <Calendar className="h-4 w-4" />
-                <span>Deadline: {format(cfp.deadline, "PPP")}</span>
-              </div>
-              
-              <div className="flex items-center gap-1">
-                <Bell className="h-4 w-4" />
-                <span>Vol. {cfp.volume}, Issue {cfp.issue} ({cfp.year})</span>
-              </div>
-              
-              {!isExpired && (
-                <div className="flex items-center gap-1">
-                  <span className={daysUntilDeadline <= 7 ? "text-destructive font-medium" : ""}>
-                    {daysUntilDeadline > 0 ? `${daysUntilDeadline} days remaining` : "Due today"}
-                  </span>
-                </div>
-              )}
-            </div>
-
-            {/* Content Link Display - ADDED */}
-            {cfp.contentLink && (
-              <div className="space-y-1">
-                <p className="text-sm font-medium">Submission Link:</p>
-                <div className="flex items-center gap-2">
-                  <ExternalLink className="h-4 w-4 text-muted-foreground" />
-                  <a 
-                    href={cfp.contentLink} 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className="text-sm text-blue-600 hover:underline break-all"
-                  >
-                    {cfp.contentLink}
-                  </a>
-                </div>
-              </div>
-            )}
-
-            {/* Thematic Focus */}
-            <div className="space-y-1">
-              <p className="text-sm font-medium">Thematic Focus:</p>
-              <p className="text-sm text-muted-foreground">{cfp.thematicFocus}</p>
-            </div>
-
-            {/* Topics Display */}
-            {cfp.topics && cfp.topics.length > 0 && (
-              <div className="space-y-1">
-                <p className="text-sm font-medium">Topics ({cfp.topics.length}):</p>
-                <div className="flex flex-wrap gap-2">
-                  {cfp.topics.map((topic, index) => (
-                    <Badge key={index} variant="outline" className="text-xs">
-                      {topic}
-                    </Badge>
-                  ))}
-                </div>
-              </div>
-            )}
           </div>
           
-          <div className="text-right">
-            <p className="text-sm font-medium">Last Updated</p>
-            <p className="text-sm text-muted-foreground">
-              {cfp.updatedAt ? format(new Date(cfp.updatedAt), "PPP") : "Unknown"}
+          <Alert variant="destructive">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertDescription>
+              {permissionCheck.reason || "You don't have permission to edit call for papers. Contact your administrator for access."}
+            </AlertDescription>
+          </Alert>
+        </div>
+      )
+    }
+
+    // Get call for papers data
+    const result = await getCallForPapers(params.id)
+
+    // Handle errors
+    if (result.error) {
+      if (result.error.includes("not found")) {
+        notFound()
+      }
+      throw new Error(result.error)
+    }
+
+    const cfp = result.call!
+
+    // Transform the data to match the form interface
+    const formCfp = {
+      id: cfp.id,
+      title: cfp.title,
+      thematicFocus: cfp.thematicFocus,
+      description: cfp.description,
+      contentLink: cfp.contentLink,
+      deadline: cfp.deadline,
+      volume: cfp.volume,
+      issue: cfp.issue,
+      year: cfp.year,
+      guidelines: cfp.guidelines,
+      image: cfp.image,
+      fee: cfp.fee,
+      topics: cfp.topics,
+      eligibility: cfp.eligibility,
+      contact: cfp.contact,
+    }
+
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center gap-4">
+          <Button variant="outline" size="sm" asChild>
+            <Link href="/admin/call-for-papers">
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back to Call for Papers
+            </Link>
+          </Button>
+          <div>
+            <h1 className="text-2xl font-bold">Edit Call for Papers: {cfp.title}</h1>
+            <p className="text-muted-foreground">
+              Edit call for papers details and submission information
             </p>
           </div>
         </div>
+
+        <CallForPapersForm cfp={formCfp} />
       </div>
-
-      {/* Status Alerts */}
-      {isExpired && (
+    )
+  } catch (error) {
+    console.error("Error loading edit call for papers page:", error)
+    
+    // Check if it's a not found error
+    if (error instanceof Error && error.message.includes("not found")) {
+      notFound()
+    }
+    
+    return (
+      <div className="max-w-2xl mx-auto space-y-6">
+        <div className="flex items-center gap-4">
+          <Button variant="outline" size="sm" asChild>
+            <Link href="/admin/call-for-papers">
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back to Call for Papers
+            </Link>
+          </Button>
+          <div>
+            <h1 className="text-2xl font-bold">Error Loading Call for Papers</h1>
+            <p className="text-muted-foreground">
+              There was a problem loading the call for papers data
+            </p>
+          </div>
+        </div>
+        
         <Alert variant="destructive">
           <AlertTriangle className="h-4 w-4" />
           <AlertDescription>
-            <strong>Expired Call for Papers:</strong> This call for papers has passed its deadline. 
-            Consider creating a new call or extending the deadline if submissions are still being accepted.
+            {error instanceof Error ? error.message : "Failed to load the call for papers edit form"}
+            {process.env.NODE_ENV === "development" && (
+              <details className="mt-2">
+                <summary className="cursor-pointer">Error Details (Development)</summary>
+                <pre className="mt-2 text-xs overflow-x-auto bg-muted p-2 rounded">
+                  {error instanceof Error ? error.stack || error.message : String(error)}
+                </pre>
+              </details>
+            )}
           </AlertDescription>
         </Alert>
-      )}
-
-      {!isExpired && daysUntilDeadline <= 7 && (
-        <Alert variant="destructive">
-          <AlertTriangle className="h-4 w-4" />
-          <AlertDescription>
-            <strong>Deadline Approaching:</strong> This call for papers expires in {daysUntilDeadline} day{daysUntilDeadline !== 1 ? 's' : ''}. 
-            Make sure all information is current and the submission link is working.
-          </AlertDescription>
-        </Alert>
-      )}
-
-      {/* Content Link Requirement Alert - ADDED */}
-      {!cfp.contentLink && (
-        <Alert variant="destructive">
-          <ExternalLink className="h-4 w-4" />
-          <AlertDescription>
-            <strong>Missing Submission Link:</strong> This call for papers requires a link to the submission system or detailed submission instructions. 
-            Please add the submission link in the form below.
-          </AlertDescription>
-        </Alert>
-      )}
-
-      {/* Notification Info Alert */}
-      {!isExpired && (
-        <Alert>
-          <Bell className="h-4 w-4" />
-          <AlertDescription>
-            <strong>Active Notification:</strong> This call for papers has an active notification on the public page. 
-            Any changes you make will be reflected in the notification immediately. The notification will automatically expire on the deadline.
-          </AlertDescription>
-        </Alert>
-      )}
-      
-      <CallForPapersForm cfp={formCfp} />
-    </div>
-  )
+        
+        <div className="flex items-center gap-4">
+          <Button asChild>
+            <Link href="/admin/call-for-papers">
+              Back to Call for Papers
+            </Link>
+          </Button>
+        </div>
+      </div>
+    )
+  }
 }

@@ -99,11 +99,6 @@ export function Navigation() {
     }
   }
 
-  const clearSearch = () => {
-    setSearchQuery("")
-    setIsSearchOpen(false)
-  }
-
   return (
     <header className="sticky top-0 z-50 w-full bg-red-800 shadow-lg">
       {/* Main Header Section */}
@@ -121,8 +116,8 @@ export function Navigation() {
                 />
               </div>
               <div className="text-center">
-                <h1 className="text-white text-lg md:text-2xl font-bold tracking-wider">
-                  OPEN JOURNAL OF LAW & POLICY
+                <h1 className="text-white text-lg md:text-3xl  tracking-wider">
+                  Open Journal of Law & Policy
                 </h1>
               </div>
             </Link>

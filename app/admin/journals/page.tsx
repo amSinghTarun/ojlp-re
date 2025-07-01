@@ -1,21 +1,70 @@
+// app/admin/journals/page.tsx - WITH SIMPLE PERMISSION CHECKS
 import Link from "next/link"
 import { Plus, BookOpen } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { DashboardHeader } from "@/components/admin/dashboard-header"
 import { JournalIssuesTable } from "@/components/admin/journal-issues-table"
 import { getJournalIssues } from "@/lib/actions/journal-actions"
-import { redirect } from "next/navigation"
 import { getCurrentUser } from "@/lib/auth"
+import { checkPermission } from "@/lib/permissions/checker"
+import { 
+  UserWithPermissions, 
+  PERMISSION_ERRORS 
+} from "@/lib/permissions/types"
+import { redirect } from "next/navigation"
+import { prisma } from "@/lib/prisma"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { AlertCircle } from "lucide-react"
 
+// Get current user with permissions helper
+async function getCurrentUserWithPermissions(): Promise<UserWithPermissions | null> {
+  try {
+    const user = await getCurrentUser()
+    if (!user) return null
+
+    if ('role' in user && user.role) {
+      return user as UserWithPermissions
+    }
+
+    const fullUser = await prisma.user.findUnique({
+      where: { id: user.id },
+      include: { role: true }
+    })
+
+    return fullUser as UserWithPermissions
+  } catch (error) {
+    console.error('Error getting user with permissions:', error)
+    return null
+  }
+}
+
 export default async function JournalsPage() {
   try {
-    // Check authentication and permissions
-    const user = await getCurrentUser()
-    if (!user) {
-      redirect("/login")
+    // Check authentication
+    const currentUser = await getCurrentUserWithPermissions()
+    if (!currentUser) {
+      redirect("/admin/login")
     }
+
+    // Check if user has permission to view journal issues
+    const journalIssueReadCheck = checkPermission(currentUser, 'journalissue.READ')
+    
+    if (!journalIssueReadCheck.allowed) {
+      return (
+        <div className="space-y-6">
+          <DashboardHeader heading="Journal Issues" text="Manage your journal issues and articles." />
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+              {PERMISSION_ERRORS.INSUFFICIENT_PERMISSIONS} - You need 'journalissue.READ' permission to view journal issues.
+            </AlertDescription>
+          </Alert>
+        </div>
+      )
+    }
+
+    // Check if user can create journal issues (for showing/hiding the New Issue button)
+    const canCreateIssues = checkPermission(currentUser, 'journalissue.CREATE').allowed
 
     console.log("📚 Admin page: Fetching journal issues...")
 
@@ -33,12 +82,14 @@ export default async function JournalsPage() {
               heading="Journal Issues"
               text="Manage your journal issues and articles."
             />
-            <Button asChild>
-              <Link href="/admin/journals/new">
-                <Plus className="mr-2 h-4 w-4" />
-                New Issue
-              </Link>
-            </Button>
+            {canCreateIssues && (
+              <Button asChild>
+                <Link href="/admin/journals/new">
+                  <Plus className="mr-2 h-4 w-4" />
+                  New Issue
+                </Link>
+              </Button>
+            )}
           </div>
 
           <Alert variant="destructive">
@@ -81,14 +132,26 @@ export default async function JournalsPage() {
                 Manage Articles
               </Link>
             </Button>
-            <Button asChild>
-              <Link href="/admin/journals/new">
-                <Plus className="mr-2 h-4 w-4" />
-                New Issue
-              </Link>
-            </Button>
+            {canCreateIssues && (
+              <Button asChild>
+                <Link href="/admin/journals/new">
+                  <Plus className="mr-2 h-4 w-4" />
+                  New Issue
+                </Link>
+              </Button>
+            )}
           </div>
         </div>
+
+        {/* Permission Info Alert */}
+        {!canCreateIssues && (
+          <Alert>
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+              You have read-only access to journal issues. Contact your administrator to request creation permissions.
+            </AlertDescription>
+          </Alert>
+        )}
 
         {/* Statistics Cards */}
         <div className="grid gap-4 md:grid-cols-3">
@@ -131,7 +194,7 @@ export default async function JournalsPage() {
           </Alert>
         )}
 
-        <JournalIssuesTable initialIssues={issuesForTable} />
+        <JournalIssuesTable initialIssues={issuesForTable} canCreate={canCreateIssues} />
       </div>
     )
   } catch (error) {
@@ -144,7 +207,7 @@ export default async function JournalsPage() {
             heading="Journal Issues"
             text="Manage your journal issues and articles."
           />
-          <Button asChild>
+          <Button asChild disabled>
             <Link href="/admin/journals/new">
               <Plus className="mr-2 h-4 w-4" />
               New Issue

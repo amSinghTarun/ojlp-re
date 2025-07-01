@@ -33,11 +33,13 @@ import {
         requiredPermission
       }
     }
+
+    console.log("REQUIRED PERMISSION", requiredPermission);
   
     // System admin bypasses all checks
-    if (hasSystemPermission(user, 'ADMIN')) {
-      return { allowed: true }
-    }
+    // if (hasSystemPermission(user, 'SUPER_ADMIN')) {
+    //   return { allowed: true }
+    // }
   
     // Parse the required permission
     const parsed = parsePermissionString(requiredPermission)
@@ -60,7 +62,7 @@ import {
     if (hasHigherPermission(user, table, operation)) {
       return checkAdditionalConditions(user, table, operation, context)
     }
-  
+    
     return {
       allowed: false,
       reason: PERMISSION_ERRORS.INSUFFICIENT_PERMISSIONS,

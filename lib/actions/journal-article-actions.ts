@@ -1,11 +1,36 @@
-// lib/actions/journal-article-actions.ts - UPDATED for multiple authors
+// lib/actions/journal-article-actions.ts - UPDATED with permission checks
 "use server"
 
 import { PrismaClient } from "@prisma/client"
 import { revalidatePath } from "next/cache"
+import { getCurrentUser } from "@/lib/auth"
+import { checkPermission } from "@/lib/permissions/checker"
+import { UserWithPermissions } from "@/lib/permissions/types"
 import { z } from "zod"
 
 const prisma = new PrismaClient()
+
+// Helper function to get current user with permissions
+async function getCurrentUserWithPermissions(): Promise<UserWithPermissions | null> {
+  try {
+    const user = await getCurrentUser()
+    if (!user) return null
+
+    if ('role' in user && user.role) {
+      return user as UserWithPermissions
+    }
+
+    const fullUser = await prisma.user.findUnique({
+      where: { id: user.id },
+      include: { role: true }
+    })
+
+    return fullUser as UserWithPermissions
+  } catch (error) {
+    console.error('Error getting user with permissions:', error)
+    return null
+  }
+}
 
 // Author schema for validation
 const authorSchema = z.object({
@@ -87,6 +112,21 @@ export async function getJournalArticle(slug: string) {
   try {
     console.log(`🔍 Fetching journal article: ${slug}`)
     
+    // Check authentication and permissions
+    const currentUser = await getCurrentUserWithPermissions()
+    
+    if (!currentUser) {
+      return createErrorResponse("Authentication required")
+    }
+
+    // Check if user has permission to read articles
+    const permissionCheck = checkPermission(currentUser, 'article.READ')
+    if (!permissionCheck.allowed) {
+      return createErrorResponse(
+        permissionCheck.reason || "You don't have permission to view journal articles"
+      )
+    }
+    
     if (!slug || typeof slug !== 'string') {
       return createErrorResponse("Invalid article slug provided.")
     }
@@ -120,15 +160,10 @@ export async function getJournalArticle(slug: string) {
       Authors: article.authors.map(aa => aa.author)
     }
 
-    console.log(`✅ Successfully fetched journal article: ${article.title} with ${article.authors.length} author(s)`)
+    console.log(`✅ User ${currentUser.email} fetched journal article: ${article.title} with ${article.authors.length} author(s)`)
     return { article: transformedArticle }
   } catch (error: any) {
     console.error("❌ Failed to fetch journal article:", error)
-    
-    if (error.message?.includes('permission') || error.message?.includes('Unauthorized')) {
-      return createErrorResponse(error.message)
-    }
-    
     return createErrorResponse("Failed to fetch journal article details. Please try again.", error.message)
   }
 }
@@ -139,6 +174,21 @@ export async function getJournalArticle(slug: string) {
 export async function getJournalArticles() {
   try {
     console.log("📰 Fetching journal articles...")
+    
+    // Check authentication and permissions
+    const currentUser = await getCurrentUserWithPermissions()
+    
+    if (!currentUser) {
+      return createErrorResponse("Authentication required")
+    }
+
+    // Check if user has permission to read articles
+    const permissionCheck = checkPermission(currentUser, 'article.READ')
+    if (!permissionCheck.allowed) {
+      return createErrorResponse(
+        permissionCheck.reason || "You don't have permission to view journal articles"
+      )
+    }
     
     const articles = await prisma.article.findMany({
       where: {
@@ -169,15 +219,10 @@ export async function getJournalArticles() {
       Author: article.authors.length > 0 ? article.authors[0].author : null
     }))
 
-    console.log(`✅ Found ${articles.length} journal articles`)
+    console.log(`✅ User ${currentUser.email} fetched ${articles.length} journal articles`)
     return { articles: transformedArticles }
   } catch (error: any) {
     console.error("❌ Failed to fetch journal articles:", error)
-    
-    if (error.message?.includes('permission') || error.message?.includes('Unauthorized')) {
-      return createErrorResponse(error.message)
-    }
-    
     return createErrorResponse("Failed to fetch journal articles. Please try again.", error.message)
   }
 }
@@ -188,6 +233,22 @@ export async function getJournalArticles() {
 export async function createJournalArticle(data: JournalArticleFormData) {
   try {
     console.log("🚀 Creating journal article with multiple authors...")
+    
+    // Check authentication and permissions
+    const currentUser = await getCurrentUserWithPermissions()
+    
+    if (!currentUser) {
+      return { success: false, error: "Authentication required" }
+    }
+
+    // Check if user has permission to create articles
+    const permissionCheck = checkPermission(currentUser, 'article.CREATE')
+    if (!permissionCheck.allowed) {
+      return { 
+        success: false, 
+        error: permissionCheck.reason || "You don't have permission to create journal articles" 
+      }
+    }
     
     // Validate the input data
     const validation = journalArticleSchema.safeParse(data)
@@ -259,7 +320,7 @@ export async function createJournalArticle(data: JournalArticleFormData) {
       return article
     })
 
-    console.log(`✅ Article created successfully: ${result.title}`)
+    console.log(`✅ User ${currentUser.email} created journal article: ${result.title}`)
     console.log(`👥 With ${authors.length} author(s): ${authors.map(a => a.name).join(", ")}`)
 
     // Revalidate relevant pages
@@ -284,19 +345,14 @@ export async function updateJournalArticle(slug: string, data: JournalArticleFor
   try {
     console.log(`🔄 Updating journal article: ${slug}`)
     
-    // Validate the input data
-    const validation = journalArticleSchema.safeParse(data)
-    if (!validation.success) {
-      console.error("❌ Validation failed:", validation.error)
-      return { 
-        success: false, 
-        error: "Validation failed: " + validation.error.errors.map(e => e.message).join(", ") 
-      }
+    // Check authentication and permissions
+    const currentUser = await getCurrentUserWithPermissions()
+    
+    if (!currentUser) {
+      return { success: false, error: "Authentication required" }
     }
 
-    const validatedData = validation.data
-
-    // Find the existing article
+    // Find the existing article to check ownership
     const existingArticle = await prisma.article.findUnique({
       where: { slug },
       include: {
@@ -310,6 +366,27 @@ export async function updateJournalArticle(slug: string, data: JournalArticleFor
     if (!existingArticle) {
       return { success: false, error: "Article not found" }
     }
+    
+    const permissionCheck = checkPermission(currentUser, 'article.UPDATE')
+
+    if (!permissionCheck.allowed) {
+      return { 
+        success: false, 
+        error: permissionCheck.reason || "You don't have permission to update this journal article" 
+      }
+    }
+    
+    // Validate the input data
+    const validation = journalArticleSchema.safeParse(data)
+    if (!validation.success) {
+      console.error("❌ Validation failed:", validation.error)
+      return { 
+        success: false, 
+        error: "Validation failed: " + validation.error.errors.map(e => e.message).join(", ") 
+      }
+    }
+
+    const validatedData = validation.data
 
     // Check for duplicate slug (excluding current article)
     if (validatedData.slug !== slug) {
@@ -375,7 +452,7 @@ export async function updateJournalArticle(slug: string, data: JournalArticleFor
       return updatedArticle
     })
 
-    console.log(`✅ Article updated successfully: ${result.title}`)
+    console.log(`✅ User ${currentUser.email} updated journal article: ${result.title}`)
     console.log(`👥 With ${authors.length} author(s): ${authors.map(a => a.name).join(", ")}`)
 
     // Revalidate relevant pages
@@ -399,20 +476,45 @@ export async function updateJournalArticle(slug: string, data: JournalArticleFor
  */
 export async function deleteJournalArticle(slug: string) {
   try {
-    const article = await prisma.article.findUnique({
-      where: { slug }
+    // Check authentication and permissions
+    const currentUser = await getCurrentUserWithPermissions()
+    
+    if (!currentUser) {
+      return { success: false, error: "Authentication required" }
+    }
+
+    // Find the existing article to check ownership
+    const existingArticle = await prisma.article.findUnique({
+      where: { slug },
+      include: {
+        authors: {
+          include: { author: true }
+        }
+      }
     })
 
-    if (!article) {
+    if (!existingArticle) {
       return { success: false, error: "Article not found" }
+    }
+
+    // Check if user has permission to delete articles
+    const isOwner = existingArticle.authors.some(aa => aa.author.userId === currentUser.id)
+    
+    const permissionCheck = checkPermission(currentUser, 'article.DELETE')
+
+    if (!permissionCheck.allowed) {
+      return { 
+        success: false, 
+        error: permissionCheck.reason || "You don't have permission to delete this journal article" 
+      }
     }
 
     // Delete the article (author relationships will be deleted automatically due to CASCADE)
     await prisma.article.delete({
-      where: { id: article.id }
+      where: { id: existingArticle.id }
     })
 
-    console.log(`🗑️ Article deleted: ${article.title}`)
+    console.log(`🗑️ User ${currentUser.email} deleted journal article: ${existingArticle.title}`)
 
     // Revalidate relevant pages
     revalidatePath("/admin/journal-articles")
@@ -433,6 +535,22 @@ export async function deleteJournalArticle(slug: string) {
  */
 export async function getJournalIssuesForDropdown() {
   try {
+    // Check authentication and permissions
+    const currentUser = await getCurrentUserWithPermissions()
+    
+    if (!currentUser) {
+      return { success: false, error: "Authentication required" }
+    }
+
+    // Check if user has permission to read journal issues
+    const permissionCheck = checkPermission(currentUser, 'journalissue.READ')
+    if (!permissionCheck.allowed) {
+      return { 
+        success: false, 
+        error: permissionCheck.reason || "You don't have permission to view journal issues" 
+      }
+    }
+
     const issues = await prisma.journalIssue.findMany({
       select: {
         id: true,
@@ -448,12 +566,124 @@ export async function getJournalIssuesForDropdown() {
       ]
     })
 
+    console.log(`✅ User ${currentUser.email} fetched ${issues.length} journal issues for dropdown`)
     return { success: true, issues }
   } catch (error) {
     console.error("💥 Error fetching journal issues:", error)
     return { 
       success: false, 
       error: error instanceof Error ? error.message : "Failed to fetch journal issues" 
+    }
+  }
+}
+
+// NEW: Function to get journal articles with permission context
+export async function getJournalArticlesWithPermissions() {
+  try {
+    const currentUser = await getCurrentUserWithPermissions()
+    
+    if (!currentUser) {
+      return { error: "Authentication required" }
+    }
+
+    // Check if user has permission to read articles
+    const permissionCheck = checkPermission(currentUser, 'article.READ')
+    if (!permissionCheck.allowed) {
+      return { 
+        error: "You don't have permission to view journal articles" 
+      }
+    }
+
+    const articles = await prisma.article.findMany({
+      where: {
+        type: 'journal',
+      },
+      include: {
+        authors: {
+          include: {
+            author: true
+          },
+          orderBy: {
+            authorOrder: 'asc'
+          }
+        },
+        JournalIssue: true
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+    })
+
+    // Add permission context to each article
+    const articlesWithPermissions = articles.map(article => {
+      const isOwner = article.authors.some(aa => aa.author.userId === currentUser.id)
+      
+      return {
+        ...article,
+        Authors: article.authors.map(aa => aa.author),
+        Author: article.authors.length > 0 ? article.authors[0].author : null,
+        canEdit: checkPermission(currentUser, 'article.UPDATE').allowed,
+        canDelete: checkPermission(currentUser, 'article.DELETE').allowed,
+      }
+    })
+
+    return { 
+      articles: articlesWithPermissions,
+      canCreate: checkPermission(currentUser, 'article.CREATE').allowed
+    }
+  } catch (error) {
+    console.error("Failed to fetch journal articles with permissions:", error)
+    return { error: "Failed to fetch journal articles" }
+  }
+}
+
+// NEW: Function to check journal article permissions
+export async function checkJournalArticlePermissions(slug?: string) {
+  try {
+    const currentUser = await getCurrentUserWithPermissions()
+    
+    if (!currentUser) {
+      return { 
+        success: false, 
+        error: "Authentication required",
+        permissions: { canRead: false, canCreate: false, canUpdate: false, canDelete: false }
+      }
+    }
+
+    let permissions = {
+      canRead: checkPermission(currentUser, 'article.READ').allowed,
+      canCreate: checkPermission(currentUser, 'article.CREATE').allowed,
+      canUpdate: false,
+      canDelete: false,
+    }
+
+    // If specific article slug is provided, check update/delete permissions
+    if (slug) {
+      const article = await prisma.article.findUnique({
+        where: { slug, type: 'journal' },
+        include: {
+          authors: {
+            include: { author: true }
+          }
+        }
+      })
+
+      if (article) {
+        const isOwner = article.authors.some(aa => aa.author.userId === currentUser.id)
+        
+        permissions.canUpdate = checkPermission(currentUser, 'article.UPDATE').allowed
+
+        permissions.canDelete = checkPermission(currentUser, 'article.DELETE').allowed
+      }
+    }
+
+    return { success: true, permissions }
+  } catch (error) {
+    console.error("Failed to check journal article permissions:", error)
+    return { 
+      success: false, 
+      error: "Failed to check permissions",
+      permissions: { canRead: false, canCreate: false, canUpdate: false, canDelete: false }
     }
   }
 }

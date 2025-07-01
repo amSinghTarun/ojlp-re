@@ -3,7 +3,7 @@ import type { Metadata } from "next"
 import { redirect } from "next/navigation"
 import { getCurrentUser } from "@/lib/auth"
 import { RoleForm } from "@/components/admin/role-form"
-import { getPermissions } from "@/lib/actions/role-actions"
+import { getAvailablePermissions } from "@/lib/actions/role-permission-actions"
 import { checkPermission } from "@/lib/permissions/checker"
 import { UserWithPermissions } from "@/lib/permissions/types"
 import { Alert, AlertDescription } from "@/components/ui/alert"
@@ -24,9 +24,9 @@ async function getCurrentUserWithPermissions(): Promise<UserWithPermissions | nu
     if (!user) return null
 
     // If user already has role and permissions, return as is
-    // if ('role' in user && user.role && 'permissions' in user.role) {
-    //   return user as UserWithPermissions
-    // }
+    if ('role' in user && user.role && 'permissions' in user.role) {
+      return user as UserWithPermissions
+    }
 
     // Otherwise fetch the complete user data with role and permissions
     const fullUser = await prisma.user.findUnique({
@@ -53,8 +53,8 @@ export default async function NewRolePage() {
     }
 
     // Check if user has permission to manage roles
-    const permissionCheck = { allowed: true }
-    // checkPermission(currentUser, 'SYSTEM.ROLE_MANAGEMENT')
+    const permissionCheck = checkPermission(currentUser, 'SYSTEM.ROLE_MANAGEMENT')
+    
     if (!permissionCheck.allowed) {
       return (
         <div className="max-w-2xl mx-auto space-y-6">
@@ -76,24 +76,28 @@ export default async function NewRolePage() {
           <Alert variant="destructive">
             <AlertTriangle className="h-4 w-4" />
             <AlertDescription>
-              You don't have permission to create roles. Contact your administrator for access.
+              {permissionCheck.reason || "You don't have permission to create roles. Contact your administrator for access."}
             </AlertDescription>
           </Alert>
         </div>
       )
     }
 
-    // Get available permissions
-    const { permissions, error } = await getPermissions()
+    // Get available permissions using the proper action
+    const permissionsResult = await getAvailablePermissions()
     
-    console.log("NEW PAGE")
+    console.log("NEW PAGE - Permissions result:", permissionsResult)
 
-    if (error || !permissions) {
-      throw new Error(error || "Failed to load permissions")
+    if (!permissionsResult.success) {
+      throw new Error(permissionsResult.error || "Failed to load permissions")
     }
+
+    // Use the grouped permissions from the result
+    const groupedPermissions = permissionsResult.data.grouped || {}
+
     return (
       <RoleForm
-        availablePermissions={permissions}
+        availablePermissions={groupedPermissions}
         mode="create"
       />
     )
@@ -125,7 +129,7 @@ export default async function NewRolePage() {
               <details className="mt-2">
                 <summary className="cursor-pointer">Error Details (Development)</summary>
                 <pre className="mt-2 text-xs overflow-x-auto bg-muted p-2 rounded">
-                  {error instanceof Error ? error.message : String(error)}
+                  {error instanceof Error ? error.stack || error.message : String(error)}
                 </pre>
               </details>
             )}

@@ -67,7 +67,7 @@ const sidebarNavItems: SidebarNavItem[] = [
     title: "Call for Papers",
     href: "/admin/call-for-papers",
     icon: FileQuestion,
-    permissions: "callforpaper"
+    permissions: "callforpapers"
   },
   {
     title: "Notifications",
@@ -85,7 +85,7 @@ const sidebarNavItems: SidebarNavItem[] = [
     title: "Editorial Board",
     href: "/admin/editorial-board",
     icon: UserCog,
-    permissions: "editorialboardmember"
+    permissions: "editorialboard"
   },
   {
     title: "Users",
@@ -113,15 +113,18 @@ export function AdminSidebar({ user }: AdminSidebarProps) {
 
   return (
     <div className="hidden border-r bg-background md:block md:w-64">
-      <div className="flex h-16 items-center border-b px-4">
+      <div className="flex h-20 flex-col justify-center border-b px-4">
         <Link href="/admin" className="flex items-center space-x-2">
           <div className="rounded-full bg-primary p-1 text-primary-foreground">
             <Scale className="h-5 w-5" />
           </div>
           <span className="font-bold">OJLP Admin</span>
         </Link>
+        <div className="mt-1 ml-8 text-xs text-muted-foreground truncate">
+          {user.email}
+        </div>
       </div>
-      <ScrollArea className="h-[calc(100vh-64px)] py-4">
+      <ScrollArea className="h-[calc(100vh-80px)] py-4">
         <div className="px-3 py-2">
           <h3 className="mb-2 px-4 text-xs font-semibold uppercase text-muted-foreground">Content Management</h3>
           <div className="space-y-1">

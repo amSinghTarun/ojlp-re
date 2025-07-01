@@ -43,7 +43,7 @@ export const authOptions = {
           },
         })
 
-        console.log("USER", credentials, user)
+        console.log("USER", await comparePassword(credentials.password, user.password))
 
         // If no user or password doesn't match
         if (!user || !(await comparePassword(credentials.password, user.password))) {
@@ -52,11 +52,11 @@ export const authOptions = {
         }
 
         // Only allow users with admin roles to login
-        const adminRoles = ["SUPER_ADMIN", "Admin", "Editor"]
-        if (!adminRoles.includes(user.role.name)) {
-          return null
-        }
-
+        // const adminRoles = ["SUPER_ADMIN", "Admin", "Editor"]
+        // if (!adminRoles.includes(user.role.name)) {
+        //   return null
+        // }
+        console.log("USER", user)
         return {
           id: user.id,
           email: user.email,
@@ -68,8 +68,8 @@ export const authOptions = {
     }),
   ],
   pages: {
-    signIn: "/admin/login",
-    error: "/admin/login", // Error code passed in query string
+    signIn: "/admin-protected-login",
+    error: "/admin-protected-login",
   },
   callbacks: {
     async jwt({ token, user }) {

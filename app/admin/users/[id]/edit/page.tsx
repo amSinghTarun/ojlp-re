@@ -1,8 +1,9 @@
 import type { Metadata } from "next"
 import { redirect, notFound } from "next/navigation"
-import { getCurrentUser } from "@/lib/auth"
+import { getCurrentUser, isSuperAdmin } from "@/lib/auth"
 import { UserForm } from "@/components/admin/user-form"
 import { getUser, getRoles } from "@/lib/actions/user-actions"
+import { Role, User } from "@prisma/client"
 
 interface EditUserPageProps {
   params: {
@@ -53,8 +54,8 @@ export default async function EditUserPage({ params }: EditUserPageProps) {
 
     // Additional permission checks
     if (!isSuperAdmin(currentUser)) {
-      // Non-super admins cannot edit super admins
-      if (user.role.name === "Super Admin") {
+      // Non-SUPER_ADMINs cannot edit SUPER_ADMINs
+      if (user.role.name === "SUPER_ADMIN") {
         redirect("/admin/users")
       }
     }
@@ -67,7 +68,7 @@ export default async function EditUserPage({ params }: EditUserPageProps) {
     return (
       <UserForm
         user={user}
-        currentUser={currentUser}
+        currentUser={currentUser as User & { role: Role }}
         availableRoles={roles}
         mode="edit"
       />

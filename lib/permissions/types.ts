@@ -81,7 +81,7 @@ export const ROUTE_TABLE_MAPPING: Record<string, string> = {
 // Default role permissions (simplified)
 export const DEFAULT_ROLE_PERMISSIONS = {
   SUPER_ADMIN: [
-    SYSTEM_PERMISSIONS.ADMIN // Super admin gets system admin (bypasses all checks)
+    SYSTEM_PERMISSIONS.ADMIN // SUPER_ADMIN gets system admin (bypasses all checks)
   ],
   
   ADMIN: [

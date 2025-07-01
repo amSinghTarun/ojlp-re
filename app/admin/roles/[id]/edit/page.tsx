@@ -5,12 +5,13 @@ import { getCurrentUser } from "@/lib/auth"
 import { RoleForm } from "@/components/admin/role-form"
 import { getRole, getPermissions } from "@/lib/actions/role-actions"
 import { checkPermission } from "@/lib/permissions/checker"
-import { UserWithPermissions } from "@/lib/permissions/types"
+import { PermissionOption, UserWithPermissions } from "@/lib/permissions/types"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { AlertTriangle, ArrowLeft } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import { prisma } from "@/lib/prisma"
+import { Role } from "@prisma/client"
 
 interface EditRolePageProps {
   params: {
@@ -123,14 +124,12 @@ export default async function EditRolePage({ params }: EditRolePageProps) {
       throw new Error(roleError || "Failed to load role")
     }
 
-    if (permissionsError || !permissions) {
-      throw new Error(permissionsError || "Failed to load permissions")
-    }
+    
 
     return (
       <RoleForm
-        role={role}
-        availablePermissions={permissions}
+        role={role as Role}
+        availablePermissions={permissions as Record<string, PermissionOption[]>}
         mode="edit"
       />
     )

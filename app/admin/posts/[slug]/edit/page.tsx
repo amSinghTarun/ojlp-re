@@ -1,14 +1,46 @@
+// app/admin/posts/[slug]/edit/page.tsx - WITH SIMPLE PERMISSION CHECKS
 import { Suspense } from "react"
-import { notFound } from "next/navigation"
+import { notFound, redirect } from "next/navigation"
 import { DashboardHeader } from "@/components/admin/dashboard-header"
 import { PostForm } from "@/components/admin/post-form"
 import { getPost } from "@/lib/actions/post-actions"
+import { getCurrentUser } from "@/lib/auth"
+import { checkPermission } from "@/lib/permissions/checker"
+import { 
+  UserWithPermissions, 
+  PERMISSION_ERRORS,
+  PermissionContext
+} from "@/lib/permissions/types"
+import { prisma } from "@/lib/prisma"
 import { Loader2, AlertTriangle } from "lucide-react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
+import { AlertCircle } from "lucide-react"
 
 interface EditPostPageProps {
   params: {
     slug: string
+  }
+}
+
+// Get current user with permissions helper
+async function getCurrentUserWithPermissions(): Promise<UserWithPermissions | null> {
+  try {
+    const user = await getCurrentUser()
+    if (!user) return null
+
+    if ('role' in user && user.role) {
+      return user as UserWithPermissions
+    }
+
+    const fullUser = await prisma.user.findUnique({
+      where: { id: user.id },
+      include: { role: true }
+    })
+
+    return fullUser as UserWithPermissions
+  } catch (error) {
+    console.error('Error getting user with permissions:', error)
+    return null
   }
 }
 
@@ -49,9 +81,9 @@ function PostErrorState({ error }: { error: string }) {
 }
 
 // Main edit post content component
-async function EditPostContent({ slug }: { slug: string }) {
+async function EditPostContent({ slug, currentUser }: { slug: string, currentUser: UserWithPermissions }) {
   try {
-    // Fetch post data from database
+    // Fetch post data from database first to get post details for permission context
     const result = await getPost(slug)
     
     if (!result.success) {
@@ -62,6 +94,34 @@ async function EditPostContent({ slug }: { slug: string }) {
     }
 
     const post = result.data
+
+    // Check permissions to edit posts with context (users can edit their own posts)
+    const context: PermissionContext = {
+      resourceId: post.id,
+      resourceOwner: post.Authors?.some(author => author.userId === currentUser.id) 
+        ? currentUser.id 
+        : post.Author?.userId,
+      userId: currentUser.id
+    }
+
+    const postUpdateCheck = checkPermission(currentUser, 'post.UPDATE', context)
+    
+    if (!postUpdateCheck.allowed) {
+      return (
+        <div className="space-y-6">
+          <DashboardHeader 
+            heading={`Edit Post: ${post.title}`}
+            text="Edit post content, authors, and settings."
+          />
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+              {PERMISSION_ERRORS.INSUFFICIENT_PERMISSIONS} - You need 'post.UPDATE' permission to edit posts.
+            </AlertDescription>
+          </Alert>
+        </div>
+      )
+    }
     
     return (
       <div className="space-y-6">
@@ -78,7 +138,7 @@ async function EditPostContent({ slug }: { slug: string }) {
   }
 }
 
-export default function EditPostPage({ params }: EditPostPageProps) {
+export default async function EditPostPage({ params }: EditPostPageProps) {
   const { slug } = params
 
   // Validate slug parameter
@@ -86,9 +146,15 @@ export default function EditPostPage({ params }: EditPostPageProps) {
     notFound()
   }
 
+  // Check authentication
+  const currentUser = await getCurrentUserWithPermissions()
+  if (!currentUser) {
+    redirect("/admin/login")
+  }
+
   return (
     <Suspense fallback={<PostLoadingState />}>
-      <EditPostContent slug={slug} />
+      <EditPostContent slug={slug} currentUser={currentUser} />
     </Suspense>
   )
 }

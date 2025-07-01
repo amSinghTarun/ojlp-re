@@ -1,26 +1,75 @@
-// app/admin/journal-articles/page.tsx - UPDATED for multiple authors and contentLink
+// app/admin/journal-articles/page.tsx - WITH SIMPLE PERMISSION CHECKS
 import Link from "next/link"
-import { Plus, FileText, Eye, PenTool, ExternalLink, AlertTriangle } from "lucide-react"
+import { Plus, FileText, Eye, PenTool, ExternalLink, AlertTriangle, Shield } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { DashboardHeader } from "@/components/admin/dashboard-header"
 import { JournalArticlesTable } from "@/components/admin/journal-articles-table"
 import { getJournalArticles } from "@/lib/actions/journal-article-actions"
 import { redirect } from "next/navigation"
 import { getCurrentUser } from "@/lib/auth"
+import { checkPermission } from "@/lib/permissions/checker"
+import { 
+  UserWithPermissions, 
+  SYSTEM_PERMISSIONS, 
+  PERMISSION_ERRORS 
+} from "@/lib/permissions/types"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { AlertCircle } from "lucide-react"
+import { prisma } from "@/lib/prisma"
+
+// Get current user with permissions helper
+async function getCurrentUserWithPermissions(): Promise<UserWithPermissions | null> {
+  try {
+    const user = await getCurrentUser()
+    if (!user) return null
+
+    if ('role' in user && user.role) {
+      return user as UserWithPermissions
+    }
+
+    const fullUser = await prisma.user.findUnique({
+      where: { id: user.id },
+      include: { role: true }
+    })
+
+    return fullUser as UserWithPermissions
+  } catch (error) {
+    console.error('Error getting user with permissions:', error)
+    return null
+  }
+}
 
 export default async function JournalArticlesPage() {
   try {
-    // Check authentication and permissions
-    const user = await getCurrentUser()
-    if (!user) {
-      redirect("/login")
+    // Check authentication
+    const currentUser = await getCurrentUserWithPermissions()
+    if (!currentUser) {
+      redirect("/admin/login")
     }
+
+    // Check if user has permission to view articles
+    const articleReadCheck = checkPermission(currentUser, 'article.READ')
+    
+    if (!articleReadCheck.allowed) {
+      return (
+        <div className="space-y-6">
+          <DashboardHeader heading="Journal Articles" text="Create and manage journal articles." />
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+              {PERMISSION_ERRORS.INSUFFICIENT_PERMISSIONS} - You need 'article.READ' permission to view journal articles.
+            </AlertDescription>
+          </Alert>
+        </div>
+      )
+    }
+
+    // Check if user can create articles (for showing/hiding the New Article button)
+    const canCreateArticles = checkPermission(currentUser, 'article.CREATE').allowed
 
     console.log("📰 Admin page: Fetching journal articles...")
 
-    // Fetch journal articles from database (now returns articles with multiple authors and contentLink)
+    // Fetch journal articles from database
     const result = await getJournalArticles()
     
     console.log("📥 Admin page: Server response:", result)
@@ -34,12 +83,14 @@ export default async function JournalArticlesPage() {
               heading="Journal Articles"
               text="Create and manage journal articles."
             />
-            <Button asChild>
-              <Link href="/admin/journal-articles/new">
-                <Plus className="mr-2 h-4 w-4" />
-                New Article
-              </Link>
-            </Button>
+            {canCreateArticles && (
+              <Button asChild>
+                <Link href="/admin/journal-articles/new">
+                  <Plus className="mr-2 h-4 w-4" />
+                  New Article
+                </Link>
+              </Button>
+            )}
           </div>
 
           <Alert variant="destructive">
@@ -52,14 +103,14 @@ export default async function JournalArticlesPage() {
       )
     }
 
-    // Transform database data to match table requirements - UPDATED for multiple authors and contentLink
+    // Transform database data to match table requirements
     const articlesForTable = result.articles?.map(article => ({
       id: article.id,
       slug: article.slug,
       title: article.title,
       excerpt: article.excerpt,
       content: article.content,
-      contentLink: article.contentLink, // ADDED: Content link field
+      contentLink: article.contentLink,
       date: article.date.toISOString(),
       readTime: article.readTime,
       image: article.image,
@@ -67,14 +118,26 @@ export default async function JournalArticlesPage() {
       views: article.views || 0,
       doi: article.doi,
       keywords: article.keywords,
-      // UPDATED: Pass both old Author field (for backward compatibility) and new Authors array
-      Author: article.Author, // This is the primary author from the updated server action
-      Authors: article.Authors, // This is the full authors array
+      Author: article.Author,
+      Authors: article.Authors,
       journalIssue: article.journalIssue,
       categories: article.categories?.map(cat => cat.category) || [],
+      // Add permission context for the table
+      canEdit: checkPermission(currentUser, 'article.UPDATE', {
+        resourceOwner: article.Authors?.some(author => author.userId === currentUser.id) 
+          ? currentUser.id 
+          : article.Author?.userId,
+        resourceId: article.id
+      }).allowed,
+      canDelete: checkPermission(currentUser, 'article.DELETE', {
+        resourceOwner: article.Authors?.some(author => author.userId === currentUser.id) 
+          ? currentUser.id 
+          : article.Author?.userId,
+        resourceId: article.id
+      }).allowed,
     })) || []
 
-    // Calculate stats - UPDATED to handle cases where articles might not have authors
+    // Calculate stats
     const publishedCount = articlesForTable.filter(article => !article.draft).length
     const draftCount = articlesForTable.filter(article => article.draft).length
     const totalViews = articlesForTable.reduce((sum, article) => sum + (article.views || 0), 0)
@@ -85,12 +148,13 @@ export default async function JournalArticlesPage() {
       )
     ).size
 
-    // ADDED: Calculate content link statistics
     const articlesWithContentLinks = articlesForTable.filter(article => article.contentLink).length
     const articlesWithoutContentLinks = articlesForTable.filter(article => !article.contentLink).length
 
+    const editableArticles = articlesForTable.filter(article => article.canEdit).length
+    const deletableArticles = articlesForTable.filter(article => article.canDelete).length
+
     console.log("✅ Admin page: Transformed data for table:", articlesForTable.length, "records")
-    console.log("📊 Admin page: Stats calculated:", { publishedCount, draftCount, totalViews, totalAuthors, articlesWithContentLinks })
 
     return (
       <div className="space-y-6">
@@ -99,15 +163,27 @@ export default async function JournalArticlesPage() {
             heading="Journal Articles"
             text="Create and manage journal articles with full content links."
           />
-          <Button asChild>
-            <Link href="/admin/journal-articles/new">
-              <Plus className="mr-2 h-4 w-4" />
-              New Article
-            </Link>
-          </Button>
+          {canCreateArticles && (
+            <Button asChild>
+              <Link href="/admin/journal-articles/new">
+                <Plus className="mr-2 h-4 w-4" />
+                New Article
+              </Link>
+            </Button>
+          )}
         </div>
 
-        {/* Content Link Warning Alert - ADDED */}
+        {/* Permission Info Alert */}
+        {!canCreateArticles && (
+          <Alert>
+            <Shield className="h-4 w-4" />
+            <AlertDescription>
+              You have read-only access to journal articles. Contact your administrator to request creation permissions.
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {/* Content Link Warning Alert */}
         {articlesWithoutContentLinks > 0 && (
           <Alert variant="destructive">
             <AlertTriangle className="h-4 w-4" />
@@ -161,8 +237,8 @@ export default async function JournalArticlesPage() {
           </div>
         </div>
 
-        {/* Enhanced Stats Grid - UPDATED to include content link stats */}
-        <div className="grid gap-4 md:grid-cols-2">
+        {/* Enhanced Stats Grid */}
+        <div className="grid gap-4 md:grid-cols-3">
           {/* Author Statistics */}
           <div className="rounded-lg border p-4 bg-muted/50">
             <div className="flex items-center justify-between">
@@ -185,7 +261,7 @@ export default async function JournalArticlesPage() {
             </div>
           </div>
 
-          {/* Content Link Statistics - ADDED */}
+          {/* Content Link Statistics */}
           <div className="rounded-lg border p-4 bg-muted/50">
             <div className="flex items-center justify-between">
               <div>
@@ -212,9 +288,34 @@ export default async function JournalArticlesPage() {
               </div>
             </div>
           </div>
+
+          {/* Permission Statistics */}
+          <div className="rounded-lg border p-4 bg-muted/50">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="font-semibold flex items-center gap-2">
+                  <Shield className="h-4 w-4" />
+                  Your Permissions
+                </h3>
+                <p className="text-sm text-muted-foreground">
+                  Your access level for these articles
+                </p>
+              </div>
+              <div className="text-right space-y-1">
+                <div>
+                  <p className="text-sm font-medium">Can Edit</p>
+                  <p className="text-lg font-bold text-blue-600">{editableArticles}</p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium">Can Delete</p>
+                  <p className="text-lg font-bold text-red-600">{deletableArticles}</p>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
 
-        {/* Content Link Requirements Info - ADDED */}
+        {/* Content Link Requirements Info */}
         <Alert>
           <ExternalLink className="h-4 w-4" />
           <AlertDescription>
@@ -224,8 +325,12 @@ export default async function JournalArticlesPage() {
           </AlertDescription>
         </Alert>
 
-        {/* Articles Table */}
-        <JournalArticlesTable articles={articlesForTable} />
+        {/* Articles Table - Pass permission context */}
+        <JournalArticlesTable 
+          articles={articlesForTable} 
+          currentUser={currentUser}
+          canCreate={canCreateArticles}
+        />
       </div>
     )
   } catch (error) {
@@ -238,7 +343,7 @@ export default async function JournalArticlesPage() {
             heading="Journal Articles"
             text="Create and manage journal articles."
           />
-          <Button asChild>
+          <Button asChild disabled>
             <Link href="/admin/journal-articles/new">
               <Plus className="mr-2 h-4 w-4" />
               New Article

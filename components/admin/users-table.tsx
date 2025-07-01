@@ -129,11 +129,11 @@ export function UsersTable({ currentUser, initialUsers }: UsersTableProps) {
     // Users cannot edit themselves through this interface
     if (user.id === currentUser.id) return false
     
-    // Super admins can edit anyone except themselves
+    // SUPER_ADMINs can edit anyone except themselves
     if (isCurrentUserSuperAdmin) return true
 
-    // Regular admins cannot edit super admins
-    if (user.role.name === "Super Admin") return false
+    // Regular admins cannot edit SUPER_ADMINs
+    // if (user.role.name === "SUPER_ADMIN") return false
 
     // Regular admins can edit other users if they have permission
     return canManageUsers
@@ -144,11 +144,11 @@ export function UsersTable({ currentUser, initialUsers }: UsersTableProps) {
     // Users cannot delete themselves
     if (user.id === currentUser.id) return false
 
-    // Super admins can delete anyone except themselves
+    // SUPER_ADMINs can delete anyone except themselves
     if (isCurrentUserSuperAdmin) return true
 
-    // Regular admins cannot delete super admins
-    if (user.role.name === "Super Admin") return false
+    // Regular admins cannot delete SUPER_ADMINs
+    // if (user.role.name === "SUPER_ADMIN") return false
 
     // Regular admins can delete other users if they have permission
     return canManageUsers
@@ -157,7 +157,7 @@ export function UsersTable({ currentUser, initialUsers }: UsersTableProps) {
   // Get role badge variant based on role name
   const getRoleBadgeVariant = (roleName: string) => {
     switch (roleName) {
-      case "Super Admin":
+      case "SUPER_ADMIN":
         return "destructive"
       case "Admin":
         return "default"
@@ -391,9 +391,9 @@ export function UsersTable({ currentUser, initialUsers }: UsersTableProps) {
             <AlertDialogDescription>
               This action cannot be undone. This will permanently delete the user account for{" "}
               <strong>{selectedUser?.name}</strong> and remove all associated data.
-              {selectedUser?.role.name === "Super Admin" && (
+              {selectedUser?.role.name === "SUPER_ADMIN" && (
                 <div className="mt-2 p-2 bg-destructive/10 rounded text-destructive text-sm">
-                  ⚠️ Warning: You are about to delete a Super Admin account. Make sure there are other Super Admin accounts available.
+                  ⚠️ Warning: You are about to delete a SUPER_ADMIN account. Make sure there are other SUPER_ADMIN accounts available.
                 </div>
               )}
             </AlertDialogDescription>

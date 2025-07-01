@@ -1,9 +1,16 @@
-// app/admin/journal-articles/[slug]/edit/page.tsx - UPDATED for multiple authors and contentLink
+// app/admin/journal-articles/[slug]/edit/page.tsx - WITH SIMPLE PERMISSION CHECKS
 import { DashboardHeader } from "@/components/admin/dashboard-header"
 import { JournalArticleForm } from "@/components/admin/journal-article-form"
 import { getJournalArticle } from "@/lib/actions/journal-article-actions"
 import { getCurrentUser } from "@/lib/auth"
+import { checkPermission } from "@/lib/permissions/checker"
+import { 
+  UserWithPermissions, 
+  PERMISSION_ERRORS,
+  PermissionContext
+} from "@/lib/permissions/types"
 import { notFound, redirect } from "next/navigation"
+import { prisma } from "@/lib/prisma"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { AlertCircle, FileText, Eye, Calendar, Users, BookOpen, ExternalLink } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
@@ -14,14 +21,36 @@ interface EditJournalArticlePageProps {
   }
 }
 
+// Get current user with permissions helper
+async function getCurrentUserWithPermissions(): Promise<UserWithPermissions | null> {
+  try {
+    const user = await getCurrentUser()
+    if (!user) return null
+
+    if ('role' in user && user.role) {
+      return user as UserWithPermissions
+    }
+
+    const fullUser = await prisma.user.findUnique({
+      where: { id: user.id },
+      include: { role: true }
+    })
+
+    return fullUser as UserWithPermissions
+  } catch (error) {
+    console.error('Error getting user with permissions:', error)
+    return null
+  }
+}
+
 export default async function EditJournalArticlePage({ params }: EditJournalArticlePageProps) {
-  // Check authentication and permissions
-  const user = await getCurrentUser()
-  if (!user) {
-    redirect("/login")
+  // Check authentication
+  const currentUser = await getCurrentUserWithPermissions()
+  if (!currentUser) {
+    redirect("/admin/login")
   }
 
-  // Fetch journal article from database
+  // Fetch journal article from database first to get article details for permission context
   const result = await getJournalArticle(params.slug)
   
   if (result.error) {
@@ -48,6 +77,34 @@ export default async function EditJournalArticlePage({ params }: EditJournalArti
 
   const article = result.article!
 
+  // Check permissions to edit articles with context (users can edit their own articles)
+  const context: PermissionContext = {
+    resourceId: article.id,
+    resourceOwner: article.Authors?.some(author => author.userId === currentUser.id) 
+      ? currentUser.id 
+      : article.Author?.userId,
+    userId: currentUser.id
+  }
+
+  const articleUpdateCheck = checkPermission(currentUser, 'article.UPDATE', context)
+  
+  if (!articleUpdateCheck.allowed) {
+    return (
+      <div className="space-y-6">
+        <DashboardHeader 
+          heading={`Edit Article: ${article.title}`} 
+          text="Edit journal article content and metadata." 
+        />
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>
+            {PERMISSION_ERRORS.INSUFFICIENT_PERMISSIONS} - You need 'article.UPDATE' permission to edit journal articles.
+          </AlertDescription>
+        </Alert>
+      </div>
+    )
+  }
+
   // Transform the article data to match the updated form interface with multiple authors and contentLink
   const formArticle = {
     id: article.id,
@@ -55,7 +112,7 @@ export default async function EditJournalArticlePage({ params }: EditJournalArti
     title: article.title,
     excerpt: article.excerpt,
     content: article.content,
-    contentLink: article.contentLink, // ADDED: Content link field
+    contentLink: article.contentLink,
     date: article.date,
     readTime: article.readTime,
     image: article.image,
@@ -64,8 +121,7 @@ export default async function EditJournalArticlePage({ params }: EditJournalArti
     doi: article.doi,
     keywords: article.keywords,
     draft: article.draft,
-    // UPDATED: Transform multiple authors to match the new form structure
-    Authors: article.Authors, // This now contains an array of authors
+    Authors: article.Authors,
     journalIssue: article.journalIssue,
     categories: article.categories,
   }
@@ -74,6 +130,7 @@ export default async function EditJournalArticlePage({ params }: EditJournalArti
   const primaryAuthor = article.Authors && article.Authors.length > 0 ? article.Authors[0] : null
   const authorCount = article.Authors?.length || 0
 
+  // User has permission - show the actual component
   return (
     <div className="space-y-6">
       <DashboardHeader 
@@ -81,7 +138,7 @@ export default async function EditJournalArticlePage({ params }: EditJournalArti
         text="Edit your journal article content and metadata." 
       />
       
-      {/* Article Info - UPDATED to show multiple authors and content link */}
+      {/* Article Info */}
       <div className="rounded-lg border p-4 bg-muted/50">
         <div className="flex items-start justify-between">
           <div className="space-y-2">
@@ -109,7 +166,7 @@ export default async function EditJournalArticlePage({ params }: EditJournalArti
             </div>
             
             <div className="flex items-center gap-4 text-sm text-muted-foreground flex-wrap">
-              {/* Authors Display - UPDATED */}
+              {/* Authors Display */}
               <div className="flex items-center gap-1">
                 <Users className="h-4 w-4" />
                 <span>
@@ -139,7 +196,7 @@ export default async function EditJournalArticlePage({ params }: EditJournalArti
               </div>
             </div>
 
-            {/* Content Link Display - ADDED */}
+            {/* Content Link Display */}
             {article.contentLink && (
               <div className="space-y-1">
                 <p className="text-sm font-medium">Full Article Link:</p>
@@ -204,7 +261,7 @@ export default async function EditJournalArticlePage({ params }: EditJournalArti
         </Alert>
       )}
 
-      {/* Content Link Requirement Alert - ADDED */}
+      {/* Content Link Requirement Alert */}
       {!article.contentLink && (
         <Alert variant="destructive">
           <ExternalLink className="h-4 w-4" />

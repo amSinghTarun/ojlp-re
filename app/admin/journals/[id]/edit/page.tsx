@@ -1,8 +1,15 @@
+// app/admin/journals/[id]/edit/page.tsx - WITH SIMPLE PERMISSION CHECKS
 import { DashboardHeader } from "@/components/admin/dashboard-header"
 import { JournalIssueForm } from "@/components/admin/journal-issue-form"
 import { getJournalIssue } from "@/lib/actions/journal-actions"
 import { getCurrentUser } from "@/lib/auth"
+import { checkPermission } from "@/lib/permissions/checker"
+import { 
+  UserWithPermissions, 
+  PERMISSION_ERRORS 
+} from "@/lib/permissions/types"
 import { notFound, redirect } from "next/navigation"
+import { prisma } from "@/lib/prisma"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { AlertCircle } from "lucide-react"
 
@@ -12,11 +19,53 @@ interface EditJournalIssuePageProps {
   }
 }
 
+// Get current user with permissions helper
+async function getCurrentUserWithPermissions(): Promise<UserWithPermissions | null> {
+  try {
+    const user = await getCurrentUser()
+    if (!user) return null
+
+    if ('role' in user && user.role) {
+      return user as UserWithPermissions
+    }
+
+    const fullUser = await prisma.user.findUnique({
+      where: { id: user.id },
+      include: { role: true }
+    })
+
+    return fullUser as UserWithPermissions
+  } catch (error) {
+    console.error('Error getting user with permissions:', error)
+    return null
+  }
+}
+
 export default async function EditJournalIssuePage({ params }: EditJournalIssuePageProps) {
-  // Check authentication and permissions
-  const user = await getCurrentUser()
-  if (!user) {
-    redirect("/login")
+  // Check authentication
+  const currentUser = await getCurrentUserWithPermissions()
+  if (!currentUser) {
+    redirect("/admin/login")
+  }
+
+  // Check if user has permission to edit journal issues
+  const journalIssueUpdateCheck = checkPermission(currentUser, 'journalissue.UPDATE')
+  
+  if (!journalIssueUpdateCheck.allowed) {
+    return (
+      <div className="space-y-6">
+        <DashboardHeader 
+          heading="Edit Journal Issue" 
+          text="Edit journal issue details." 
+        />
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>
+            {PERMISSION_ERRORS.INSUFFICIENT_PERMISSIONS} - You need 'journalissue.UPDATE' permission to edit journal issues.
+          </AlertDescription>
+        </Alert>
+      </div>
+    )
   }
 
   // Fetch journal issue from database
@@ -46,6 +95,7 @@ export default async function EditJournalIssuePage({ params }: EditJournalIssueP
 
   const issue = result.issue!
 
+  // User has permission - show the actual component
   return (
     <div className="space-y-6">
       <DashboardHeader 
@@ -59,11 +109,11 @@ export default async function EditJournalIssuePage({ params }: EditJournalIssueP
           <div>
             <h3 className="font-semibold">Issue Information</h3>
             <p className="text-sm text-muted-foreground">
-              Volume {issue.volume}, Issue {issue.issue} ({issue.year}) • {issue.articles?.length || 0} articles
+              Volume {issue.volume}, Issue {issue.issue} ({issue.year}) • {issue.Article?.length || 0} articles
             </p>
           </div>
           <div className="text-right">
-            <p className="text-sm font-medium">Published: {new Date(issue.publishDate).toLocaleDateString()}</p>
+            <p className="text-sm font-medium">Published: {new Date(issue.publishDate ?? "").toLocaleDateString()}</p>
           </div>
         </div>
       </div>

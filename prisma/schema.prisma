@@ -13,9 +13,9 @@ model User {
   id            String       @id @default(cuid())
   name          String
   email         String       @unique
-  emailVerified DateTime?
-  password      String?
-  image         String?
+  // emailVerified DateTime?
+  password      String
+  // image         String?
   roleId        String
   createdAt     DateTime     @default(now())
   updatedAt     DateTime     @updatedAt
@@ -25,9 +25,7 @@ model User {
   
   // ADDED: Direct user permissions as string array (optional - overrides role permissions)
   permissions   String[]     @default([])
-  
-  Author        Author?
-  sessions      Session[]
+
   role          Role         @relation(fields: [roleId], references: [id])
 }
 
@@ -70,18 +68,6 @@ model Role {
 //   users       User[]           @relation("PermissionToUser")
 // }
 
-// UNCHANGED: Keep all your other models as they are
-model Session {
-  id           String   @id @default(cuid())
-  userId       String
-  expires      DateTime
-  sessionToken String   @unique
-  accessToken  String   @unique
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-}
-
 model AuthorArticle {
   id          String   @id @default(cuid())
   authorId    String
@@ -100,25 +86,29 @@ model Article {
   id              String            @id @default(cuid())
   slug            String            @unique
   title           String
-  excerpt         String?
-  content         String
-  date            DateTime
+  abstract        String?
+  content         String?
   readTime        Int?
   image           String?
-  images          String[]
+  // images          String[]
   type            ArticleType
-  draft           Boolean           @default(false)
-  published       Boolean           @default(true)
+  // draft           Boolean           @default(false)
+  archived        Boolean           @default(false)
   views           Int               @default(0)
-  doi             String?           @unique
+  // doi             String?           @unique
   keywords        String[]
   contentLink     String?
-  createdAt       DateTime          @default(now())
+  downloadCount   Int               @default(0) 
+  publishedAt     DateTime          @default(now())
+  createdAt       DateTime          @default(now()) 
   updatedAt       DateTime          @updatedAt
   issueId         String?
   JournalIssue    JournalIssue?     @relation(fields: [issueId], references: [id])
-  CategoryArticle CategoryArticle[]
+  // CategoryArticle CategoryArticle[]
   authors         AuthorArticle[]
+
+  carousel        Boolean           @default(false)
+  featured        Boolean           @default(false)
 }
 
 model CallForPapers {
@@ -126,17 +116,18 @@ model CallForPapers {
   title         String
   thematicFocus String
   description   String
-  deadline      DateTime
+  deadline      DateTime // no visibility after deadline
   volume        Int
   issue         Int
   year          Int
-  guidelines    String
+  // guidelines    String
   fee           String?
-  image         String?
+  // image         String?
   topics        String[]
-  eligibility   String?
-  contact       String?
+  // eligibility   String?
+  // contact       String?
   contentLink   String?
+  publisher     String
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 }
@@ -146,68 +137,25 @@ model Author {
   slug           String          @unique
   name           String
   email          String          @unique
-  title          String?
+  title          String?         // TODO: Add title
   bio            String?
-  detailedBio    String?
-  image          String?
-  expertise      String[]
-  education      String[]
-  achievements   String[]
-  publications   String[]
-  location       String?
-  affiliation    String?
-  website        String?
-  twitter        String?
-  linkedin       String?
-  instagram      String?
-  orcid          String?
   createdAt      DateTime        @default(now())
   updatedAt      DateTime        @updatedAt
-  userId         String?         @unique
-  User           User?           @relation(fields: [userId], references: [id])
   authorArticles AuthorArticle[]
-}
-
-model Category {
-  id              String            @id @default(cuid())
-  name            String
-  slug            String            @unique
-  description     String?
-  createdAt       DateTime          @default(now())
-  updatedAt       DateTime          @updatedAt
-  CategoryArticle CategoryArticle[]
-}
-
-model CategoryArticle {
-  categoryId String
-  articleId  String
-  createdAt  DateTime @default(now())
-  Article    Article  @relation(fields: [articleId], references: [id], onDelete: Cascade)
-  Category   Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
-
-  @@id([categoryId, articleId])
 }
 
 model EditorialBoardMember {
   id           String          @id @default(cuid())
   name         String
   designation  String
+  bio          String
   image        String
+  email        String?
   order        Int
   memberType   BoardMemberType
-  bio          String?
-  detailedBio  String?
-  email        String?
+  archived     Boolean         @default(false)
   expertise    String[]
-  education    String[]
-  achievements String[]
-  publications String[]
-  location     String?
-  affiliation  String?
-  website      String?
-  twitter      String?
   linkedin     String?
-  instagram    String?
   orcid        String?
   createdAt    DateTime        @default(now())
   updatedAt    DateTime        @updatedAt
@@ -215,13 +163,11 @@ model EditorialBoardMember {
 
 model JournalIssue {
   id          String    @id @default(cuid())
-  title       String?
-  description String?
   volume      Int
+  theme       String?
   issue       Int
   year        Int
   publishDate String?
-  coverImage  String?
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
   Article     Article[]
@@ -246,13 +192,13 @@ model Notification {
   id        String           @id @default(cuid())
   title     String
   content   String
-  date      DateTime
   type      NotificationType
   priority  Priority         @default(medium)
-  read      Boolean          @default(false)
-  link      String?
-  expiresAt DateTime?
-  image     String?
+
+  linkDisplay  String?
+  linkUrl      String?
+
+  expiresAt DateTime? // default to 3 months from now
   createdAt DateTime         @default(now())
   updatedAt DateTime         @updatedAt
 }
@@ -267,6 +213,7 @@ enum BoardMemberType {
   Advisor
 }
 
+
 enum NotificationType {
   call_for_papers
   student_competition
@@ -275,6 +222,7 @@ enum NotificationType {
   event
   announcement
   publication
+  general
 }
 
 enum Priority {

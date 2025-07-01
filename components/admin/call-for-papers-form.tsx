@@ -28,8 +28,8 @@ import { cn } from "@/lib/utils"
 import { Badge } from "@/components/ui/badge"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 
-// Schema with enhanced validation messages and contentLink
-const formSchema = z.object({
+// Schema with conditional validation for guidelines based on create vs edit
+const createFormSchema = (isEditing: boolean = false) => z.object({
   title: z.string()
     .min(1, "Title is required")
     .min(5, "Title must be at least 5 characters")
@@ -43,10 +43,24 @@ const formSchema = z.object({
     .min(20, "Description must be at least 20 characters")
     .max(2000, "Description must be less than 2000 characters"),
   contentLink: z.string()
-    .min(1, "Content link is required for call for papers")
-    .url("Please enter a valid URL")
+    .optional()
     .refine((url) => {
-      // Allow common academic/submission platform URL patterns
+      // If no URL provided, it's valid (optional field)
+      if (!url || url.trim() === '') return true;
+      
+      // If URL is provided, validate it
+      try {
+        new URL(url);
+        return true;
+      } catch {
+        return false;
+      }
+    }, "Please enter a valid URL")
+    .refine((url) => {
+      // If no URL provided, it's valid (optional field)
+      if (!url || url.trim() === '') return true;
+      
+      // If URL is provided, check against common academic/submission platform patterns
       const validPatterns = [
         /^https?:\/\/.*\.pdf$/i,
         /^https?:\/\/.*doi\.org\//i,
@@ -86,7 +100,7 @@ const formSchema = z.object({
     .int("Year must be a whole number"),
   guidelines: z.string()
     .min(1, "Guidelines are required")
-    .min(50, "Guidelines must be at least 50 characters")
+    .min(isEditing ? 1 : 50, isEditing ? "Guidelines cannot be empty" : "Guidelines must be at least 50 characters")
     .max(5000, "Guidelines must be less than 5000 characters"),
   image: z.string()
     .optional()
@@ -111,7 +125,7 @@ const formSchema = z.object({
     }),
 })
 
-type FormData = z.infer<typeof formSchema>
+type FormData = z.infer<ReturnType<typeof createFormSchema>>
 
 interface CallForPapersFormProps {
   cfp?: {
@@ -137,6 +151,10 @@ export function CallForPapersForm({ cfp }: CallForPapersFormProps) {
   const router = useRouter()
   const [isLoading, setIsLoading] = useState(false)
   const [newTopic, setNewTopic] = useState("")
+  
+  // Determine if we're editing
+  const isEditing = !!cfp
+  const formSchema = createFormSchema(isEditing)
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -304,10 +322,12 @@ export function CallForPapersForm({ cfp }: CallForPapersFormProps) {
                   <CheckCircle className="h-4 w-4 text-green-500" />
                   <span>Now visible on public notifications page</span>
                 </div>
-                <div className="flex items-center gap-2 text-sm">
-                  <ExternalLink className="h-4 w-4 text-purple-500" />
-                  <span>Submission link included in notification</span>
-                </div>
+                {data.contentLink && (
+                  <div className="flex items-center gap-2 text-sm">
+                    <ExternalLink className="h-4 w-4 text-purple-500" />
+                    <span>Submission link included in notification</span>
+                  </div>
+                )}
                 <div className="text-xs text-muted-foreground mt-2">
                   Notification expires: {format(data.deadline, "PPP")}
                 </div>
@@ -395,7 +415,7 @@ export function CallForPapersForm({ cfp }: CallForPapersFormProps) {
         <Alert>
           <Bell className="h-4 w-4" />
           <AlertDescription>
-            <strong>Auto-Notification:</strong> When you create this call for papers, a high-priority notification will automatically be published to inform visitors about the submission opportunity. The notification will include the submission link and expire on the deadline.
+            <strong>Auto-Notification:</strong> When you create this call for papers, a high-priority notification will automatically be published to inform visitors about the submission opportunity. {contentLink ? "The notification will include the submission link and expire on the deadline." : "The notification will expire on the deadline."}
           </AlertDescription>
         </Alert>
       )}
@@ -416,7 +436,7 @@ export function CallForPapersForm({ cfp }: CallForPapersFormProps) {
           <CardDescription>
             {cfp
               ? "Update the details for your call for papers."
-              : "Create a new call for papers for your journal with submission instructions."}
+              : "Create a new call for papers for your journal. You can optionally include submission instructions or links."}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -492,7 +512,7 @@ export function CallForPapersForm({ cfp }: CallForPapersFormProps) {
                   name="contentLink"
                   render={({ field }) => (
                     <FormItem className="md:col-span-2">
-                      <FormLabel>Submission Link *</FormLabel>
+                      <FormLabel>Submission Link (Optional)</FormLabel>
                       <FormControl>
                         <div className="relative">
                           <ExternalLink className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
@@ -504,10 +524,10 @@ export function CallForPapersForm({ cfp }: CallForPapersFormProps) {
                         </div>
                       </FormControl>
                       <FormDescription>
-                        Link to submission system, detailed call for papers, or submission instructions. This is required and will be included in notifications.
+                        Optional link to submission system, detailed call for papers, or submission instructions. If provided, this will be included in notifications.
                       </FormDescription>
                       <FormMessage />
-                      {contentLink && (
+                      {contentLink && contentLink.trim() !== '' && (
                         <div className="flex items-center gap-2 text-sm text-green-600">
                           <ExternalLink className="h-3 w-3" />
                           <a 
@@ -721,7 +741,10 @@ export function CallForPapersForm({ cfp }: CallForPapersFormProps) {
                         />
                       </FormControl>
                       <FormDescription>
-                        Detailed instructions for authors (50-5000 characters)
+                        {isEditing 
+                          ? "Detailed instructions for authors (required - minimum 1 character, recommended 50+ for comprehensive guidelines)"
+                          : "Detailed instructions for authors (minimum 50 characters for new call for papers)"
+                        }
                       </FormDescription>
                       <FormMessage />
                     </FormItem>

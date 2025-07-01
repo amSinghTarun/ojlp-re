@@ -22,18 +22,14 @@ import { toast } from "@/components/ui/use-toast"
 // Types and Utils
 import type { User, Role } from "@prisma/client"
 
-// Form validation schema
-const userFormSchema = z.object({
+// Base form validation schema
+const baseUserFormSchema = z.object({
   name: z.string()
     .min(2, { message: "Name must be at least 2 characters" })
     .max(100, { message: "Name is too long" }),
   email: z.string()
     .email({ message: "Please enter a valid email address" })
     .max(255, { message: "Email is too long" }),
-  password: z.string()
-    .min(8, { message: "Password must be at least 8 characters" })
-    .max(128, { message: "Password is too long" })
-    .optional(),
   roleId: z.string({
     required_error: "Please select a role",
   }),
@@ -43,12 +39,26 @@ const userFormSchema = z.object({
     .or(z.literal("")),
 })
 
-// For new users, password is required
-const createUserSchema = userFormSchema.extend({
+// For create mode: password is required
+const createUserSchema = baseUserFormSchema.extend({
   password: z.string()
     .min(8, { message: "Password must be at least 8 characters" })
     .max(128, { message: "Password is too long" }),
 })
+
+// For edit mode: password is optional
+const editUserSchema = baseUserFormSchema.extend({
+  password: z.string()
+    .min(8, { message: "Password must be at least 8 characters" })
+    .max(128, { message: "Password is too long" })
+    .optional()
+    .or(z.literal("")),
+})
+
+// Union type for form data
+type CreateUserFormData = z.infer<typeof createUserSchema>
+type EditUserFormData = z.infer<typeof editUserSchema>
+type UserFormData = CreateUserFormData | EditUserFormData
 
 interface UserFormProps {
   user?: User & { role: Role }
@@ -62,9 +72,12 @@ export function UserForm({ user, currentUser, availableRoles, mode }: UserFormPr
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
 
-  // Initialize form
-  const form = useForm<z.infer<typeof userFormSchema>>({
-    resolver: zodResolver(mode === "create" ? createUserSchema : userFormSchema),
+  // Use different schemas based on mode
+  const schema = mode === "create" ? createUserSchema : editUserSchema
+
+  // Initialize form with correct schema
+  const form = useForm<UserFormData>({
+    resolver: zodResolver(schema),
     defaultValues: {
       name: user?.name || "",
       email: user?.email || "",
@@ -88,12 +101,12 @@ export function UserForm({ user, currentUser, availableRoles, mode }: UserFormPr
   }, [user, mode, form])
 
   // Handle form submission
-  const onSubmit = async (data: z.infer<typeof userFormSchema>) => {
+  const onSubmit = async (data: UserFormData) => {
     setIsSubmitting(true)
 
     try {
       // Check if the selected role is assignable
-      const selectedRole = assignableRoles.find(r => r.id === data.roleId)
+      const selectedRole = availableRoles.find(r => r.id === data.roleId)
       if (!selectedRole) {
         toast({
           title: "Permission Denied",
@@ -103,13 +116,26 @@ export function UserForm({ user, currentUser, availableRoles, mode }: UserFormPr
         return
       }
 
+      // Additional validation for create mode
+      if (mode === "create") {
+        const createData = data as CreateUserFormData
+        if (!createData.password || createData.password.trim() === "") {
+          toast({
+            title: "Validation Error",
+            description: "Password is required for new users",
+            variant: "destructive",
+          })
+          return
+        }
+      }
+
       // Prepare form data
       const formData = new FormData()
       formData.append("name", data.name.trim())
       formData.append("email", data.email.trim().toLowerCase())
       formData.append("roleId", data.roleId)
       
-      // Only include password if provided
+      // Only include password if provided and not empty
       if (data.password && data.password.trim() !== "") {
         formData.append("password", data.password)
       }
@@ -127,7 +153,8 @@ export function UserForm({ user, currentUser, availableRoles, mode }: UserFormPr
         result = await updateUser(user.id, formData)
       } else {
         // Create new user
-        if (!data.password || data.password.trim() === "") {
+        const createData = data as CreateUserFormData
+        if (!createData.password || createData.password.trim() === "") {
           toast({
             title: "Validation Error",
             description: "Password is required for new users",
@@ -169,7 +196,7 @@ export function UserForm({ user, currentUser, availableRoles, mode }: UserFormPr
   // Get badge variant for roles
   const getRoleBadgeVariant = (roleName: string) => {
     switch (roleName) {
-      case "Super Admin":
+      case "SUPER_ADMIN":
         return "destructive"
       case "Admin":
         return "default"
@@ -178,38 +205,6 @@ export function UserForm({ user, currentUser, availableRoles, mode }: UserFormPr
       default:
         return "outline"
     }
-  }
-
-  // Show permission error if user can't manage users
-  if (!canManageUsers) {
-    return (
-      <div className="max-w-2xl mx-auto space-y-6">
-        <div className="flex items-center gap-4">
-          <Button variant="outline" size="sm" asChild>
-            <Link href="/admin/users">
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back to Users
-            </Link>
-          </Button>
-          <div>
-            <h1 className="text-2xl font-bold">Access Denied</h1>
-            <p className="text-muted-foreground">
-              You don't have permission to manage users
-            </p>
-          </div>
-        </div>
-        
-        <Card>
-          <CardContent className="pt-6">
-            <Alert>
-              <AlertDescription>
-                You don't have permission to manage users. Contact your administrator for access.
-              </AlertDescription>
-            </Alert>
-          </CardContent>
-        </Card>
-      </div>
-    )
   }
 
   return (
@@ -272,7 +267,7 @@ export function UserForm({ user, currentUser, availableRoles, mode }: UserFormPr
           </CardTitle>
         </CardHeader>
         <CardContent>
-          {assignableRoles.length === 0 ? (
+          {availableRoles.length === 0 ? (
             <Alert>
               <AlertDescription>
                 You don't have permission to assign any roles. Contact your administrator.
@@ -334,6 +329,7 @@ export function UserForm({ user, currentUser, availableRoles, mode }: UserFormPr
                     <FormItem>
                       <FormLabel>
                         Password
+                        {mode === "create" && <span className="text-red-500 ml-1">*</span>}
                         {mode === "edit" && (
                           <span className="text-sm font-normal text-muted-foreground ml-2">
                             (leave empty to keep current password)
@@ -367,7 +363,7 @@ export function UserForm({ user, currentUser, availableRoles, mode }: UserFormPr
                       <FormDescription>
                         {mode === "create" 
                           ? "Must be at least 8 characters long"
-                          : "Leave empty to keep the current password"
+                          : "Leave empty to keep the current password. If provided, must be at least 8 characters long."
                         }
                       </FormDescription>
                       <FormMessage />
@@ -393,7 +389,7 @@ export function UserForm({ user, currentUser, availableRoles, mode }: UserFormPr
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          {assignableRoles.map((role) => (
+                          {availableRoles.map((role) => (
                             <SelectItem key={role.id} value={role.id}>
                               <div className="flex items-center gap-2">
                                 <Badge variant={getRoleBadgeVariant(role.name)} className="text-xs">
@@ -476,14 +472,14 @@ export function UserForm({ user, currentUser, availableRoles, mode }: UserFormPr
       </Card>
 
       {/* Available Roles Info */}
-      {assignableRoles.length > 0 && (
+      {availableRoles.length > 0 && (
         <Card>
           <CardHeader>
             <CardTitle className="text-lg">Available Roles</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {assignableRoles.map((role) => (
+              {availableRoles.map((role) => (
                 <div key={role.id} className="flex items-start gap-3 p-3 rounded-lg border">
                   <Badge variant={getRoleBadgeVariant(role.name)}>
                     {role.name}

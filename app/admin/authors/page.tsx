@@ -1,11 +1,11 @@
-// app/admin/authors/page.tsx - TABLE/LIST FORMAT
+// app/admin/authors/page.tsx
 import Link from "next/link"
-import { Plus, Users, FileText, Eye, Pencil, ExternalLink } from "lucide-react"
+import { Plus, Users, FileText, Eye, Pencil, ExternalLink, ArrowLeft } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { AlertCircle } from "lucide-react"
+import { AlertTriangle } from "lucide-react"
 import {
   Table,
   TableBody,
@@ -16,43 +16,82 @@ import {
 } from "@/components/ui/table"
 import { getCurrentUser } from "@/lib/auth"
 import { getAuthorsList } from "@/lib/actions/author-actions"
+import { checkPermission } from "@/lib/permissions/checker"
+import { UserWithPermissions } from "@/lib/permissions/types"
 import { redirect } from "next/navigation"
+import { prisma } from "@/lib/prisma"
+
+// Get current user with permissions helper
+async function getCurrentUserWithPermissions(): Promise<UserWithPermissions | null> {
+  try {
+    const user = await getCurrentUser()
+    if (!user) return null
+
+    if ('role' in user && user.role) {
+      return user as UserWithPermissions
+    }
+
+    const fullUser = await prisma.user.findUnique({
+      where: { id: user.id },
+      include: { role: true }
+    })
+
+    return fullUser as UserWithPermissions
+  } catch (error) {
+    console.error('Error getting user with permissions:', error)
+    return null
+  }
+}
 
 export default async function AuthorsPage() {
   try {
     // Check authentication and permissions
-    const user = await getCurrentUser()
-    if (!user) {
+    const currentUser = await getCurrentUserWithPermissions()
+    
+    if (!currentUser) {
       redirect("/admin/login")
     }
+
+    // Check if user has permission to view authors
+    const permissionCheck = checkPermission(currentUser, 'author.READ')
+    
+    if (!permissionCheck.allowed) {
+      return (
+        <div className="max-w-2xl mx-auto space-y-6">
+          <div className="flex items-center gap-4">
+            <Button variant="outline" size="sm" asChild>
+              <Link href="/admin">
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Back to Dashboard
+              </Link>
+            </Button>
+            <div>
+              <h1 className="text-2xl font-bold">Access Denied</h1>
+              <p className="text-muted-foreground">
+                You don't have permission to view authors
+              </p>
+            </div>
+          </div>
+          
+          <Alert variant="destructive">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertDescription>
+              {permissionCheck.reason || "You don't have permission to view authors. Contact your administrator for access."}
+            </AlertDescription>
+          </Alert>
+        </div>
+      )
+    }
+
+    // Check additional permissions for different actions
+    const canCreateAuthors = checkPermission(currentUser, 'author.CREATE').allowed
+    const canEditAuthors = checkPermission(currentUser, 'author.UPDATE').allowed
 
     // Fetch authors from database
     const result = await getAuthorsList()
 
     if (result.error) {
-      return (
-        <div className="space-y-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold tracking-tight">Authors</h1>
-              <p className="text-muted-foreground">Manage authors who contribute to the journal.</p>
-            </div>
-            <Button asChild>
-              <Link href="/admin/authors/new">
-                <Plus className="mr-2 h-4 w-4" />
-                Add Author
-              </Link>
-            </Button>
-          </div>
-
-          <Alert variant="destructive">
-            <AlertCircle className="h-4 w-4" />
-            <AlertDescription>
-              Failed to load authors: {result.error}
-            </AlertDescription>
-          </Alert>
-        </div>
-      )
+      throw new Error(result.error)
     }
 
     const authors = result.data || []
@@ -72,12 +111,14 @@ export default async function AuthorsPage() {
             <h1 className="text-2xl font-bold tracking-tight">Authors</h1>
             <p className="text-muted-foreground">Manage authors who contribute to the journal.</p>
           </div>
-          <Button asChild>
-            <Link href="/admin/authors/new">
-              <Plus className="mr-2 h-4 w-4" />
-              Add Author
-            </Link>
-          </Button>
+          {canCreateAuthors && (
+            <Button asChild>
+              <Link href="/admin/authors/new">
+                <Plus className="mr-2 h-4 w-4" />
+                Add Author
+              </Link>
+            </Button>
+          )}
         </div>
 
         {/* Summary Stats */}
@@ -148,7 +189,9 @@ export default async function AuthorsPage() {
                     <TableHead>Articles</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Expertise</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
+                    {(canEditAuthors || canCreateAuthors) && (
+                      <TableHead className="text-right">Actions</TableHead>
+                    )}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -227,21 +270,25 @@ export default async function AuthorsPage() {
                         )}
                       </TableCell>
 
-                      {/* Actions */}
-                      <TableCell className="text-right">
-                        <div className="flex items-center justify-end gap-2">
-                          <Button asChild size="sm" variant="outline">
-                            <Link href={`/admin/authors/${author.slug}/edit`}>
-                              <Pencil className="h-4 w-4" />
-                            </Link>
-                          </Button>
-                          <Button asChild size="sm" variant="outline">
-                            <Link href={`/authors/${author.slug}`} target="_blank">
-                              <ExternalLink className="h-4 w-4" />
-                            </Link>
-                          </Button>
-                        </div>
-                      </TableCell>
+                      {/* Actions - Only show if user has edit permissions */}
+                      {(canEditAuthors || canCreateAuthors) && (
+                        <TableCell className="text-right">
+                          <div className="flex items-center justify-end gap-2">
+                            {canEditAuthors && (
+                              <Button asChild size="sm" variant="outline">
+                                <Link href={`/admin/authors/${author.slug}/edit`}>
+                                  <Pencil className="h-4 w-4" />
+                                </Link>
+                              </Button>
+                            )}
+                            <Button asChild size="sm" variant="outline">
+                              <Link href={`/authors/${author.slug}`} target="_blank">
+                                <ExternalLink className="h-4 w-4" />
+                              </Link>
+                            </Button>
+                          </div>
+                        </TableCell>
+                      )}
                     </TableRow>
                   ))}
                 </TableBody>
@@ -254,14 +301,33 @@ export default async function AuthorsPage() {
               <Users className="h-12 w-12 text-muted-foreground mb-4" />
               <h3 className="text-lg font-semibold mb-2">No authors found</h3>
               <p className="text-muted-foreground mb-4 text-center">
-                Get started by adding your first author to the system.
+                {canCreateAuthors 
+                  ? "Get started by adding your first author to the system."
+                  : "No authors have been added to the system yet."
+                }
               </p>
-              <Button asChild>
-                <Link href="/admin/authors/new">
-                  <Plus className="mr-2 h-4 w-4" />
-                  Add First Author
-                </Link>
-              </Button>
+              {canCreateAuthors && (
+                <Button asChild>
+                  <Link href="/admin/authors/new">
+                    <Plus className="mr-2 h-4 w-4" />
+                    Add First Author
+                  </Link>
+                </Button>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Permission Notice for Read-Only Users */}
+        {!canEditAuthors && !canCreateAuthors && (
+          <Card className="border-yellow-200 bg-yellow-50">
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-2">
+                <AlertTriangle className="h-4 w-4 text-yellow-600" />
+                <p className="text-sm text-yellow-800">
+                  You have read-only access to authors. Contact an administrator for edit permissions.
+                </p>
+              </div>
             </CardContent>
           </Card>
         )}
@@ -271,26 +337,44 @@ export default async function AuthorsPage() {
     console.error("Error loading authors page:", error)
     
     return (
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
+      <div className="max-w-2xl mx-auto space-y-6">
+        <div className="flex items-center gap-4">
+          <Button variant="outline" size="sm" asChild>
+            <Link href="/admin">
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back to Dashboard
+            </Link>
+          </Button>
           <div>
-            <h1 className="text-2xl font-bold tracking-tight">Authors</h1>
-            <p className="text-muted-foreground">Manage authors who contribute to the journal.</p>
+            <h1 className="text-2xl font-bold">Error Loading Page</h1>
+            <p className="text-muted-foreground">
+              Failed to load the authors page
+            </p>
           </div>
+        </div>
+        
+        <Alert variant="destructive">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertDescription>
+            {error instanceof Error ? error.message : "Failed to load the authors page"}
+            {process.env.NODE_ENV === "development" && (
+              <details className="mt-2">
+                <summary className="cursor-pointer">Error Details (Development)</summary>
+                <pre className="mt-2 text-xs overflow-x-auto bg-muted p-2 rounded">
+                  {error instanceof Error ? error.stack || error.message : String(error)}
+                </pre>
+              </details>
+            )}
+          </AlertDescription>
+        </Alert>
+        
+        <div className="flex items-center gap-4">
           <Button asChild>
-            <Link href="/admin/authors/new">
-              <Plus className="mr-2 h-4 w-4" />
-              Add Author
+            <Link href="/admin">
+              Back to Dashboard
             </Link>
           </Button>
         </div>
-
-        <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription>
-            An unexpected error occurred while loading the authors page. Please try again or contact support if the problem persists.
-          </AlertDescription>
-        </Alert>
       </div>
     )
   }

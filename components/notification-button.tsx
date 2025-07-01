@@ -61,13 +61,13 @@ export function NotificationButton() {
     return () => clearInterval(refreshInterval)
   }, [])
   console.log(notifications)
-  const unreadCount = notifications.filter((notification) => !notification.read).length
+  const unreadCount = notifications ? notifications.filter((notification) => !notification.read).length: 0;
 
   // Group notifications by type
-  const callForPapers = notifications.filter((n) => n.type === "call-for-papers").slice(0, 3)
-  const studentCompetitions = notifications.filter((n) => n.type === "student-competition").slice(0, 3)
-  const editorialVacancies = notifications.filter((n) => n.type === "editorial-vacancy").slice(0, 3)
-  const specialIssues = notifications.filter((n) => n.type === "special-issue").slice(0, 3)
+  const callForPapers = notifications ? notifications.filter((n) => n.type === "call-for-papers").slice(0, 3) : [];
+  const studentCompetitions = notifications ? notifications.filter((n) => n.type === "student-competition").slice(0, 3) : [];
+  const editorialVacancies = notifications ? notifications.filter((n) => n.type === "editorial-vacancy").slice(0, 3) : [];
+  const specialIssues = notifications ? notifications.filter((n) => n.type === "special-issue").slice(0, 3) : [];
 
   // Count unread notifications by category
   const unreadCfp = callForPapers.filter((n) => !n.read).length
@@ -130,13 +130,13 @@ export function NotificationButton() {
               <AlertTriangle className="h-4 w-4 mr-2" />
               {error}
             </div>
-          ) : notifications.length === 0 ? (
+          ) : notifications && notifications.length === 0 ? (
             <div className="p-4 text-center text-muted-foreground">
               <Bell className="h-8 w-8 mx-auto mb-2 opacity-50" />
               <p>No notifications</p>
             </div>
           ) : (
-            notifications.slice(0, 10).map((notification) => (
+            notifications && notifications.slice(0, 10).map((notification) => (
               <NotificationItem 
                 key={notification.id} 
                 notification={notification} 

@@ -313,12 +313,12 @@ export async function deleteUser(userId: string): Promise<{ success: boolean; me
       return { success: false, message: "User not found" }
     }
 
-    // Prevent deletion of the last Super Admin
-    if (user.role.name === "Super Admin") {
+    // Prevent deletion of the last SUPER_ADMIN
+    if (user.role.name === "SUPER_ADMIN") {
       const superAdminCount = await prisma.user.count({
         where: {
           role: {
-            name: "Super Admin"
+            name: "SUPER_ADMIN"
           }
         }
       })
@@ -326,7 +326,7 @@ export async function deleteUser(userId: string): Promise<{ success: boolean; me
       if (superAdminCount <= 1) {
         return { 
           success: false, 
-          message: "Cannot delete the last Super Admin. Create another Super Admin first." 
+          message: "Cannot delete the last SUPER_ADMIN. Create another SUPER_ADMIN first." 
         }
       }
     }
@@ -385,18 +385,18 @@ export async function updateUserPermissions(
   }
 }
 
-// Helper function to check if user is super admin
+// Helper function to check if user is SUPER_ADMIN
 export function isSuperAdmin(user: AuthUser | null): boolean {
-  return user?.role?.name === "Super Admin"
+  return user?.role?.name === "SUPER_ADMIN"
 }
 
 // Helper function to get user permissions (updated for new schema)
 export function getUserPermissions(user: AuthUser): string[] {
   if (!user) return []
 
-  // Super Admin has all permissions
+  // SUPER_ADMIN has all permissions
   if (isSuperAdmin(user)) {
-    // Return comprehensive permissions list for super admin
+    // Return comprehensive permissions list for SUPER_ADMIN
     return [
       "SYSTEM.ADMIN",
       "SYSTEM.USER_MANAGEMENT",
@@ -429,7 +429,7 @@ export function getUserPermissions(user: AuthUser): string[] {
 export function hasPermission(user: AuthUser | null, permission: string): boolean {
   if (!user) return false
 
-  // Super Admin has all permissions
+  // SUPER_ADMIN has all permissions
   if (isSuperAdmin(user)) return true
 
   // Check if the user has the specific permission

@@ -2,9 +2,34 @@
 
 import { PrismaClient } from "@prisma/client"
 import { revalidatePath } from "next/cache"
+import { getCurrentUser } from "@/lib/auth"
+import { checkPermission } from "@/lib/permissions/checker"
+import { UserWithPermissions } from "@/lib/permissions/types"
 import { z } from "zod"
 
 const prisma = new PrismaClient()
+
+// Helper function to get current user with permissions
+async function getCurrentUserWithPermissions(): Promise<UserWithPermissions | null> {
+  try {
+    const user = await getCurrentUser()
+    if (!user) return null
+
+    if ('role' in user && user.role) {
+      return user as UserWithPermissions
+    }
+
+    const fullUser = await prisma.user.findUnique({
+      where: { id: user.id },
+      include: { role: true }
+    })
+
+    return fullUser as UserWithPermissions
+  } catch (error) {
+    console.error('Error getting user with permissions:', error)
+    return null
+  }
+}
 
 // Author schema for validation
 const authorSchema = z.object({
@@ -89,6 +114,21 @@ async function findOrCreateAuthors(authors: { name: string; email: string }[]) {
 
 export async function getPosts(type?: "blog" | "journal") {
   try {
+    // Check authentication and permissions
+    const currentUser = await getCurrentUserWithPermissions()
+    
+    if (!currentUser) {
+      return createErrorResponse("Authentication required")
+    }
+
+    // Check if user has permission to read articles
+    const permissionCheck = checkPermission(currentUser, 'article.READ')
+    if (!permissionCheck.allowed) {
+      return createErrorResponse(
+        permissionCheck.reason || "You don't have permission to view posts"
+      )
+    }
+
     const posts = await prisma.article.findMany({
       where: type ? { type } : undefined,
       include: {
@@ -112,6 +152,8 @@ export async function getPosts(type?: "blog" | "journal") {
       }
     })
     
+    console.log(`✅ User ${currentUser.email} fetched ${posts.length} posts${type ? ` (type: ${type})` : ''}`)
+    
     return { success: true, data: posts }
   } catch (error) {
     console.error("Failed to fetch posts:", error)
@@ -121,6 +163,21 @@ export async function getPosts(type?: "blog" | "journal") {
 
 export async function getPost(slug: string) {
   try {
+    // Check authentication and permissions
+    const currentUser = await getCurrentUserWithPermissions()
+    
+    if (!currentUser) {
+      return createErrorResponse("Authentication required")
+    }
+
+    // Check if user has permission to read articles
+    const permissionCheck = checkPermission(currentUser, 'article.READ')
+    if (!permissionCheck.allowed) {
+      return createErrorResponse(
+        permissionCheck.reason || "You don't have permission to view post details"
+      )
+    }
+
     if (!slug || typeof slug !== 'string') {
       return createErrorResponse("Invalid post slug provided.")
     }
@@ -143,6 +200,8 @@ export async function getPost(slug: string) {
       return createErrorResponse("Post not found")
     }
 
+    console.log(`✅ User ${currentUser.email} viewed post: ${post.title}`)
+
     return { success: true, data: post }
   } catch (error) {
     console.error(`Failed to fetch post ${slug}:`, error)
@@ -152,6 +211,21 @@ export async function getPost(slug: string) {
 
 export async function createPost(data: z.infer<typeof postSchema>) {
   try {
+    // Check authentication and permissions
+    const currentUser = await getCurrentUserWithPermissions()
+    
+    if (!currentUser) {
+      return createErrorResponse("Authentication required")
+    }
+
+    // Check if user has permission to create articles
+    const permissionCheck = checkPermission(currentUser, 'article.CREATE')
+    if (!permissionCheck.allowed) {
+      return createErrorResponse(
+        permissionCheck.reason || "You don't have permission to create posts"
+      )
+    }
+
     const validatedData = postSchema.parse(data)
     
     // Generate slug from title
@@ -163,6 +237,16 @@ export async function createPost(data: z.infer<typeof postSchema>) {
     while (await prisma.article.findUnique({ where: { slug } })) {
       slug = `${baseSlug}-${counter}`
       counter++
+    }
+    
+    // Check for duplicate DOI if provided
+    if (validatedData.doi) {
+      const existingDOI = await prisma.article.findUnique({
+        where: { doi: validatedData.doi }
+      })
+      if (existingDOI) {
+        return createErrorResponse("An article with this DOI already exists")
+      }
     }
     
     // Find or create authors
@@ -177,11 +261,15 @@ export async function createPost(data: z.infer<typeof postSchema>) {
         title: validatedData.title,
         slug,
         content: validatedData.content,
+        excerpt: validatedData.excerpt || validatedData.content.substring(0, 200) + "...",
         type: validatedData.type,
         keywords: validatedData.keywords || [],
         doi: validatedData.doi || null,
+        // featured: validatedData.featured || false,
+        // journalIssueId: validatedData.journalIssueId || null,
         date: new Date(),
         readTime,
+        draft: false,
         authors: {
           create: authors.map((author, index) => ({
             authorId: author.id,
@@ -201,12 +289,13 @@ export async function createPost(data: z.infer<typeof postSchema>) {
       }
     })
 
-    console.log(`✅ Created post: ${post.title} with ${authors.length} author(s)`)
+    console.log(`✅ User ${currentUser.email} created post: ${post.title} with ${authors.length} author(s)`)
     
     revalidatePath("/admin/posts")
     revalidatePath("/blogs")
     if (validatedData.type === "journal") {
       revalidatePath("/journals")
+      revalidatePath("/admin/journal-articles")
     }
     
     return { success: true, data: post }
@@ -221,11 +310,18 @@ export async function createPost(data: z.infer<typeof postSchema>) {
 
 export async function updatePost(slug: string, data: Partial<z.infer<typeof postSchema>>) {
   try {
+    // Check authentication and permissions
+    const currentUser = await getCurrentUserWithPermissions()
+    
+    if (!currentUser) {
+      return createErrorResponse("Authentication required")
+    }
+
     if (!slug || typeof slug !== 'string') {
       return createErrorResponse("Invalid post slug provided.")
     }
 
-    // Find the existing post
+    // Find the existing post to check ownership
     const existingPost = await prisma.article.findUnique({
       where: { slug },
       include: {
@@ -241,10 +337,31 @@ export async function updatePost(slug: string, data: Partial<z.infer<typeof post
       return createErrorResponse("Post not found")
     }
 
+    // Check if user has permission to update articles
+    const isOwner = existingPost.authors.some(aa => aa.author.userId === currentUser.id)
+    
+    const permissionCheck = checkPermission(currentUser, 'article.UPDATE')
+
+    if (!permissionCheck.allowed) {
+      return createErrorResponse(
+        permissionCheck.reason || "You don't have permission to update this post"
+      )
+    }
+
     // Validate data if authors are provided
     let validatedData = data
     if (data.authors) {
       validatedData = postSchema.partial().parse(data)
+    }
+
+    // Check for duplicate DOI if being updated
+    if (validatedData.doi && validatedData.doi !== existingPost.doi) {
+      const existingDOI = await prisma.article.findUnique({
+        where: { doi: validatedData.doi }
+      })
+      if (existingDOI) {
+        return createErrorResponse("An article with this DOI already exists")
+      }
     }
 
     // Handle authors if provided
@@ -271,6 +388,7 @@ export async function updatePost(slug: string, data: Partial<z.infer<typeof post
         ...(validatedData.content && { content: validatedData.content, readTime }),
         ...(validatedData.excerpt !== undefined && { excerpt: validatedData.excerpt }),
         ...(validatedData.type && { type: validatedData.type }),
+        ...(validatedData.featured !== undefined && { featured: validatedData.featured }),
         ...(validatedData.keywords !== undefined && { keywords: validatedData.keywords }),
         ...(validatedData.doi !== undefined && { doi: validatedData.doi }),
         ...(validatedData.journalIssueId !== undefined && { journalIssueId: validatedData.journalIssueId }),
@@ -293,7 +411,7 @@ export async function updatePost(slug: string, data: Partial<z.infer<typeof post
       }
     })
 
-    console.log(`✅ Updated post: ${post.title}`)
+    console.log(`✅ User ${currentUser.email} updated post: ${post.title}`)
     
     revalidatePath("/admin/posts")
     revalidatePath(`/blogs/${slug}`)
@@ -302,6 +420,7 @@ export async function updatePost(slug: string, data: Partial<z.infer<typeof post
       revalidatePath("/journals")
       revalidatePath(`/journals/${slug}`)
       revalidatePath(`/journals/${post.slug}`)
+      revalidatePath("/admin/journal-articles")
     }
     
     return { success: true, data: post }
@@ -316,31 +435,216 @@ export async function updatePost(slug: string, data: Partial<z.infer<typeof post
 
 export async function deletePost(slug: string) {
   try {
+    // Check authentication and permissions
+    const currentUser = await getCurrentUserWithPermissions()
+    
+    if (!currentUser) {
+      return createErrorResponse("Authentication required")
+    }
+
     if (!slug || typeof slug !== 'string') {
       return createErrorResponse("Invalid post slug provided.")
     }
 
-    const post = await prisma.article.findUnique({
-      where: { slug }
+    // Find the existing post to check ownership
+    const existingPost = await prisma.article.findUnique({
+      where: { slug },
+      include: {
+        authors: {
+          include: {
+            author: true
+          }
+        }
+      }
     })
 
-    if (!post) {
+    if (!existingPost) {
       return createErrorResponse("Post not found")
+    }
+
+    // Check if user has permission to delete articles
+    const isOwner = existingPost.authors.some(aa => aa.author.userId === currentUser.id)
+    
+    const permissionCheck = checkPermission(currentUser, 'article.DELETE')
+
+    if (!permissionCheck.allowed) {
+      return createErrorResponse(
+        permissionCheck.reason || "You don't have permission to delete this post"
+      )
     }
 
     await prisma.article.delete({
       where: { slug }
     })
 
-    console.log(`✅ Deleted post: ${post.title}`)
+    console.log(`✅ User ${currentUser.email} deleted post: ${existingPost.title}`)
     
     revalidatePath("/admin/posts")
     revalidatePath("/blogs")
     revalidatePath("/journals")
+    if (existingPost.type === "journal") {
+      revalidatePath("/admin/journal-articles")
+    }
     
     return { success: true }
   } catch (error) {
     console.error(`Failed to delete post ${slug}:`, error)
     return createErrorResponse("Failed to delete post")
+  }
+}
+
+// NEW: Function to get posts with permission context
+export async function getPostsWithPermissions(type?: "blog" | "journal") {
+  try {
+    const currentUser = await getCurrentUserWithPermissions()
+    
+    if (!currentUser) {
+      return createErrorResponse("Authentication required")
+    }
+
+    // Check if user has permission to read articles
+    const permissionCheck = checkPermission(currentUser, 'article.READ')
+    if (!permissionCheck.allowed) {
+      return createErrorResponse("You don't have permission to view posts")
+    }
+
+    const posts = await prisma.article.findMany({
+      where: type ? { type } : undefined,
+      include: {
+        authors: {
+          include: {
+            author: true
+          },
+          orderBy: {
+            authorOrder: 'asc'
+          }
+        },
+      },
+      orderBy: {
+        createdAt: 'desc'
+      }
+    })
+
+    // Add permission context to each post
+    const postsWithPermissions = posts.map(post => {
+      const isOwner = post.authors.some(aa => aa.author.userId === currentUser.id)
+      
+      return {
+        ...post,
+        canEdit: checkPermission(currentUser, 'article.UPDATE').allowed,
+        canDelete: checkPermission(currentUser, 'article.DELETE').allowed,
+      }
+    })
+
+    return { 
+      success: true, 
+      data: postsWithPermissions,
+      canCreate: checkPermission(currentUser, 'article.CREATE').allowed
+    }
+  } catch (error) {
+    console.error("Failed to fetch posts with permissions:", error)
+    return createErrorResponse("Failed to fetch posts")
+  }
+}
+
+// NEW: Function to check post permissions
+export async function checkPostPermissions(slug?: string) {
+  try {
+    const currentUser = await getCurrentUserWithPermissions()
+    
+    if (!currentUser) {
+      return { 
+        success: false, 
+        error: "Authentication required",
+        permissions: { canRead: false, canCreate: false, canUpdate: false, canDelete: false }
+      }
+    }
+
+    let permissions = {
+      canRead: checkPermission(currentUser, 'article.READ').allowed,
+      canCreate: checkPermission(currentUser, 'article.CREATE').allowed,
+      canUpdate: false,
+      canDelete: false,
+    }
+
+    // If specific post slug is provided, check update/delete permissions
+    if (slug) {
+      const post = await prisma.article.findUnique({
+        where: { slug },
+        include: {
+          authors: {
+            include: { author: true }
+          }
+        }
+      })
+
+      if (post) {
+        const isOwner = post.authors.some(aa => aa.author.userId === currentUser.id)
+        
+        permissions.canUpdate = checkPermission(currentUser, 'article.UPDATE').allowed
+
+        permissions.canDelete = checkPermission(currentUser, 'article.DELETE').allowed
+      }
+    }
+
+    return { success: true, permissions }
+  } catch (error) {
+    console.error("Failed to check post permissions:", error)
+    return { 
+      success: false, 
+      error: "Failed to check permissions",
+      permissions: { canRead: false, canCreate: false, canUpdate: false, canDelete: false }
+    }
+  }
+}
+
+// NEW: Function to get user's own posts
+export async function getMyPosts(type?: "blog" | "journal") {
+  try {
+    const currentUser = await getCurrentUserWithPermissions()
+    
+    if (!currentUser) {
+      return createErrorResponse("Authentication required")
+    }
+
+    // Check if user has permission to read articles
+    const permissionCheck = checkPermission(currentUser, 'article.READ')
+    if (!permissionCheck.allowed) {
+      return createErrorResponse("You don't have permission to view posts")
+    }
+
+    // Find posts where current user is an author
+    const posts = await prisma.article.findMany({
+      where: {
+        ...(type && { type }),
+        authors: {
+          some: {
+            author: {
+              userId: currentUser.id
+            }
+          }
+        }
+      },
+      include: {
+        authors: {
+          include: {
+            author: true
+          },
+          orderBy: {
+            authorOrder: 'asc'
+          }
+        },
+      },
+      orderBy: {
+        createdAt: 'desc'
+      }
+    })
+
+    console.log(`✅ User ${currentUser.email} fetched ${posts.length} of their own posts${type ? ` (type: ${type})` : ''}`)
+
+    return { success: true, data: posts }
+  } catch (error) {
+    console.error("Failed to fetch user's posts:", error)
+    return createErrorResponse("Failed to fetch your posts")
   }
 }

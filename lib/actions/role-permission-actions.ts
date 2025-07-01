@@ -1,4 +1,4 @@
-// lib/actions/role-permission-actions.ts - FIXED VERSION
+// lib/actions/role-permission-actions.ts - WITH PROPER PERMISSION CHECKS
 "use server"
 
 import { prisma } from '@/lib/prisma'
@@ -14,7 +14,9 @@ import {
 } from '@/lib/permissions/schema-reader'
 import { 
   UserWithPermissions, 
-  isValidPermissionString 
+  isValidPermissionString,
+  SYSTEM_PERMISSIONS,
+  PERMISSION_ERRORS
 } from '@/lib/permissions/types'
 
 // Response helpers
@@ -50,6 +52,7 @@ async function getCurrentUserWithPermissions(): Promise<UserWithPermissions | nu
 
 /**
  * Get all available permissions grouped by table
+ * Requires: SYSTEM.ROLE_MANAGEMENT permission
  */
 export async function getAvailablePermissions() {
   try {
@@ -58,16 +61,17 @@ export async function getAvailablePermissions() {
     const user = await getCurrentUserWithPermissions()
     if (!user) {
       console.log("❌ No user found")
-      return createErrorResponse("Authentication required")
+      return createErrorResponse(PERMISSION_ERRORS.UNAUTHORIZED)
     }
 
     console.log("✅ User found:", user.email)
 
-    // For now, let's skip permission checking to test if permissions load
-    // const permissionCheck = checkPermission(user, 'SYSTEM.ROLE_MANAGEMENT')
-    // if (!permissionCheck.allowed) {
-    //   return createErrorResponse(permissionCheck.reason || "Insufficient permissions")
-    // }
+    // Check if user has permission to manage roles
+    const permissionCheck = checkPermission(user, SYSTEM_PERMISSIONS.ROLE_MANAGEMENT)
+    if (!permissionCheck.allowed) {
+      console.log("❌ Permission denied:", permissionCheck.reason)
+      return createErrorResponse(permissionCheck.reason || PERMISSION_ERRORS.INSUFFICIENT_PERMISSIONS)
+    }
 
     console.log("🔄 Getting permissions...")
     const groupedPermissions = groupPermissionsByTable()
@@ -91,6 +95,7 @@ export async function getAvailablePermissions() {
 
 /**
  * Create a new role with permissions
+ * Requires: SYSTEM.ROLE_MANAGEMENT permission
  */
 export async function createRoleWithPermissions(data: {
   name: string
@@ -103,7 +108,13 @@ export async function createRoleWithPermissions(data: {
     
     const user = await getCurrentUserWithPermissions()
     if (!user) {
-      return createErrorResponse("Authentication required")
+      return createErrorResponse(PERMISSION_ERRORS.UNAUTHORIZED)
+    }
+
+    // Check if user has permission to manage roles
+    const permissionCheck = checkPermission(user, SYSTEM_PERMISSIONS.ROLE_MANAGEMENT)
+    if (!permissionCheck.allowed) {
+      return createErrorResponse(permissionCheck.reason || PERMISSION_ERRORS.INSUFFICIENT_PERMISSIONS)
     }
 
     // Validate input
@@ -113,6 +124,29 @@ export async function createRoleWithPermissions(data: {
 
     if (!data.permissions || data.permissions.length === 0) {
       return createErrorResponse("At least one permission must be selected")
+    }
+
+    // Validate permissions are valid
+    const invalidPermissions = data.permissions.filter(permission => !isValidPermissionString(permission))
+    if (invalidPermissions.length > 0) {
+      return createErrorResponse(`Invalid permissions: ${invalidPermissions.join(', ')}`)
+    }
+
+    // Check if user can assign system-level permissions
+    const systemPermissions = data.permissions.filter(permission => permission.startsWith('SYSTEM.'))
+    if (systemPermissions.length > 0) {
+      const hasSystemAccess = checkPermission(user, SYSTEM_PERMISSIONS.ADMIN)
+      if (!hasSystemAccess.allowed) {
+        return createErrorResponse("Only system administrators can assign system-level permissions")
+      }
+    }
+
+    // Prevent creating system roles unless user is system admin
+    if (data.isSystem) {
+      const hasSystemAccess = checkPermission(user, SYSTEM_PERMISSIONS.ADMIN)
+      if (!hasSystemAccess.allowed) {
+        return createErrorResponse("Only system administrators can create system roles")
+      }
     }
 
     // Check if role name already exists
@@ -148,6 +182,7 @@ export async function createRoleWithPermissions(data: {
 
 /**
  * Update role permissions
+ * Requires: SYSTEM.ROLE_MANAGEMENT permission
  */
 export async function updateRolePermissions(roleId: string, permissions: string[]) {
   try {
@@ -155,7 +190,13 @@ export async function updateRolePermissions(roleId: string, permissions: string[
     
     const user = await getCurrentUserWithPermissions()
     if (!user) {
-      return createErrorResponse("Authentication required")
+      return createErrorResponse(PERMISSION_ERRORS.UNAUTHORIZED)
+    }
+
+    // Check if user has permission to manage roles
+    const permissionCheck = checkPermission(user, SYSTEM_PERMISSIONS.ROLE_MANAGEMENT)
+    if (!permissionCheck.allowed) {
+      return createErrorResponse(permissionCheck.reason || PERMISSION_ERRORS.INSUFFICIENT_PERMISSIONS)
     }
 
     if (!roleId) {
@@ -169,6 +210,29 @@ export async function updateRolePermissions(roleId: string, permissions: string[
 
     if (!existingRole) {
       return createErrorResponse("Role not found")
+    }
+
+    // Prevent modification of system roles unless user is system admin
+    if (existingRole.isSystem) {
+      const hasSystemAccess = checkPermission(user, SYSTEM_PERMISSIONS.ADMIN)
+      if (!hasSystemAccess.allowed) {
+        return createErrorResponse("Only system administrators can modify system roles")
+      }
+    }
+
+    // Validate permissions are valid
+    const invalidPermissions = permissions.filter(permission => !isValidPermissionString(permission))
+    if (invalidPermissions.length > 0) {
+      return createErrorResponse(`Invalid permissions: ${invalidPermissions.join(', ')}`)
+    }
+
+    // Check if user can assign system-level permissions
+    const systemPermissions = permissions.filter(permission => permission.startsWith('SYSTEM.'))
+    if (systemPermissions.length > 0) {
+      const hasSystemAccess = checkPermission(user, SYSTEM_PERMISSIONS.ADMIN)
+      if (!hasSystemAccess.allowed) {
+        return createErrorResponse("Only system administrators can assign system-level permissions")
+      }
     }
 
     // Update role permissions
@@ -193,12 +257,21 @@ export async function updateRolePermissions(roleId: string, permissions: string[
 
 /**
  * Get all roles with their permissions
+ * Requires: SYSTEM.ROLE_MANAGEMENT or role.READ permission
  */
 export async function getRolesWithPermissions() {
   try {
     const user = await getCurrentUserWithPermissions()
     if (!user) {
-      return createErrorResponse("Authentication required")
+      return createErrorResponse(PERMISSION_ERRORS.UNAUTHORIZED)
+    }
+
+    // Check if user has permission to view roles
+    const roleManagementCheck = checkPermission(user, SYSTEM_PERMISSIONS.ROLE_MANAGEMENT)
+    const roleReadCheck = checkPermission(user, 'role.READ')
+    
+    if (!roleManagementCheck.allowed && !roleReadCheck.allowed) {
+      return createErrorResponse(PERMISSION_ERRORS.INSUFFICIENT_PERMISSIONS)
     }
 
     const roles = await prisma.role.findMany({
@@ -217,7 +290,13 @@ export async function getRolesWithPermissions() {
       ]
     })
 
-    return createSuccessResponse(roles)
+    // Filter system roles if user doesn't have system admin access
+    const hasSystemAccess = checkPermission(user, SYSTEM_PERMISSIONS.ADMIN)
+    const filteredRoles = hasSystemAccess.allowed 
+      ? roles 
+      : roles.filter(role => !role.isSystem)
+
+    return createSuccessResponse(filteredRoles)
   } catch (error) {
     console.error("Failed to get roles:", error)
     return createErrorResponse("Failed to load roles")
@@ -226,12 +305,21 @@ export async function getRolesWithPermissions() {
 
 /**
  * Get a single role by ID
+ * Requires: SYSTEM.ROLE_MANAGEMENT or role.READ permission
  */
 export async function getRoleById(roleId: string) {
   try {
     const user = await getCurrentUserWithPermissions()
     if (!user) {
-      return createErrorResponse("Authentication required")
+      return createErrorResponse(PERMISSION_ERRORS.UNAUTHORIZED)
+    }
+
+    // Check if user has permission to view roles
+    const roleManagementCheck = checkPermission(user, SYSTEM_PERMISSIONS.ROLE_MANAGEMENT)
+    const roleReadCheck = checkPermission(user, 'role.READ')
+    
+    if (!roleManagementCheck.allowed && !roleReadCheck.allowed) {
+      return createErrorResponse(PERMISSION_ERRORS.INSUFFICIENT_PERMISSIONS)
     }
 
     const role = await prisma.role.findUnique({
@@ -251,6 +339,14 @@ export async function getRoleById(roleId: string) {
       return createErrorResponse("Role not found")
     }
 
+    // Check if user can access system roles
+    if (role.isSystem) {
+      const hasSystemAccess = checkPermission(user, SYSTEM_PERMISSIONS.ADMIN)
+      if (!hasSystemAccess.allowed) {
+        return createErrorResponse("Access denied to system role")
+      }
+    }
+
     return createSuccessResponse(role)
   } catch (error) {
     console.error("Failed to get role:", error)
@@ -260,12 +356,19 @@ export async function getRoleById(roleId: string) {
 
 /**
  * Delete a role
+ * Requires: SYSTEM.ROLE_MANAGEMENT permission
  */
 export async function deleteRole(roleId: string) {
   try {
     const user = await getCurrentUserWithPermissions()
     if (!user) {
-      return createErrorResponse("Authentication required")
+      return createErrorResponse(PERMISSION_ERRORS.UNAUTHORIZED)
+    }
+
+    // Check if user has permission to manage roles
+    const permissionCheck = checkPermission(user, SYSTEM_PERMISSIONS.ROLE_MANAGEMENT)
+    if (!permissionCheck.allowed) {
+      return createErrorResponse(permissionCheck.reason || PERMISSION_ERRORS.INSUFFICIENT_PERMISSIONS)
     }
 
     const role = await prisma.role.findUnique({
@@ -303,12 +406,19 @@ export async function deleteRole(roleId: string) {
 
 /**
  * Duplicate a role
+ * Requires: SYSTEM.ROLE_MANAGEMENT permission
  */
 export async function duplicateRole(roleId: string, newName: string) {
   try {
     const user = await getCurrentUserWithPermissions()
     if (!user) {
-      return createErrorResponse("Authentication required")
+      return createErrorResponse(PERMISSION_ERRORS.UNAUTHORIZED)
+    }
+
+    // Check if user has permission to manage roles
+    const permissionCheck = checkPermission(user, SYSTEM_PERMISSIONS.ROLE_MANAGEMENT)
+    if (!permissionCheck.allowed) {
+      return createErrorResponse(permissionCheck.reason || PERMISSION_ERRORS.INSUFFICIENT_PERMISSIONS)
     }
 
     const existingRole = await prisma.role.findUnique({
@@ -319,11 +429,28 @@ export async function duplicateRole(roleId: string, newName: string) {
       return createErrorResponse("Role not found")
     }
 
+    // Check if user can access the source role (system roles)
+    if (existingRole.isSystem) {
+      const hasSystemAccess = checkPermission(user, SYSTEM_PERMISSIONS.ADMIN)
+      if (!hasSystemAccess.allowed) {
+        return createErrorResponse("Cannot duplicate system roles")
+      }
+    }
+
+    // Check if user can assign the permissions from the source role
+    const systemPermissions = existingRole.permissions.filter(permission => permission.startsWith('SYSTEM.'))
+    if (systemPermissions.length > 0) {
+      const hasSystemAccess = checkPermission(user, SYSTEM_PERMISSIONS.ADMIN)
+      if (!hasSystemAccess.allowed) {
+        return createErrorResponse("Cannot duplicate role with system-level permissions")
+      }
+    }
+
     const result = await createRoleWithPermissions({
       name: newName,
       description: `Copy of ${existingRole.name}`,
       permissions: existingRole.permissions,
-      isSystem: false
+      isSystem: false // Duplicated roles are never system roles
     })
 
     return result

@@ -4,8 +4,32 @@ import { revalidatePath } from "next/cache"
 import { prisma } from "@/lib/prisma"
 import { z } from "zod"
 import { getCurrentUser } from "@/lib/auth"
+import { checkPermission } from "@/lib/permissions/checker"
+import { UserWithPermissions } from "@/lib/permissions/types"
 import { NotificationType, Priority } from "@prisma/client"
 import { format } from "date-fns"
+
+// Helper function to get current user with permissions
+async function getCurrentUserWithPermissions(): Promise<UserWithPermissions | null> {
+  try {
+    const user = await getCurrentUser()
+    if (!user) return null
+
+    if ('role' in user && user.role) {
+      return user as UserWithPermissions
+    }
+
+    const fullUser = await prisma.user.findUnique({
+      where: { id: user.id },
+      include: { role: true }
+    })
+
+    return fullUser as UserWithPermissions
+  } catch (error) {
+    console.error('Error getting user with permissions:', error)
+    return null
+  }
+}
 
 // Enhanced schema with detailed error messages
 const callForPapersSchema = z.object({
@@ -65,27 +89,24 @@ function createSuccessResponse(call: any, notification?: any) {
   return { success: true, call, notification, timestamp }
 }
 
-// Helper function to check permissions with detailed error messages
-async function checkPermissions() {
-  try {
-    const user = await getCurrentUser()
-    
-    if (!user) {
-      throw new Error("Authentication required. Please log in to continue.")
-    }
-
-    console.log(`✅ Permission check passed for user: ${user.email}`)
-    return user
-  } catch (error) {
-    console.error("❌ Permission check failed:", error)
-    throw error
-  }
-}
-
 export async function getCallsForPapers() {
   try {
     console.log("📋 Fetching calls for papers...")
-    await checkPermissions()
+    
+    // Check authentication and permissions
+    const currentUser = await getCurrentUserWithPermissions()
+    
+    if (!currentUser) {
+      return createErrorResponse("Authentication required")
+    }
+
+    // Check if user has permission to read call for papers
+    const permissionCheck = checkPermission(currentUser, 'callforpapers.READ')
+    if (!permissionCheck.allowed) {
+      return createErrorResponse(
+        permissionCheck.reason || "You don't have permission to view calls for papers"
+      )
+    }
     
     const calls = await prisma.callForPapers.findMany({
       orderBy: [
@@ -94,14 +115,10 @@ export async function getCallsForPapers() {
       ],
     })
 
-    console.log(`✅ Successfully fetched ${calls.length} calls for papers`)
+    console.log(`✅ User ${currentUser.email} fetched ${calls.length} calls for papers`)
     return { calls }
   } catch (error: any) {
     console.error("❌ Failed to fetch calls for papers:", error)
-    
-    if (error.message?.includes('permission') || error.message?.includes('Authentication')) {
-      return createErrorResponse(error.message)
-    }
     
     if (error.code === 'P1001') {
       return createErrorResponse("Database connection failed. Please check your internet connection and try again.")
@@ -118,10 +135,24 @@ export async function getCallsForPapers() {
 export async function getCallForPapers(id: string) {
   try {
     console.log(`📋 Fetching call for papers: ${id}`)
-    await checkPermissions()
+    
+    // Check authentication and permissions
+    const currentUser = await getCurrentUserWithPermissions()
+    
+    if (!currentUser) {
+      return createErrorResponse("Authentication required")
+    }
+
+    // Check if user has permission to read call for papers
+    const permissionCheck = checkPermission(currentUser, 'callforpapers.READ')
+    if (!permissionCheck.allowed) {
+      return createErrorResponse(
+        permissionCheck.reason || "You don't have permission to view call for papers details"
+      )
+    }
     
     if (!id || typeof id !== 'string') {
-      throw new Error("Invalid call for papers ID provided.")
+      return createErrorResponse("Invalid call for papers ID provided.")
     }
     
     const call = await prisma.callForPapers.findUnique({
@@ -132,15 +163,10 @@ export async function getCallForPapers(id: string) {
       return createErrorResponse("Call for papers not found. It may have been deleted or the ID is incorrect.")
     }
 
-    console.log(`✅ Successfully fetched call for papers: ${call.title}`)
+    console.log(`✅ User ${currentUser.email} fetched call for papers: ${call.title}`)
     return { call }
   } catch (error: any) {
     console.error("❌ Failed to fetch call for papers:", error)
-    
-    if (error.message?.includes('permission') || error.message?.includes('Authentication')) {
-      return createErrorResponse(error.message)
-    }
-    
     return createErrorResponse("Failed to fetch call for papers details. Please try again.", error.message)
   }
 }
@@ -150,7 +176,20 @@ export async function createCallForPapers(data: CallForPapersFormData) {
     console.log("📝 Creating call for papers...")
     console.log("📋 Input data:", data)
     
-    const user = await checkPermissions()
+    // Check authentication and permissions
+    const currentUser = await getCurrentUserWithPermissions()
+    
+    if (!currentUser) {
+      return createErrorResponse("Authentication required")
+    }
+
+    // Check if user has permission to create call for papers
+    const permissionCheck = checkPermission(currentUser, 'callforpapers.CREATE')
+    if (!permissionCheck.allowed) {
+      return createErrorResponse(
+        permissionCheck.reason || "You don't have permission to create calls for papers"
+      )
+    }
     
     // Enhanced validation with detailed error messages
     const validation = callForPapersSchema.safeParse(data)
@@ -254,7 +293,7 @@ Don't miss this opportunity to contribute to our journal. Review the submission 
     revalidatePath("/call-for-papers")
     revalidatePath("/notifications")
 
-    console.log(`🎉 Successfully created call for papers "${result.call.title}" with auto-generated notification`)
+    console.log(`🎉 User ${currentUser.email} created call for papers "${result.call.title}" with auto-generated notification`)
 
     return createSuccessResponse(result.call, result.notification)
   } catch (error: any) {
@@ -277,10 +316,6 @@ Don't miss this opportunity to contribute to our journal. Review the submission 
       return createErrorResponse("Database error occurred. Please try again or contact support if the problem persists.", error.code)
     }
     
-    if (error.message?.includes('permission') || error.message?.includes('Authentication')) {
-      return createErrorResponse(error.message)
-    }
-    
     if (error.message?.includes('timeout')) {
       return createErrorResponse("Operation timed out. The server is taking too long to respond. Please try again.")
     }
@@ -294,10 +329,36 @@ export async function updateCallForPapers(id: string, data: CallForPapersFormDat
     console.log(`📝 Updating call for papers: ${id}`)
     console.log("📋 Input data:", data)
     
-    const user = await checkPermissions()
+    // Check authentication and permissions
+    const currentUser = await getCurrentUserWithPermissions()
     
+    if (!currentUser) {
+      return createErrorResponse("Authentication required")
+    }
+
     if (!id || typeof id !== 'string') {
       return createErrorResponse("Invalid call for papers ID provided.")
+    }
+
+    // Get the existing call for papers to check ownership if needed
+    const existingCall = await prisma.callForPapers.findUnique({
+      where: { id },
+    })
+
+    if (!existingCall) {
+      return createErrorResponse("Call for papers not found. It may have been deleted or the ID is incorrect.")
+    }
+
+    // Check if user has permission to update call for papers
+    // Note: Call for papers don't have direct ownership, so we use basic permission
+    const permissionCheck = checkPermission(currentUser, 'callforpapers.UPDATE', {
+      resourceId: existingCall.id
+    })
+
+    if (!permissionCheck.allowed) {
+      return createErrorResponse(
+        permissionCheck.reason || "You don't have permission to update this call for papers"
+      )
     }
     
     // Enhanced validation
@@ -314,16 +375,7 @@ export async function updateCallForPapers(id: string, data: CallForPapersFormDat
     const validatedData = validation.data
     console.log("✅ Data validation passed")
 
-    // Check if the call for papers exists
-    const existing = await prisma.callForPapers.findUnique({
-      where: { id },
-    })
-
-    if (!existing) {
-      return createErrorResponse("Call for papers not found. It may have been deleted or the ID is incorrect.")
-    }
-
-    console.log(`✅ Found existing call for papers: ${existing.title}`)
+    console.log(`✅ Found existing call for papers: ${existingCall.title}`)
 
     // Check for future deadline
     if (validatedData.deadline <= new Date()) {
@@ -365,7 +417,7 @@ export async function updateCallForPapers(id: string, data: CallForPapersFormDat
       },
     })
 
-    console.log(`✅ Call for papers updated: ${call.title}`)
+    console.log(`✅ User ${currentUser.email} updated call for papers: ${call.title}`)
 
     // Update associated notification if it exists
     try {
@@ -434,10 +486,6 @@ Don't miss this opportunity to contribute to our journal. Review the submission 
       return createErrorResponse("Database error occurred. Please try again or contact support.", error.code)
     }
     
-    if (error.message?.includes('permission') || error.message?.includes('Authentication')) {
-      return createErrorResponse(error.message)
-    }
-    
     return createErrorResponse("Failed to update call for papers. Please try again.", error.message)
   }
 }
@@ -446,22 +494,36 @@ export async function deleteCallForPapers(id: string) {
   try {
     console.log(`🗑️ Deleting call for papers: ${id}`)
     
-    const user = await checkPermissions()
+    // Check authentication and permissions
+    const currentUser = await getCurrentUserWithPermissions()
+    
+    if (!currentUser) {
+      return createErrorResponse("Authentication required")
+    }
     
     if (!id || typeof id !== 'string') {
       return createErrorResponse("Invalid call for papers ID provided.")
     }
     
     // Check if the call for papers exists
-    const existing = await prisma.callForPapers.findUnique({
+    const existingCall = await prisma.callForPapers.findUnique({
       where: { id },
     })
 
-    if (!existing) {
+    if (!existingCall) {
       return createErrorResponse("Call for papers not found. It may have already been deleted.")
     }
 
-    console.log(`✅ Found call for papers to delete: ${existing.title}`)
+    // Check if user has permission to delete call for papers
+    const permissionCheck = checkPermission(currentUser, 'callforpapers.DELETE')
+
+    if (!permissionCheck.allowed) {
+      return createErrorResponse(
+        permissionCheck.reason || "You don't have permission to delete this call for papers"
+      )
+    }
+
+    console.log(`✅ Found call for papers to delete: ${existingCall.title}`)
 
     // Use transaction to delete both call for papers and associated notification
     await prisma.$transaction(async (tx) => {
@@ -484,7 +546,7 @@ export async function deleteCallForPapers(id: string) {
     revalidatePath("/call-for-papers")
     revalidatePath("/notifications")
 
-    console.log(`✅ Deleted call for papers "${existing.title}" and associated notification`)
+    console.log(`✅ User ${currentUser.email} deleted call for papers "${existingCall.title}" and associated notification`)
 
     return { success: true }
   } catch (error: any) {
@@ -496,10 +558,6 @@ export async function deleteCallForPapers(id: string) {
     
     if (error.code === 'P1001') {
       return createErrorResponse("Database connection failed. Please check your internet connection and try again.")
-    }
-    
-    if (error.message?.includes('permission') || error.message?.includes('Authentication')) {
-      return createErrorResponse(error.message)
     }
     
     return createErrorResponse("Failed to delete call for papers. Please try again.", error.message)
@@ -532,5 +590,92 @@ export async function getActiveCallsForPapers() {
     }
     
     return createErrorResponse("Failed to fetch calls for papers. Please try again later.", error.message)
+  }
+}
+
+// NEW: Function to check call for papers permissions
+export async function checkCallForPapersPermissions(callId?: string) {
+  try {
+    const currentUser = await getCurrentUserWithPermissions()
+    
+    if (!currentUser) {
+      return { 
+        success: false, 
+        error: "Authentication required",
+        permissions: { canRead: false, canCreate: false, canUpdate: false, canDelete: false }
+      }
+    }
+
+    let permissions = {
+      canRead: checkPermission(currentUser, 'callforpapers.READ').allowed,
+      canCreate: checkPermission(currentUser, 'callforpapers.CREATE').allowed,
+      canUpdate: false,
+      canDelete: false,
+    }
+
+    // If specific call ID is provided, check update/delete permissions
+    if (callId) {
+      const call = await prisma.callForPapers.findUnique({
+        where: { id: callId }
+      })
+
+      if (call) {
+        permissions.canUpdate = checkPermission(currentUser, 'callforpapers.UPDATE').allowed
+
+        permissions.canDelete = checkPermission(currentUser, 'callforpapers.DELETE').allowed
+      }
+    }
+
+    return { success: true, permissions }
+  } catch (error) {
+    console.error("Failed to check call for papers permissions:", error)
+    return { 
+      success: false, 
+      error: "Failed to check permissions",
+      permissions: { canRead: false, canCreate: false, canUpdate: false, canDelete: false }
+    }
+  }
+}
+
+// NEW: Function to get calls for papers with permission context
+export async function getCallsForPapersWithPermissions() {
+  try {
+    const currentUser = await getCurrentUserWithPermissions()
+    
+    if (!currentUser) {
+      return { success: false, error: "Authentication required" }
+    }
+
+    // Check if user has permission to read call for papers
+    const permissionCheck = checkPermission(currentUser, 'callforpapers.READ')
+    if (!permissionCheck.allowed) {
+      return { 
+        success: false, 
+        error: "You don't have permission to view calls for papers" 
+      }
+    }
+
+    const calls = await prisma.callForPapers.findMany({
+      orderBy: [
+        { deadline: "asc" },
+        { createdAt: "desc" }
+      ],
+    })
+
+    // Add permission context to each call
+    const callsWithPermissions = calls.map(call => ({
+      ...call,
+      canEdit: checkPermission(currentUser, 'callforpapers.UPDATE').allowed,
+      canDelete: checkPermission(currentUser, 'callforpapers.DELETE').allowed,
+    }))
+
+    return { 
+      success: true, 
+      data: callsWithPermissions,
+      canCreate: checkPermission(currentUser, 'callforpapers.CREATE').allowed
+    }
+  } catch (error) {
+    console.error("Failed to fetch calls for papers with permissions:", error)
+    return { success: false, error: "Failed to fetch calls for papers" }
   }
 }
