@@ -1,3 +1,4 @@
+// lib/actions/journal-actions.ts - Updated for actual schema
 "use server"
 
 import { revalidatePath } from "next/cache"
@@ -5,6 +6,13 @@ import { getCurrentUser } from "@/lib/auth"
 import { checkPermission } from "@/lib/permissions/checker"
 import { UserWithPermissions } from "@/lib/permissions/types"
 import { prisma } from "@/lib/prisma"
+import { 
+  getJournalIssues as getJournalIssuesController,
+  getJournalIssueById,
+  createJournalIssue as createJournalIssueController,
+  updateJournalIssue as updateJournalIssueController,
+  deleteJournalIssue as deleteJournalIssueController
+} from "../controllers/journal-issues"
 import { z } from "zod"
 
 // Helper function to get current user with permissions
@@ -29,17 +37,13 @@ async function getCurrentUserWithPermissions(): Promise<UserWithPermissions | nu
   }
 }
 
+// Updated schema to match actual JournalIssue model
 const journalIssueSchema = z.object({
-  id: z.string().optional(),
-  title: z.string().optional(),
   volume: z.coerce.number().min(1, "Volume must be at least 1"),
+  theme: z.string().optional(),
   issue: z.coerce.number().min(1, "Issue must be at least 1"),
   year: z.coerce.number().min(1900, "Year must be valid"),
-  publishDate: z.string().min(1, "Publish date is required"),
-  description: z.string().optional(),
-  coverImage: z.string().optional(),
-  pdfUrl: z.string().optional(),
-  articles: z.array(z.string()).optional(),
+  publishDate: z.string().optional(),
 })
 
 export type JournalIssueFormData = z.infer<typeof journalIssueSchema>
@@ -61,12 +65,7 @@ export async function getJournalIssues() {
       }
     }
 
-    const issues = await prisma.journalIssue.findMany({
-      orderBy: [{ year: "desc" }, { volume: "desc" }, { issue: "desc" }],
-      include: {
-        Article: true,
-      },
-    })
+    const issues = await getJournalIssuesController()
 
     console.log(`✅ User ${currentUser.email} fetched ${issues.length} journal issues`)
     return { issues }
@@ -97,12 +96,7 @@ export async function getJournalIssue(id: string) {
       return { error: "Invalid journal issue ID provided" }
     }
 
-    const issue = await prisma.journalIssue.findUnique({
-      where: { id },
-      include: {
-        Article: true,
-      },
-    })
+    const issue = await getJournalIssueById(id)
 
     if (!issue) {
       return { error: "Journal issue not found" }
@@ -151,39 +145,7 @@ export async function createJournalIssue(data: JournalIssueFormData) {
       }
     }
 
-    // Validate article IDs if provided
-    if (validatedData.articles && validatedData.articles.length > 0) {
-      const existingArticles = await prisma.article.findMany({
-        where: { id: { in: validatedData.articles } },
-        select: { id: true, title: true, issueId: true }
-      })
-
-      if (existingArticles.length !== validatedData.articles.length) {
-        return { error: "Some selected articles were not found" }
-      }
-
-      // Check if any articles are already assigned to other issues
-      const assignedArticles = existingArticles.filter(article => article.issueId)
-      if (assignedArticles.length > 0) {
-        return { 
-          error: `Some articles are already assigned to other journal issues: ${assignedArticles.map(a => a.title).join(', ')}` 
-        }
-      }
-    }
-
-    const { articles, ...issueData } = validatedData
-
-    const issue = await prisma.journalIssue.create({
-      data: {
-        ...issueData,
-        Article:
-          articles && articles.length > 0
-            ? {
-                connect: articles.map((id) => ({ id })),
-              }
-            : undefined,
-      },
-    })
+    const issue = await createJournalIssueController(validatedData)
 
     console.log(`✅ User ${currentUser.email} created journal issue: Volume ${issue.volume}, Issue ${issue.issue} (${issue.year})`)
 
@@ -214,19 +176,14 @@ export async function updateJournalIssue(id: string, data: JournalIssueFormData)
     }
 
     // Get the existing journal issue
-    const existingIssue = await prisma.journalIssue.findUnique({
-      where: { id },
-      include: { Article: true }
-    })
+    const existingIssue = await getJournalIssueById(id)
 
     if (!existingIssue) {
       return { error: "Journal issue not found" }
     }
 
     // Check if user has permission to update journal issues
-    const permissionCheck = checkPermission(currentUser, 'journalissue.UPDATE', {
-      resourceId: existingIssue.id
-    })
+    const permissionCheck = checkPermission(currentUser, 'journalissue.UPDATE')
 
     if (!permissionCheck.allowed) {
       return { 
@@ -253,53 +210,7 @@ export async function updateJournalIssue(id: string, data: JournalIssueFormData)
       }
     }
 
-    // Validate article IDs if provided
-    if (validatedData.articles && validatedData.articles.length > 0) {
-      const existingArticles = await prisma.article.findMany({
-        where: { id: { in: validatedData.articles } },
-        select: { id: true, title: true, issueId: true }
-      })
-
-      if (existingArticles.length !== validatedData.articles.length) {
-        return { error: "Some selected articles were not found" }
-      }
-
-      // Check if any articles are already assigned to other issues (excluding current issue)
-      const assignedArticles = existingArticles.filter(article => 
-        article.issueId && article.issueId !== id
-      )
-      if (assignedArticles.length > 0) {
-        return { 
-          error: `Some articles are already assigned to other journal issues: ${assignedArticles.map(a => a.title).join(', ')}` 
-        }
-      }
-    }
-
-    const { articles, ...issueData } = validatedData
-
-    // First disconnect all articles
-    await prisma.journalIssue.update({
-      where: { id },
-      data: {
-        Article: {
-          set: [],
-        },
-      },
-    })
-
-    // Then update with new data and connect new articles
-    const issue = await prisma.journalIssue.update({
-      where: { id },
-      data: {
-        ...issueData,
-        Article:
-          articles && articles.length > 0
-            ? {
-                connect: articles.map((articleId) => ({ id: articleId })),
-              }
-            : undefined,
-      },
-    })
+    const issue = await updateJournalIssueController(id, validatedData)
 
     console.log(`✅ User ${currentUser.email} updated journal issue: Volume ${issue.volume}, Issue ${issue.issue} (${issue.year})`)
 
@@ -331,19 +242,14 @@ export async function deleteJournalIssue(id: string) {
     }
 
     // Get the existing journal issue
-    const existingIssue = await prisma.journalIssue.findUnique({
-      where: { id },
-      include: { Article: true }
-    })
+    const existingIssue = await getJournalIssueById(id)
 
     if (!existingIssue) {
       return { error: "Journal issue not found" }
     }
 
     // Check if user has permission to delete journal issues
-    const permissionCheck = checkPermission(currentUser, 'journalissue.DELETE', {
-      resourceId: existingIssue.id
-    })
+    const permissionCheck = checkPermission(currentUser, 'journalissue.DELETE')
 
     if (!permissionCheck.allowed) {
       return { 
@@ -358,20 +264,8 @@ export async function deleteJournalIssue(id: string) {
       }
     }
 
-    // First disconnect all articles (should be none at this point, but safety first)
-    await prisma.journalIssue.update({
-      where: { id },
-      data: {
-        Article: {
-          set: [],
-        },
-      },
-    })
-
-    // Then delete the issue
-    await prisma.journalIssue.delete({
-      where: { id },
-    })
+    // Delete the issue
+    await deleteJournalIssueController(id)
 
     console.log(`✅ User ${currentUser.email} deleted journal issue: Volume ${existingIssue.volume}, Issue ${existingIssue.issue} (${existingIssue.year})`)
 
@@ -385,7 +279,7 @@ export async function deleteJournalIssue(id: string) {
   }
 }
 
-// NEW: Function to get journal issues with permission context
+// Function to get journal issues with permission context
 export async function getJournalIssuesWithPermissions() {
   try {
     const currentUser = await getCurrentUserWithPermissions()
@@ -402,22 +296,13 @@ export async function getJournalIssuesWithPermissions() {
       }
     }
 
-    const issues = await prisma.journalIssue.findMany({
-      orderBy: [{ year: "desc" }, { volume: "desc" }, { issue: "desc" }],
-      include: {
-        Article: true,
-      },
-    })
+    const issues = await getJournalIssuesController()
 
     // Add permission context to each issue
     const issuesWithPermissions = issues.map(issue => ({
       ...issue,
-      canEdit: checkPermission(currentUser, 'journalissue.UPDATE', {
-        resourceId: issue.id
-      }).allowed,
-      canDelete: checkPermission(currentUser, 'journalissue.DELETE', {
-        resourceId: issue.id
-      }).allowed,
+      canEdit: checkPermission(currentUser, 'journalissue.UPDATE').allowed,
+      canDelete: checkPermission(currentUser, 'journalissue.DELETE').allowed && issue.Article.length === 0,
     }))
 
     return { 
@@ -430,7 +315,7 @@ export async function getJournalIssuesWithPermissions() {
   }
 }
 
-// NEW: Function to check journal issue permissions
+// Function to check journal issue permissions
 export async function checkJournalIssuePermissions(issueId?: string) {
   try {
     const currentUser = await getCurrentUserWithPermissions()
@@ -446,25 +331,15 @@ export async function checkJournalIssuePermissions(issueId?: string) {
     let permissions = {
       canRead: checkPermission(currentUser, 'journalissue.READ').allowed,
       canCreate: checkPermission(currentUser, 'journalissue.CREATE').allowed,
-      canUpdate: false,
-      canDelete: false,
+      canUpdate: checkPermission(currentUser, 'journalissue.UPDATE').allowed,
+      canDelete: checkPermission(currentUser, 'journalissue.DELETE').allowed,
     }
 
-    // If specific issue ID is provided, check update/delete permissions
-    if (issueId) {
-      const issue = await prisma.journalIssue.findUnique({
-        where: { id: issueId },
-        include: { Article: true }
-      })
-
-      if (issue) {
-        permissions.canUpdate = checkPermission(currentUser, 'journalissue.UPDATE', {
-          resourceId: issue.id
-        }).allowed
-
-        permissions.canDelete = checkPermission(currentUser, 'journalissue.DELETE', {
-          resourceId: issue.id
-        }).allowed && issue.Article.length === 0 // Can only delete if no articles
+    // If specific issue ID is provided, check if it has articles (affects delete permission)
+    if (issueId && permissions.canDelete) {
+      const issue = await getJournalIssueById(issueId)
+      if (issue && issue.Article.length > 0) {
+        permissions.canDelete = false // Can't delete if has articles
       }
     }
 
@@ -479,7 +354,7 @@ export async function checkJournalIssuePermissions(issueId?: string) {
   }
 }
 
-// NEW: Function to get available articles for journal issue assignment
+// Function to get available articles for journal issue assignment
 export async function getAvailableArticlesForIssue(excludeIssueId?: string) {
   try {
     const currentUser = await getCurrentUserWithPermissions()
@@ -522,11 +397,11 @@ export async function getAvailableArticlesForIssue(excludeIssueId?: string) {
             authorOrder: 'asc'
           }
         },
-        date: true,
+        publishedAt: true,
         issueId: true
       },
       orderBy: {
-        date: 'desc'
+        publishedAt: 'desc'
       }
     })
 
@@ -535,7 +410,7 @@ export async function getAvailableArticlesForIssue(excludeIssueId?: string) {
       id: article.id,
       title: article.title,
       authors: article.authors.map(aa => aa.author.name).join(', '),
-      date: article.date,
+      publishedAt: article.publishedAt,
       isCurrentlyAssigned: article.issueId === excludeIssueId
     }))
 

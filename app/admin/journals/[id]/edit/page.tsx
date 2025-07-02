@@ -1,4 +1,4 @@
-// app/admin/journals/[id]/edit/page.tsx - WITH SIMPLE PERMISSION CHECKS
+// app/admin/journals/[id]/edit/page.tsx - Updated for actual schema
 import { DashboardHeader } from "@/components/admin/dashboard-header"
 import { JournalIssueForm } from "@/components/admin/journal-issue-form"
 import { getJournalIssue } from "@/lib/actions/journal-actions"
@@ -99,7 +99,7 @@ export default async function EditJournalIssuePage({ params }: EditJournalIssueP
   return (
     <div className="space-y-6">
       <DashboardHeader 
-        heading={`Edit Journal Issue: ${issue.title}`} 
+        heading={`Edit Journal Issue: Volume ${issue.volume}, Issue ${issue.issue} (${issue.year})`} 
         text="Edit your journal issue details and manage articles." 
       />
       
@@ -110,10 +110,15 @@ export default async function EditJournalIssuePage({ params }: EditJournalIssueP
             <h3 className="font-semibold">Issue Information</h3>
             <p className="text-sm text-muted-foreground">
               Volume {issue.volume}, Issue {issue.issue} ({issue.year}) • {issue.Article?.length || 0} articles
+              {issue.theme && (
+                <span className="block">Theme: {issue.theme}</span>
+              )}
             </p>
           </div>
           <div className="text-right">
-            <p className="text-sm font-medium">Published: {new Date(issue.publishDate ?? "").toLocaleDateString()}</p>
+            <p className="text-sm font-medium">
+              {issue.publishDate ? `Published: ${new Date(issue.publishDate).toLocaleDateString()}` : 'No publish date set'}
+            </p>
           </div>
         </div>
       </div>

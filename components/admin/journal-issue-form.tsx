@@ -1,3 +1,4 @@
+// components/admin/journal-issue-form.tsx - Updated for actual schema
 "use client"
 
 import { useState } from "react"
@@ -17,20 +18,18 @@ import {
   FormMessage,
 } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
 import { toast } from "@/components/ui/use-toast"
 import { createJournalIssue, updateJournalIssue } from "@/lib/actions/journal-actions"
-import { CalendarIcon, Loader2, BookOpen, Image as ImageIcon, AlertTriangle } from "lucide-react"
+import { Loader2, BookOpen, AlertTriangle } from "lucide-react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 
-// Enhanced schema matching the database
+// Schema matching the actual database model (only volume, theme, issue, year, publishDate)
 const formSchema = z.object({
-  title: z.string().optional(),
-  description: z.string().optional(),
   volume: z.coerce.number()
     .min(1, "Volume must be at least 1")
     .max(999, "Volume must be less than 999")
     .int("Volume must be a whole number"),
+  theme: z.string().optional(),
   issue: z.coerce.number()
     .min(1, "Issue must be at least 1")
     .max(99, "Issue must be less than 99")
@@ -39,9 +38,7 @@ const formSchema = z.object({
     .min(1900, "Year must be 1900 or later")
     .max(2100, "Year must be 2100 or earlier")
     .int("Year must be a whole number"),
-  publishDate: z.string()
-    .min(1, "Publish date is required"),
-  coverImage: z.string().optional()
+  publishDate: z.string().optional()
 })
 
 type FormData = z.infer<typeof formSchema>
@@ -49,13 +46,11 @@ type FormData = z.infer<typeof formSchema>
 interface JournalIssueFormProps {
   issue?: {
     id: string
-    title?: string
-    description?: string
     volume: number
+    theme?: string
     issue: number
     year: number
-    publishDate: string
-    coverImage?: string
+    publishDate?: string
   }
 }
 
@@ -66,13 +61,11 @@ export function JournalIssueForm({ issue }: JournalIssueFormProps) {
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      title: issue?.title || "",
-      description: issue?.description || "",
       volume: issue?.volume || new Date().getFullYear() - 2020 + 1,
+      theme: issue?.theme || "",
       issue: issue?.issue || 1,
       year: issue?.year || new Date().getFullYear(),
       publishDate: issue?.publishDate || new Date().toISOString().split('T')[0],
-      coverImage: issue?.coverImage || "",
     },
   })
 
@@ -161,9 +154,16 @@ export function JournalIssueForm({ issue }: JournalIssueFormProps) {
       console.log("✅ Client-side validation passed")
       console.log("📞 Calling server action...")
       
+      // Clean data before sending (remove empty strings)
+      const cleanedData = {
+        ...data,
+        theme: data.theme?.trim() || undefined,
+        publishDate: data.publishDate?.trim() || undefined,
+      }
+      
       const result = issue
-        ? await updateJournalIssue(issue.id, data)
-        : await createJournalIssue(data)
+        ? await updateJournalIssue(issue.id, cleanedData)
+        : await createJournalIssue(cleanedData)
 
       console.log("📥 Server response:", result)
 
@@ -173,8 +173,8 @@ export function JournalIssueForm({ issue }: JournalIssueFormProps) {
         toast({
           title: issue ? "✅ Journal Issue Updated" : "🎉 Journal Issue Created!",
           description: issue 
-            ? `"${data.title}" has been updated successfully.`
-            : `"${data.title}" has been created successfully. You can now add articles to this issue.`,
+            ? `Volume ${data.volume}, Issue ${data.issue} (${data.year}) has been updated successfully.`
+            : `Volume ${data.volume}, Issue ${data.issue} (${data.year}) has been created successfully. You can now add articles to this issue.`,
           duration: 4000,
         })
         
@@ -271,49 +271,6 @@ export function JournalIssueForm({ issue }: JournalIssueFormProps) {
               <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
                 <FormField
                   control={form.control}
-                  name="title"
-                  render={({ field }) => (
-                    <FormItem className="md:col-span-2">
-                      <FormLabel>Title *</FormLabel>
-                      <FormControl>
-                        <Input 
-                          placeholder="Enter journal issue title" 
-                          {...field} 
-                          maxLength={200}
-                        />
-                      </FormControl>
-                      <FormDescription>
-                        The main title for this journal issue (5-200 characters)
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="description"
-                  render={({ field }) => (
-                    <FormItem className="md:col-span-2">
-                      <FormLabel>Description *</FormLabel>
-                      <FormControl>
-                        <Textarea
-                          placeholder="Enter a detailed description of this journal issue"
-                          className="min-h-[120px]"
-                          {...field}
-                          maxLength={2000}
-                        />
-                      </FormControl>
-                      <FormDescription>
-                        Detailed description of the journal issue content and theme (20-2000 characters)
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
                   name="volume"
                   render={({ field }) => (
                     <FormItem>
@@ -362,7 +319,7 @@ export function JournalIssueForm({ issue }: JournalIssueFormProps) {
                   name="publishDate"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Publish Date *</FormLabel>
+                      <FormLabel>Publish Date</FormLabel>
                       <FormControl>
                         <Input type="date" {...field} />
                       </FormControl>
@@ -374,35 +331,19 @@ export function JournalIssueForm({ issue }: JournalIssueFormProps) {
 
                 <FormField
                   control={form.control}
-                  name="coverImage"
+                  name="theme"
                   render={({ field }) => (
                     <FormItem className="md:col-span-2">
-                      <FormLabel>Cover Image URL *</FormLabel>
+                      <FormLabel>Theme</FormLabel>
                       <FormControl>
-                        <div className="space-y-3">
-                          <Input 
-                            placeholder="https://example.com/cover-image.jpg" 
-                            {...field} 
-                          />
-                          {field.value && field.value.startsWith('http') && (
-                            <div className="border rounded-lg p-4">
-                              <p className="text-sm text-muted-foreground mb-2">Preview:</p>
-                              <div className="h-32 w-24 relative overflow-hidden rounded">
-                                <img
-                                  src={field.value}
-                                  alt="Cover preview"
-                                  className="object-cover w-full h-full"
-                                  onError={(e) => {
-                                    (e.target as HTMLImageElement).style.display = 'none'
-                                  }}
-                                />
-                              </div>
-                            </div>
-                          )}
-                        </div>
+                        <Input 
+                          placeholder="Enter the theme or focus of this issue (optional)" 
+                          {...field} 
+                          maxLength={200}
+                        />
                       </FormControl>
                       <FormDescription>
-                        URL for the journal issue cover image. Must start with http or https.
+                        Optional thematic focus or special topic for this issue
                       </FormDescription>
                       <FormMessage />
                     </FormItem>

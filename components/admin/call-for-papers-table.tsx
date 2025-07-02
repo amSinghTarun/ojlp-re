@@ -2,7 +2,6 @@
 
 import { useState } from "react"
 import Link from "next/link"
-import Image from "next/image"
 import {
   type ColumnDef,
   type ColumnFiltersState,
@@ -15,7 +14,7 @@ import {
   getSortedRowModel,
   useReactTable,
 } from "@tanstack/react-table"
-import { ArrowUpDown, ChevronDown, MoreHorizontal, Pencil, Trash, Eye } from "lucide-react"
+import { ArrowUpDown, ChevronDown, MoreHorizontal, Pencil, Trash, Eye, Building, Calendar, ExternalLink } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -42,6 +41,7 @@ import {
 } from "@/components/ui/alert-dialog"
 import { toast } from "@/components/ui/use-toast"
 import { deleteCallForPapers } from "@/lib/actions/call-for-papers-actions"
+import { Badge } from "@/components/ui/badge"
 
 export type CallForPapersRow = {
   id: string
@@ -51,7 +51,10 @@ export type CallForPapersRow = {
   volume: number
   issue: number
   year: number
-  image?: string | null
+  publisher: string
+  fee?: string | null
+  contentLink?: string | null
+  topics: string[]
 }
 
 interface CallForPapersTableProps {
@@ -97,26 +100,27 @@ export function CallForPapersTable({ initialCalls }: CallForPapersTableProps) {
         )
       },
       cell: ({ row }) => (
-        <div className="flex items-center gap-4">
-          {row.original.image && (
-            <div className="h-10 w-10 relative overflow-hidden rounded">
-              <Image
-                src={row.original.image}
-                alt={row.getValue("title")}
-                fill
-                className="object-cover"
-                sizes="40px"
-              />
+        <div className="space-y-1">
+          <div className="font-medium max-w-[300px] truncate">{row.getValue("title")}</div>
+          <div className="text-sm text-muted-foreground max-w-[300px] truncate">
+            {row.original.thematicFocus}
+          </div>
+          {row.original.topics.length > 0 && (
+            <div className="flex flex-wrap gap-1 mt-1">
+              {row.original.topics.slice(0, 2).map((topic, index) => (
+                <Badge key={index} variant="outline" className="text-xs">
+                  {topic}
+                </Badge>
+              ))}
+              {row.original.topics.length > 2 && (
+                <Badge variant="outline" className="text-xs">
+                  +{row.original.topics.length - 2}
+                </Badge>
+              )}
             </div>
           )}
-          <span className="max-w-[400px] truncate font-medium">{row.getValue("title")}</span>
         </div>
       ),
-    },
-    {
-      accessorKey: "thematicFocus",
-      header: "Thematic Focus",
-      cell: ({ row }) => <div className="max-w-[200px] truncate">{row.getValue("thematicFocus")}</div>,
     },
     {
       accessorKey: "deadline",
@@ -129,8 +133,19 @@ export function CallForPapersTable({ initialCalls }: CallForPapersTableProps) {
         )
       },
       cell: ({ row }) => {
-        const deadline = row.getValue("deadline") as string
-        return <div>{new Date(deadline).toLocaleDateString()}</div>
+        const deadline = new Date(row.getValue("deadline") as string)
+        const isExpired = deadline < new Date()
+        return (
+          <div className="space-y-1">
+            <div className={`flex items-center gap-2 ${isExpired ? 'text-red-600' : 'text-green-600'}`}>
+              <Calendar className="h-4 w-4" />
+              <span className="font-medium">{deadline.toLocaleDateString()}</span>
+            </div>
+            <div className="text-xs text-muted-foreground">
+              {isExpired ? 'Expired' : 'Active'}
+            </div>
+          </div>
+        )
       },
     },
     {
@@ -138,36 +153,45 @@ export function CallForPapersTable({ initialCalls }: CallForPapersTableProps) {
       header: ({ column }) => {
         return (
           <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
-            Volume
+            Volume/Issue
             <ArrowUpDown className="ml-2 h-4 w-4" />
           </Button>
         )
       },
-      cell: ({ row }) => <div>Volume {row.getValue("volume")}</div>,
+      cell: ({ row }) => (
+        <div className="space-y-1">
+          <div className="font-medium">Vol. {row.getValue("volume")}</div>
+          <div className="text-sm text-muted-foreground">
+            Issue {row.original.issue} ({row.original.year})
+          </div>
+        </div>
+      ),
     },
     {
-      accessorKey: "issue",
-      header: ({ column }) => {
-        return (
-          <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
-            Issue
-            <ArrowUpDown className="ml-2 h-4 w-4" />
-          </Button>
-        )
-      },
-      cell: ({ row }) => <div>Issue {row.getValue("issue")}</div>,
+      accessorKey: "publisher",
+      header: "Publisher",
+      cell: ({ row }) => (
+        <div className="flex items-center gap-2 max-w-[150px]">
+          <Building className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+          <span className="truncate">{row.getValue("publisher")}</span>
+        </div>
+      ),
     },
     {
-      accessorKey: "year",
-      header: ({ column }) => {
+      accessorKey: "fee",
+      header: "Fee",
+      cell: ({ row }) => {
+        const fee = row.getValue("fee") as string | null
         return (
-          <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
-            Year
-            <ArrowUpDown className="ml-2 h-4 w-4" />
-          </Button>
+          <div className="text-sm">
+            {fee ? (
+              <Badge variant="secondary">{fee}</Badge>
+            ) : (
+              <Badge variant="outline" className="text-green-600">Free</Badge>
+            )}
+          </div>
         )
       },
-      cell: ({ row }) => <div>{row.getValue("year")}</div>,
     },
     {
       id: "actions",
@@ -234,6 +258,14 @@ export function CallForPapersTable({ initialCalls }: CallForPapersTableProps) {
                     View Public
                   </Link>
                 </DropdownMenuItem>
+                {cfp.contentLink && (
+                  <DropdownMenuItem asChild>
+                    <Link href={cfp.contentLink} target="_blank" rel="noopener noreferrer">
+                      <ExternalLink className="mr-2 h-4 w-4" />
+                      Submission Link
+                    </Link>
+                  </DropdownMenuItem>
+                )}
                 <DropdownMenuSeparator />
                 <AlertDialogTrigger asChild>
                   <DropdownMenuItem className="text-destructive">
@@ -248,7 +280,7 @@ export function CallForPapersTable({ initialCalls }: CallForPapersTableProps) {
                 <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
                 <AlertDialogDescription>
                   This action cannot be undone. This will permanently delete the call for papers "{cfp.title}" and
-                  remove it from our servers.
+                  remove it from our servers. Any associated notifications will also be deleted.
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>

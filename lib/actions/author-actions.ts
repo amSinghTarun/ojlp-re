@@ -1,3 +1,4 @@
+// lib/actions/author-actions.ts - Updated for actual schema
 "use server"
 
 import { revalidatePath } from "next/cache"
@@ -14,10 +15,12 @@ async function getCurrentUserWithPermissions(): Promise<UserWithPermissions | nu
     const user = await getCurrentUser()
     if (!user) return null
 
+    // If user already has role, use it
     if ('role' in user && user.role) {
       return user as UserWithPermissions
     }
 
+    // Otherwise fetch the complete user data with role
     const fullUser = await prisma.user.findUnique({
       where: { id: user.id },
       include: { role: true }
@@ -30,23 +33,12 @@ async function getCurrentUserWithPermissions(): Promise<UserWithPermissions | nu
   }
 }
 
+// Updated schema to match actual Author model
 const authorSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
   email: z.string().email("Invalid email address"),
   title: z.string().optional(),
   bio: z.string().optional(),
-  image: z.string().optional(),
-  expertise: z.array(z.string()).optional(),
-  education: z.array(z.string()).optional(),
-  socialLinks: z
-    .object({
-      twitter: z.string().optional(),
-      linkedin: z.string().optional(),
-      email: z.string().email().optional(),
-      orcid: z.string().optional(),
-    })
-    .optional(),
-  userId: z.string().optional(),
 })
 
 export async function getAuthorsList() {
@@ -130,17 +122,6 @@ export async function createNewAuthor(data: z.infer<typeof authorSchema>) {
     // Validate input data
     const validatedData = authorSchema.parse(data)
 
-    // Additional permission check: Only admins can assign authors to other users
-    if (validatedData.userId && validatedData.userId !== currentUser.id) {
-      const adminPermissionCheck = checkPermission(currentUser, 'user.UPDATE')
-      if (!adminPermissionCheck.allowed) {
-        return { 
-          success: false, 
-          error: "You can only create author profiles for yourself" 
-        }
-      }
-    }
-
     // Check for duplicate email
     const existingAuthor = await prisma.author.findUnique({
       where: { email: validatedData.email }
@@ -179,7 +160,7 @@ export async function updateExistingAuthor(slug: string, data: Partial<z.infer<t
       return { success: false, error: "Authentication required" }
     }
 
-    // Get the existing author to check ownership
+    // Get the existing author
     const existingAuthor = await prisma.author.findUnique({
       where: { slug }
     })
@@ -189,8 +170,6 @@ export async function updateExistingAuthor(slug: string, data: Partial<z.infer<t
     }
 
     // Check if user has permission to update authors
-    const isOwner = existingAuthor.userId === currentUser.id
-    
     const permissionCheck = checkPermission(currentUser, 'author.UPDATE')
 
     if (!permissionCheck.allowed) {
@@ -210,17 +189,6 @@ export async function updateExistingAuthor(slug: string, data: Partial<z.infer<t
         return { 
           success: false, 
           error: "An author with this email already exists" 
-        }
-      }
-    }
-
-    // Additional permission check: Only admins can change author ownership
-    if (data.userId && data.userId !== existingAuthor.userId) {
-      const adminPermissionCheck = checkPermission(currentUser, 'user.UPDATE')
-      if (!adminPermissionCheck.allowed) {
-        return { 
-          success: false, 
-          error: "You don't have permission to change author ownership" 
         }
       }
     }
@@ -249,7 +217,7 @@ export async function deleteExistingAuthor(slug: string) {
       return { success: false, error: "Authentication required" }
     }
 
-    // Get the existing author to check ownership and dependencies
+    // Get the existing author to check dependencies
     const existingAuthor = await prisma.author.findUnique({
       where: { slug },
       include: {
@@ -280,8 +248,6 @@ export async function deleteExistingAuthor(slug: string) {
     }
 
     // Check if user has permission to delete authors
-    const isOwner = existingAuthor.userId === currentUser.id
-    
     const permissionCheck = checkPermission(currentUser, 'author.DELETE')
 
     if (!permissionCheck.allowed) {
@@ -305,7 +271,7 @@ export async function deleteExistingAuthor(slug: string) {
   }
 }
 
-// NEW: Function to get authors that the current user can manage
+// Function to get authors that the current user can manage
 export async function getManageableAuthors() {
   try {
     // Check authentication and permissions
@@ -326,7 +292,7 @@ export async function getManageableAuthors() {
 
     const allAuthors = await getAuthors()
     
-    // Filter authors based on what user can manage
+    // Add permission flags for each author
     const manageableAuthors = allAuthors.map(author => ({
       ...author,
       canEdit: checkPermission(currentUser, 'author.UPDATE').allowed,
@@ -344,7 +310,7 @@ export async function getManageableAuthors() {
   }
 }
 
-// NEW: Function to check if current user can perform specific author actions
+// Function to check if current user can perform specific author actions
 export async function checkAuthorPermissions(slug?: string) {
   try {
     const currentUser = await getCurrentUserWithPermissions()
@@ -360,23 +326,8 @@ export async function checkAuthorPermissions(slug?: string) {
     let permissions = {
       canRead: checkPermission(currentUser, 'author.READ').allowed,
       canCreate: checkPermission(currentUser, 'author.CREATE').allowed,
-      canUpdate: false,
-      canDelete: false,
-    }
-
-    // If specific author slug is provided, check update/delete permissions
-    if (slug) {
-      const author = await prisma.author.findUnique({
-        where: { slug }
-      })
-
-      if (author) {
-        const isOwner = author.userId === currentUser.id
-        
-        permissions.canUpdate = checkPermission(currentUser, 'author.UPDATE').allowed
-
-        permissions.canDelete = checkPermission(currentUser, 'author.DELETE').allowed
-      }
+      canUpdate: checkPermission(currentUser, 'author.UPDATE').allowed,
+      canDelete: checkPermission(currentUser, 'author.DELETE').allowed,
     }
 
     return { success: true, permissions }

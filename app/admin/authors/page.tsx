@@ -1,4 +1,4 @@
-// app/admin/authors/page.tsx
+// app/admin/authors/page.tsx - Updated for actual schema
 import Link from "next/link"
 import { Plus, Users, FileText, Eye, Pencil, ExternalLink, ArrowLeft } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -98,8 +98,8 @@ export default async function AuthorsPage() {
 
     // Calculate stats
     const totalAuthors = authors.length
+    const authorsWithTitle = authors.filter(author => author.title && author.title.trim().length > 0).length
     const authorsWithBio = authors.filter(author => author.bio && author.bio.trim().length > 0).length
-    const authorsWithImage = authors.filter(author => author.image && author.image.trim().length > 0).length
     const totalArticles = authors.reduce((sum, author) => 
       sum + (author.authorArticles?.length || 0), 0
     )
@@ -135,26 +135,26 @@ export default async function AuthorsPage() {
           
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">With Biography</CardTitle>
+              <CardTitle className="text-sm font-medium">With Title</CardTitle>
               <FileText className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{authorsWithBio}</div>
+              <div className="text-2xl font-bold">{authorsWithTitle}</div>
               <p className="text-xs text-muted-foreground">
-                {totalAuthors > 0 ? Math.round((authorsWithBio / totalAuthors) * 100) : 0}% of authors
+                {totalAuthors > 0 ? Math.round((authorsWithTitle / totalAuthors) * 100) : 0}% of authors
               </p>
             </CardContent>
           </Card>
           
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">With Profile Image</CardTitle>
+              <CardTitle className="text-sm font-medium">With Biography</CardTitle>
               <Eye className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{authorsWithImage}</div>
+              <div className="text-2xl font-bold">{authorsWithBio}</div>
               <p className="text-xs text-muted-foreground">
-                {totalAuthors > 0 ? Math.round((authorsWithImage / totalAuthors) * 100) : 0}% of authors
+                {totalAuthors > 0 ? Math.round((authorsWithBio / totalAuthors) * 100) : 0}% of authors
               </p>
             </CardContent>
           </Card>
@@ -183,12 +183,10 @@ export default async function AuthorsPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="w-[50px]">Photo</TableHead>
                     <TableHead>Name & Title</TableHead>
                     <TableHead>Email</TableHead>
                     <TableHead>Articles</TableHead>
                     <TableHead>Status</TableHead>
-                    <TableHead>Expertise</TableHead>
                     {(canEditAuthors || canCreateAuthors) && (
                       <TableHead className="text-right">Actions</TableHead>
                     )}
@@ -197,21 +195,6 @@ export default async function AuthorsPage() {
                 <TableBody>
                   {authors.map((author) => (
                     <TableRow key={author.id}>
-                      {/* Photo */}
-                      <TableCell>
-                        {author.image ? (
-                          <img
-                            src={author.image}
-                            alt={author.name}
-                            className="w-8 h-8 rounded-full object-cover"
-                          />
-                        ) : (
-                          <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center">
-                            <Users className="w-4 h-4 text-muted-foreground" />
-                          </div>
-                        )}
-                      </TableCell>
-
                       {/* Name & Title */}
                       <TableCell>
                         <div>
@@ -237,9 +220,9 @@ export default async function AuthorsPage() {
                       {/* Status */}
                       <TableCell>
                         <div className="flex flex-col gap-1">
-                          {author.userId && (
+                          {author.title && (
                             <Badge variant="outline" className="text-xs w-fit">
-                              Linked User
+                              Has Title
                             </Badge>
                           )}
                           {author.bio && (
@@ -248,26 +231,6 @@ export default async function AuthorsPage() {
                             </Badge>
                           )}
                         </div>
-                      </TableCell>
-
-                      {/* Expertise */}
-                      <TableCell>
-                        {author.expertise && author.expertise.length > 0 ? (
-                          <div className="flex flex-wrap gap-1">
-                            {author.expertise.slice(0, 2).map((skill, index) => (
-                              <Badge key={index} variant="outline" className="text-xs">
-                                {skill}
-                              </Badge>
-                            ))}
-                            {author.expertise.length > 2 && (
-                              <Badge variant="outline" className="text-xs">
-                                +{author.expertise.length - 2}
-                              </Badge>
-                            )}
-                          </div>
-                        ) : (
-                          <span className="text-sm text-muted-foreground">None</span>
-                        )}
                       </TableCell>
 
                       {/* Actions - Only show if user has edit permissions */}

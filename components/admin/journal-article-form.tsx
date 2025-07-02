@@ -1,3 +1,4 @@
+// components/admin/journal-article-form.tsx - Updated for actual schema
 "use client"
 
 import { useState, useEffect } from "react"
@@ -52,7 +53,7 @@ const authorSchema = z.object({
     .email("Please enter a valid email address"),
 })
 
-// Enhanced schema with multiple authors and contentLink
+// Updated schema to match actual Article model
 const formSchema = z.object({
   title: z.string()
     .min(1, "Title is required")
@@ -63,51 +64,30 @@ const formSchema = z.object({
     .min(3, "Slug must be at least 3 characters")
     .max(100, "Slug must be less than 100 characters")
     .regex(/^[a-z0-9-]+$/, "Slug must contain only lowercase letters, numbers, and hyphens"),
-  excerpt: z.string()
-    .min(1, "Excerpt is required")
-    .min(20, "Excerpt must be at least 20 characters")
-    .max(500, "Excerpt must be less than 500 characters"),
+  abstract: z.string() // Changed from 'excerpt'
+    .min(1, "Abstract is required")
+    .min(20, "Abstract must be at least 20 characters")
+    .max(500, "Abstract must be less than 500 characters"),
   content: z.string()
     .min(1, "Content is required")
     .min(100, "Content must be at least 100 characters"),
   contentLink: z.string()
     .min(1, "Content link is required for journal articles")
-    .url("Please enter a valid URL")
-    .refine((url) => {
-      // Allow common academic/journal URL patterns
-      const validPatterns = [
-        /^https?:\/\/.*\.pdf$/i,
-        /^https?:\/\/.*doi\.org\//i,
-        /^https?:\/\/.*arxiv\.org\//i,
-        /^https?:\/\/.*pubmed\.ncbi\.nlm\.nih\.gov\//i,
-        /^https?:\/\/.*scholar\.google\./i,
-        /^https?:\/\/.*researchgate\.net\//i,
-        /^https?:\/\/.*jstor\.org\//i,
-        /^https?:\/\/.*sciencedirect\.com\//i,
-        /^https?:\/\/.*springer\.com\//i,
-        /^https?:\/\/.*wiley\.com\//i,
-        /^https?:\/\/.*nature\.com\//i,
-        /^https?:\/\/.*science\.org\//i,
-        /^https?:\/\/.*ieee\.org\//i,
-        /^https?:\/\/.+/i, // Allow any HTTPS URL as fallback
-      ];
-      return validPatterns.some(pattern => pattern.test(url));
-    }, "Please provide a valid link to the full article content (PDF, DOI, or academic platform)"),
-  date: z.date({ required_error: "Publication date is required" }),
+    .url("Please enter a valid URL"),
+  publishedAt: z.date({ required_error: "Publication date is required" }), // Changed from 'date'
   readTime: z.coerce.number()
     .min(1, "Read time must be at least 1 minute")
     .max(180, "Read time must be less than 180 minutes")
     .int("Read time must be a whole number"),
   image: z.string().optional(),
-  images: z.array(z.string()).default([]),
   authors: z.array(authorSchema)
     .min(1, "At least one author is required")
     .max(10, "Maximum 10 authors allowed"),
   issueId: z.string().optional(),
-  doi: z.string().optional(),
   keywords: z.array(z.string()).default([]),
-  draft: z.boolean().default(false),
-  categories: z.array(z.string()).default([]),
+  archived: z.boolean().default(false), // Changed from 'draft' with inverted logic
+  featured: z.boolean().default(false),
+  carousel: z.boolean().default(false),
 })
 
 type FormData = z.infer<typeof formSchema>
@@ -118,19 +98,20 @@ interface JournalArticleFormProps {
     id: string
     slug: string
     title: string
-    excerpt: string
+    excerpt?: string // For backward compatibility
+    abstract?: string
     content: string
     contentLink?: string
-    date: Date | string
+    date?: Date | string // For backward compatibility
+    publishedAt?: Date | string
     readTime: number
     image: string
-    images: string[]
-    authorId?: string
     issueId?: string | null
-    doi?: string | null
     keywords: string[]
-    draft: boolean
-    // Updated to support multiple authors
+    draft?: boolean // For backward compatibility
+    archived?: boolean
+    featured?: boolean
+    carousel?: boolean
     Authors?: Array<{
       id: string
       name: string
@@ -138,20 +119,25 @@ interface JournalArticleFormProps {
     }> | null
     journalIssue?: {
       id: string
-      title: string
+      volume: number
+      issue: number
+      year: number
+      theme?: string
     } | null
-    categories?: any[]
   }
 }
 
 export function JournalArticleForm({ article }: JournalArticleFormProps) {
   const router = useRouter()
   const [isLoading, setIsLoading] = useState(false)
-  const [journalIssues, setJournalIssues] = useState<Array<{ id: string; title: string; volume: number; issue: number; year: number }>>([])
+  const [journalIssues, setJournalIssues] = useState<Array<{ 
+    id: string; 
+    volume: number; 
+    issue: number; 
+    year: number; 
+    theme?: string 
+  }>>([])
   const [newKeyword, setNewKeyword] = useState("")
-  const [newCategory, setNewCategory] = useState("")
-  
-  // New state for managing author input
   const [newAuthor, setNewAuthor] = useState<Author>({ name: "", email: "" })
 
   // Load journal issues
@@ -171,31 +157,33 @@ export function JournalArticleForm({ article }: JournalArticleFormProps) {
     defaultValues: {
       title: article?.title || "",
       slug: article?.slug || "",
-      excerpt: article?.excerpt || "",
+      abstract: article?.abstract || article?.excerpt || "", // Handle both old and new field names
       content: article?.content || "",
       contentLink: article?.contentLink || "",
-      date: article?.date ? new Date(article.date) : new Date(),
+      publishedAt: article?.publishedAt 
+        ? new Date(article.publishedAt) 
+        : article?.date 
+          ? new Date(article.date) 
+          : new Date(), // Handle both old and new field names
       readTime: article?.readTime || 5,
       image: article?.image || "",
-      images: article?.images || [],
-      // Updated to handle multiple authors
       authors: article?.Authors?.map(author => ({
         name: author.name,
         email: author.email,
       })) || [{ name: "", email: "" }],
       issueId: article?.journalIssue?.id || article?.issueId || "",
-      doi: article?.doi || "",
       keywords: article?.keywords || [],
-      draft: article?.draft || false,
-      categories: article?.categories?.map(cat => 
-        typeof cat === 'string' ? cat : cat.category?.name || cat.name
-      ) || [],
+      archived: article?.archived !== undefined 
+        ? article.archived 
+        : article?.draft !== undefined 
+          ? article.draft // Keep same logic (draft=true means archived=true)
+          : false,
+      featured: article?.featured || false,
+      carousel: article?.carousel || false,
     },
   })
 
   const keywords = form.watch("keywords")
-  const categories = form.watch("categories")
-  const images = form.watch("images")
   const title = form.watch("title")
   const authors = form.watch("authors")
   const contentLink = form.watch("contentLink")
@@ -220,7 +208,6 @@ export function JournalArticleForm({ article }: JournalArticleFormProps) {
       email: newAuthor.email.trim().toLowerCase()
     }
     
-    // Validate the new author
     const authorValidation = authorSchema.safeParse(trimmedAuthor)
     if (!authorValidation.success) {
       const errors = authorValidation.error.errors.map(err => err.message).join(', ')
@@ -232,7 +219,6 @@ export function JournalArticleForm({ article }: JournalArticleFormProps) {
       return
     }
 
-    // Check for duplicate email
     const existingAuthor = authors.find(author => 
       author.email.toLowerCase() === trimmedAuthor.email
     )
@@ -245,7 +231,6 @@ export function JournalArticleForm({ article }: JournalArticleFormProps) {
       return
     }
 
-    // Check maximum authors limit
     if (authors.length >= 10) {
       toast({
         title: "Too many authors",
@@ -255,7 +240,6 @@ export function JournalArticleForm({ article }: JournalArticleFormProps) {
       return
     }
 
-    // Add the author
     form.setValue("authors", [...authors, trimmedAuthor])
     setNewAuthor({ name: "", email: "" })
     
@@ -304,44 +288,6 @@ export function JournalArticleForm({ article }: JournalArticleFormProps) {
     form.setValue("keywords", keywords.filter(keyword => keyword !== keywordToRemove))
   }
 
-  const addCategory = () => {
-    if (newCategory.trim() && !categories.includes(newCategory.trim())) {
-      if (categories.length >= 5) {
-        toast({
-          title: "Too many categories",
-          description: "You can add a maximum of 5 categories.",
-          variant: "destructive",
-        })
-        return
-      }
-      form.setValue("categories", [...categories, newCategory.trim()])
-      setNewCategory("")
-    }
-  }
-
-  const removeCategory = (categoryToRemove: string) => {
-    form.setValue("categories", categories.filter(category => category !== categoryToRemove))
-  }
-
-  const addAdditionalImage = (imageUrl: string) => {
-    const currentImages = form.getValues("images")
-    if (!currentImages.includes(imageUrl)) {
-      if (currentImages.length >= 5) {
-        toast({
-          title: "Too many images",
-          description: "You can add a maximum of 5 additional images.",
-          variant: "destructive",
-        })
-        return
-      }
-      form.setValue("images", [...currentImages, imageUrl])
-    }
-  }
-
-  const removeAdditionalImage = (imageToRemove: string) => {
-    form.setValue("images", images.filter(image => image !== imageToRemove))
-  }
-
   const formatErrorMessage = (error: any): { title: string; description: string } => {
     if (typeof error === 'string') {
       if (error.includes('Unauthorized')) {
@@ -354,12 +300,6 @@ export function JournalArticleForm({ article }: JournalArticleFormProps) {
         return {
           title: "Duplicate Slug",
           description: "An article with this slug already exists. Please use a different slug."
-        }
-      }
-      if (error.includes('DOI already exists')) {
-        return {
-          title: "Duplicate DOI",
-          description: "An article with this DOI already exists. Please use a different DOI."
         }
       }
       return {
@@ -420,7 +360,7 @@ export function JournalArticleForm({ article }: JournalArticleFormProps) {
           title: article ? "✅ Article Updated" : "🎉 Article Created!",
           description: article 
             ? `"${data.title}" has been updated successfully.`
-            : `"${data.title}" has been created successfully. ${data.draft ? "It's saved as a draft." : "It's now published."}`,
+            : `"${data.title}" has been created successfully. ${data.archived ? "It's saved as archived." : "It's now published."}`,
           duration: 4000,
         })
         
@@ -496,7 +436,7 @@ export function JournalArticleForm({ article }: JournalArticleFormProps) {
           <CardDescription>
             {article
               ? "Update the content and metadata for your journal article."
-              : "Create a new journal article. You can save it as a draft or publish it immediately."}
+              : "Create a new journal article. You can save it as archived or publish it immediately."}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -603,7 +543,10 @@ export function JournalArticleForm({ article }: JournalArticleFormProps) {
                               <SelectItem key={issue.id} value={issue.id}>
                                 <div className="flex items-center gap-2">
                                   <BookOpen className="h-4 w-4" />
-                                  <span>Vol. {issue.volume}, No. {issue.issue} ({issue.year})</span>
+                                  <span>
+                                    Vol. {issue.volume}, No. {issue.issue} ({issue.year})
+                                    {issue.theme && ` - ${issue.theme}`}
+                                  </span>
                                 </div>
                               </SelectItem>
                             ))}
@@ -619,7 +562,7 @@ export function JournalArticleForm({ article }: JournalArticleFormProps) {
 
                   <FormField
                     control={form.control}
-                    name="date"
+                    name="publishedAt"
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Publication Date *</FormLabel>
@@ -784,25 +727,12 @@ export function JournalArticleForm({ article }: JournalArticleFormProps) {
               <div className="space-y-6">
                 <h3 className="text-lg font-semibold">Content</h3>
                 
-                {/* Example Preview */}
-                {images.length > 0 && (
-                  <Alert>
-                    <FileText className="h-4 w-4" />
-                    <AlertDescription>
-                      <strong>Quick Reference:</strong> You have {images.length} additional image(s). 
-                      Use <code>[image:0]</code>{images.length > 1 && `, [image:1]`}
-                      {images.length > 2 && `, [image:2]`}
-                      {images.length > 3 && `, etc.`} in your content to place them between paragraphs.
-                    </AlertDescription>
-                  </Alert>
-                )}
-                
                 <FormField
                   control={form.control}
-                  name="excerpt"
+                  name="abstract"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Excerpt *</FormLabel>
+                      <FormLabel>Abstract *</FormLabel>
                       <FormControl>
                         <Textarea
                           placeholder="Enter a brief summary of the article"
@@ -827,38 +757,13 @@ export function JournalArticleForm({ article }: JournalArticleFormProps) {
                       <FormLabel>Content *</FormLabel>
                       <FormControl>
                         <Textarea
-                          placeholder={`Enter the full article content. 
-
-To add images between paragraphs, use:
-[image:0] - for the first additional image
-[image:1] - for the second additional image
-
-Example:
-This is the first paragraph of my article.
-
-[image:0]
-
-This paragraph comes after the first image.
-
-[image:1]
-
-This is the final paragraph.
-
-Note: Upload your images in the "Additional Images" section below first.`}
+                          placeholder="Enter the full article content..."
                           className="min-h-[300px]"
                           {...field}
                         />
                       </FormControl>
                       <FormDescription>
-                        <div className="space-y-2">
-                          <p>The full content of your article (minimum 100 characters)</p>
-                          <div className="text-xs bg-muted p-2 rounded">
-                            <strong>💡 Pro tip:</strong> To add images between paragraphs:
-                            <br />• Upload images in the "Additional Images" section below
-                            <br />• Use <code>[image:0]</code>, <code>[image:1]</code>, etc. to reference uploaded images by index
-                            <br />• Place these placeholders on their own line between paragraphs
-                          </div>
-                        </div>
+                        The full content of your article (minimum 100 characters)
                       </FormDescription>
                       <FormMessage />
                     </FormItem>
@@ -870,95 +775,97 @@ Note: Upload your images in the "Additional Images" section below first.`}
               <div className="space-y-6">
                 <h3 className="text-lg font-semibold">Media</h3>
 
-                {/* Additional Images */}
-                <div>
-                  <FormLabel>Additional Images for Content</FormLabel>
-                  <div className="space-y-4">
-                    {/* Add New Image Button */}
-                    {images.length < 5 && (
-                      <div className="border-2 border-dashed border-gray-300 rounded-lg p-4">
-                        <MediaSelector
-                          onSelect={(url) => addAdditionalImage(url)}
-                        />
-                      </div>
-                    )}
-                    
-                    {/* Display Current Images */}
-                    {images.length > 0 && (
-                      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                        {images.map((image, index) => (
-                          <div key={index} className="relative border rounded-lg p-2">
-                            <div className="text-xs bg-primary text-primary-foreground px-2 py-1 rounded mb-2 text-center">
-                              Use: <code>[image:{index}]</code>
-                            </div>
-                            <div className="h-20 w-full relative overflow-hidden rounded">
+                <FormField
+                  control={form.control}
+                  name="image"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Featured Image</FormLabel>
+                      <FormControl>
+                        <div className="space-y-4">
+                          {field.value && (
+                            <div className="relative w-32 h-24 overflow-hidden rounded">
                               <img
-                                src={image}
-                                alt={`Additional image ${index + 1}`}
+                                src={field.value}
+                                alt="Featured image preview"
                                 className="object-cover w-full h-full"
-                                onError={(e) => {
-                                  (e.target as HTMLImageElement).style.display = 'none'
-                                }}
                               />
                             </div>
-                            <button
-                              type="button"
-                              onClick={() => removeAdditionalImage(image)}
-                              className="absolute top-1 right-1 bg-destructive text-destructive-foreground rounded-full p-1 hover:bg-destructive/80"
-                            >
-                              <X className="h-3 w-3" />
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                  <div className="text-sm text-muted-foreground mt-2 space-y-1">
-                    <p>Add images that you want to use within your article content. {5 - images.length} remaining.</p>
-                    <div className="bg-muted p-2 rounded text-xs">
-                      <strong>How to use:</strong> Click "Select Image" above to upload or choose images, then reference them in your content using <code>[image:0]</code>, <code>[image:1]</code>, etc.
-                      <br />The number corresponds to the order they appear above (starting from 0).
-                    </div>
-                  </div>
-                </div>
+                          )}
+                          <MediaSelector onSelect={(url) => field.onChange(url)} />
+                        </div>
+                      </FormControl>
+                      <FormDescription>
+                        Optional featured image for the article
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
               </div>
 
-              {/* Metadata */}
+              {/* Metadata & Settings */}
               <div className="space-y-6">
-                <h3 className="text-lg font-semibold">Metadata</h3>
-                <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-                  
+                <h3 className="text-lg font-semibold">Metadata & Settings</h3>
+                
+                <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
                   <FormField
                     control={form.control}
-                    name="doi"
+                    name="archived"
                     render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>DOI (Optional)</FormLabel>
+                      <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                        <div className="space-y-0.5">
+                          <FormLabel className="text-base">
+                            Archived
+                          </FormLabel>
+                          <FormDescription>
+                            Archive this article
+                          </FormDescription>
+                        </div>
                         <FormControl>
-                          <Input 
-                            placeholder="10.1000/journal.article.2024.001" 
-                            {...field} 
+                          <Switch
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
                           />
                         </FormControl>
-                        <FormDescription>
-                          Digital Object Identifier for this article
-                        </FormDescription>
-                        <FormMessage />
                       </FormItem>
                     )}
                   />
 
                   <FormField
                     control={form.control}
-                    name="draft"
+                    name="featured"
                     render={({ field }) => (
                       <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
                         <div className="space-y-0.5">
                           <FormLabel className="text-base">
-                            Draft Status
+                            Featured
                           </FormLabel>
                           <FormDescription>
-                            Save as draft or publish immediately
+                            Feature this article
+                          </FormDescription>
+                        </div>
+                        <FormControl>
+                          <Switch
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                          />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="carousel"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                        <div className="space-y-0.5">
+                          <FormLabel className="text-base">
+                            Carousel
+                          </FormLabel>
+                          <FormDescription>
+                            Show in carousel
                           </FormDescription>
                         </div>
                         <FormControl>
@@ -1007,44 +914,6 @@ Note: Upload your images in the "Additional Images" section below first.`}
                   </div>
                   <p className="text-sm text-muted-foreground mt-2">
                     Keywords for SEO and search. {10 - keywords.length} remaining.
-                  </p>
-                </div>
-
-                {/* Categories */}
-                <div>
-                  <FormLabel>Categories (Max 5)</FormLabel>
-                  <div className="space-y-3">
-                    <div className="flex gap-2">
-                      <Input
-                        placeholder="Add a category"
-                        value={newCategory}
-                        onChange={(e) => setNewCategory(e.target.value)}
-                        onKeyPress={(e) => e.key === "Enter" && (e.preventDefault(), addCategory())}
-                        maxLength={50}
-                      />
-                      <Button type="button" onClick={addCategory} size="sm" disabled={categories.length >= 5}>
-                        <Plus className="h-4 w-4" />
-                      </Button>
-                    </div>
-                    {categories.length > 0 && (
-                      <div className="flex flex-wrap gap-2">
-                        {categories.map((category, index) => (
-                          <Badge key={index} variant="outline" className="flex items-center gap-1">
-                            {category}
-                            <button
-                              type="button"
-                              onClick={() => removeCategory(category)}
-                              className="ml-1 hover:text-destructive"
-                            >
-                              <X className="h-3 w-3" />
-                            </button>
-                          </Badge>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                  <p className="text-sm text-muted-foreground mt-2">
-                    Categories for organizing content. {5 - categories.length} remaining.
                   </p>
                 </div>
               </div>

@@ -21,15 +21,15 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { toast } from "@/components/ui/use-toast"
 import { createCallForPapers, updateCallForPapers } from "@/lib/actions/call-for-papers-actions"
-import { CalendarIcon, Loader2, Plus, X, Bell, CheckCircle, AlertTriangle, XCircle, ExternalLink } from "lucide-react"
+import { CalendarIcon, Loader2, Plus, X, Bell, CheckCircle, AlertTriangle, XCircle, ExternalLink, Building } from "lucide-react"
 import { Calendar } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { cn } from "@/lib/utils"
 import { Badge } from "@/components/ui/badge"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 
-// Schema with conditional validation for guidelines based on create vs edit
-const createFormSchema = (isEditing: boolean = false) => z.object({
+// Schema aligned with actual Prisma model
+const createFormSchema = () => z.object({
   title: z.string()
     .min(1, "Title is required")
     .min(5, "Title must be at least 5 characters")
@@ -55,31 +55,7 @@ const createFormSchema = (isEditing: boolean = false) => z.object({
       } catch {
         return false;
       }
-    }, "Please enter a valid URL")
-    .refine((url) => {
-      // If no URL provided, it's valid (optional field)
-      if (!url || url.trim() === '') return true;
-      
-      // If URL is provided, check against common academic/submission platform patterns
-      const validPatterns = [
-        /^https?:\/\/.*\.pdf$/i,
-        /^https?:\/\/.*doi\.org\//i,
-        /^https?:\/\/.*easychair\.org\//i,
-        /^https?:\/\/.*edas\.info\//i,
-        /^https?:\/\/.*conftools\.net\//i,
-        /^https?:\/\/.*openconf\.org\//i,
-        /^https?:\/\/.*scholarone\.com\//i,
-        /^https?:\/\/.*manuscript\.com\//i,
-        /^https?:\/\/.*editorialmanager\.com\//i,
-        /^https?:\/\/.*journals\..*\//i,
-        /^https?:\/\/.*conference\..*\//i,
-        /^https?:\/\/.*submission\..*\//i,
-        /^https?:\/\/.*call-for-papers\..*\//i,
-        /^https?:\/\/.*forms\..*\//i,
-        /^https?:\/\/.+/i, // Allow any HTTPS URL as fallback
-      ];
-      return validPatterns.some(pattern => pattern.test(url));
-    }, "Please provide a valid link to submission instructions, submission system, or detailed call for papers"),
+    }, "Please enter a valid URL"),
   deadline: z.date({ 
     required_error: "Deadline is required",
     invalid_type_error: "Please select a valid date"
@@ -98,31 +74,16 @@ const createFormSchema = (isEditing: boolean = false) => z.object({
     .min(1900, "Year must be 1900 or later")
     .max(2100, "Year must be 2100 or earlier")
     .int("Year must be a whole number"),
-  guidelines: z.string()
-    .min(1, "Guidelines are required")
-    .min(isEditing ? 1 : 50, isEditing ? "Guidelines cannot be empty" : "Guidelines must be at least 50 characters")
-    .max(5000, "Guidelines must be less than 5000 characters"),
-  image: z.string()
-    .optional()
-    .refine((val) => !val || val.startsWith('http'), {
-      message: "Image must be a valid URL starting with http or https"
-    }),
   fee: z.string()
     .optional()
     .refine((val) => !val || val.length <= 50, {
       message: "Fee description must be less than 50 characters"
     }),
   topics: z.array(z.string()).default([]),
-  eligibility: z.string()
-    .optional()
-    .refine((val) => !val || val.length <= 1000, {
-      message: "Eligibility criteria must be less than 1000 characters"
-    }),
-  contact: z.string()
-    .optional()
-    .refine((val) => !val || val.length <= 100, {
-      message: "Contact information must be less than 100 characters"
-    }),
+  publisher: z.string()
+    .min(1, "Publisher is required")
+    .min(2, "Publisher must be at least 2 characters")
+    .max(100, "Publisher must be less than 100 characters"),
 })
 
 type FormData = z.infer<ReturnType<typeof createFormSchema>>
@@ -133,17 +94,14 @@ interface CallForPapersFormProps {
     title: string
     thematicFocus: string
     description: string
-    contentLink?: string
+    contentLink?: string | null
     deadline: Date
     volume: number
     issue: number
     year: number
-    guidelines: string
-    image?: string | null
     fee?: string | null
     topics: string[]
-    eligibility?: string | null
-    contact?: string | null
+    publisher: string
   }
 }
 
@@ -154,7 +112,7 @@ export function CallForPapersForm({ cfp }: CallForPapersFormProps) {
   
   // Determine if we're editing
   const isEditing = !!cfp
-  const formSchema = createFormSchema(isEditing)
+  const formSchema = createFormSchema()
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -167,12 +125,9 @@ export function CallForPapersForm({ cfp }: CallForPapersFormProps) {
       volume: cfp?.volume || new Date().getFullYear() - 2020 + 1,
       issue: cfp?.issue || 1,
       year: cfp?.year || new Date().getFullYear(),
-      guidelines: cfp?.guidelines || "",
-      image: cfp?.image || "",
       fee: cfp?.fee || "",
       topics: cfp?.topics || [],
-      eligibility: cfp?.eligibility || "",
-      contact: cfp?.contact || "",
+      publisher: cfp?.publisher || "",
     },
   })
 
@@ -509,6 +464,31 @@ export function CallForPapersForm({ cfp }: CallForPapersFormProps) {
 
                 <FormField
                   control={form.control}
+                  name="publisher"
+                  render={({ field }) => (
+                    <FormItem className="md:col-span-2">
+                      <FormLabel>Publisher *</FormLabel>
+                      <FormControl>
+                        <div className="relative">
+                          <Building className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                          <Input 
+                            placeholder="Enter the publisher name" 
+                            {...field} 
+                            className="pl-10"
+                            maxLength={100}
+                          />
+                        </div>
+                      </FormControl>
+                      <FormDescription>
+                        Name of the organization or publisher (2-100 characters)
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
                   name="contentLink"
                   render={({ field }) => (
                     <FormItem className="md:col-span-2">
@@ -653,42 +633,6 @@ export function CallForPapersForm({ cfp }: CallForPapersFormProps) {
                   )}
                 />
 
-                <FormField
-                  control={form.control}
-                  name="contact"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Contact Information (Optional)</FormLabel>
-                      <FormControl>
-                        <Input 
-                          placeholder="Email or contact details" 
-                          {...field} 
-                          maxLength={100}
-                        />
-                      </FormControl>
-                      <FormDescription>Max 100 characters</FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="image"
-                  render={({ field }) => (
-                    <FormItem className="md:col-span-2">
-                      <FormLabel>Cover Image URL (Optional)</FormLabel>
-                      <FormControl>
-                        <Input placeholder="https://example.com/image.jpg" {...field} />
-                      </FormControl>
-                      <FormDescription>
-                        This image will also be used in the notification. Must start with http or https.
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
                 <div className="md:col-span-2">
                   <FormLabel>Topics (Max 10)</FormLabel>
                   <div className="space-y-3">
@@ -725,53 +669,6 @@ export function CallForPapersForm({ cfp }: CallForPapersFormProps) {
                     Topics will be featured in the notification (first 3 shown). {10 - topics.length} remaining.
                   </p>
                 </div>
-
-                <FormField
-                  control={form.control}
-                  name="guidelines"
-                  render={({ field }) => (
-                    <FormItem className="md:col-span-2">
-                      <FormLabel>Submission Guidelines *</FormLabel>
-                      <FormControl>
-                        <Textarea
-                          placeholder="Enter detailed submission guidelines"
-                          className="min-h-[120px]"
-                          {...field}
-                          maxLength={5000}
-                        />
-                      </FormControl>
-                      <FormDescription>
-                        {isEditing 
-                          ? "Detailed instructions for authors (required - minimum 1 character, recommended 50+ for comprehensive guidelines)"
-                          : "Detailed instructions for authors (minimum 50 characters for new call for papers)"
-                        }
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="eligibility"
-                  render={({ field }) => (
-                    <FormItem className="md:col-span-2">
-                      <FormLabel>Eligibility Criteria (Optional)</FormLabel>
-                      <FormControl>
-                        <Textarea
-                          placeholder="Enter eligibility criteria for submissions"
-                          className="min-h-[80px]"
-                          {...field}
-                          maxLength={1000}
-                        />
-                      </FormControl>
-                      <FormDescription>
-                        Who can submit papers (max 1000 characters)
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
               </div>
 
               <div className="flex justify-end gap-4">

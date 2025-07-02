@@ -31,10 +31,9 @@ async function getCurrentUserWithPermissions(): Promise<UserWithPermissions | nu
   }
 }
 
-// Enhanced schema with detailed error messages
+// Updated schema based on actual Prisma model
 const callForPapersSchema = z.object({
   id: z.string().optional(),
-  contentLink: z.string(),
   title: z.string()
     .min(1, "Title is required")
     .min(5, "Title must be at least 5 characters")
@@ -63,15 +62,13 @@ const callForPapersSchema = z.object({
     .min(1900, "Year must be 1900 or later")
     .max(2100, "Year must be 2100 or earlier")
     .int("Year must be a whole number"),
-  guidelines: z.string()
-    .min(1, "Guidelines are required")
-    .min(50, "Guidelines must be at least 50 characters")
-    .max(5000, "Guidelines must be less than 5000 characters"),
-  image: z.string().optional(),
-  fee: z.string().optional(),
+  fee: z.string().optional().nullable(),
   topics: z.array(z.string()).default([]),
-  eligibility: z.string().optional(),
-  contact: z.string().optional(),
+  contentLink: z.string().optional().nullable(),
+  publisher: z.string()
+    .min(1, "Publisher is required")
+    .min(2, "Publisher must be at least 2 characters")
+    .max(100, "Publisher must be less than 100 characters"),
 })
 
 export type CallForPapersFormData = z.infer<typeof callForPapersSchema>
@@ -239,15 +236,12 @@ export async function createCallForPapers(data: CallForPapersFormData) {
           description: validatedData.description,
           deadline: validatedData.deadline,
           volume: validatedData.volume,
-          contentLink: validatedData.contentLink,
           issue: validatedData.issue,
           year: validatedData.year,
-          guidelines: validatedData.guidelines,
-          image: validatedData.image || null,
           fee: validatedData.fee || null,
           topics: validatedData.topics,
-          eligibility: validatedData.eligibility || null,
-          contact: validatedData.contact || null,
+          contentLink: validatedData.contentLink || null,
+          publisher: validatedData.publisher,
         },
       })
 
@@ -258,13 +252,15 @@ export async function createCallForPapers(data: CallForPapersFormData) {
 
 📅 Submission Deadline: ${format(call.deadline, "MMMM d, yyyy")}
 📖 Volume ${call.volume}, Issue ${call.issue} (${call.year})
+📰 Publisher: ${call.publisher}
 ${call.topics && call.topics.length > 0 
-  ? `Topics include: ${call.topics.slice(0, 3).join(", ")}${call.topics.length > 3 ? " and more" : ""}.`
+  ? `🏷️ Topics: ${call.topics.slice(0, 3).join(", ")}${call.topics.length > 3 ? " and more" : ""}`
   : ""
 }
-${call.fee ? `Submission fee: ${call.fee}.` : "No submission fee required."}
+${call.fee ? `💰 Submission fee: ${call.fee}` : "🆓 No submission fee required"}
+${call.contentLink ? `🔗 More details: ${call.contentLink}` : ""}
 
-Don't miss this opportunity to contribute to our journal. Review the submission guidelines and submit your research today!`
+Don't miss this opportunity to contribute to our journal!`
 
       const notification = await tx.notification.create({
         data: {
@@ -272,9 +268,8 @@ Don't miss this opportunity to contribute to our journal. Review the submission 
           content: notificationContent,
           type: NotificationType.call_for_papers,
           priority: Priority.high,
-          date: new Date(),
-          link: `/call-for-papers/${call.id}`,
-          image: call.image || null,
+          linkDisplay: "View Call for Papers",
+          linkUrl: call.contentLink || `/call-for-papers/${call.id}`,
           expiresAt: call.deadline,
         },
       })
@@ -350,7 +345,6 @@ export async function updateCallForPapers(id: string, data: CallForPapersFormDat
     }
 
     // Check if user has permission to update call for papers
-    // Note: Call for papers don't have direct ownership, so we use basic permission
     const permissionCheck = checkPermission(currentUser, 'callforpapers.UPDATE', {
       resourceId: existingCall.id
     })
@@ -407,13 +401,10 @@ export async function updateCallForPapers(id: string, data: CallForPapersFormDat
         volume: validatedData.volume,
         issue: validatedData.issue,
         year: validatedData.year,
-        contentLink: validatedData.contentLink,
-        guidelines: validatedData.guidelines,
-        image: validatedData.image || null,
         fee: validatedData.fee || null,
         topics: validatedData.topics,
-        eligibility: validatedData.eligibility || null,
-        contact: validatedData.contact || null,
+        contentLink: validatedData.contentLink || null,
+        publisher: validatedData.publisher,
       },
     })
 
@@ -424,7 +415,9 @@ export async function updateCallForPapers(id: string, data: CallForPapersFormDat
       const associatedNotification = await prisma.notification.findFirst({
         where: {
           type: NotificationType.call_for_papers,
-          link: `/call-for-papers/${id}`,
+          linkUrl: {
+            contains: id
+          },
         },
       })
 
@@ -433,20 +426,22 @@ export async function updateCallForPapers(id: string, data: CallForPapersFormDat
 
 📅 Submission Deadline: ${format(call.deadline, "MMMM d, yyyy")}
 📖 Volume ${call.volume}, Issue ${call.issue} (${call.year})
+📰 Publisher: ${call.publisher}
 ${call.topics && call.topics.length > 0 
-  ? `Topics include: ${call.topics.slice(0, 3).join(", ")}${call.topics.length > 3 ? " and more" : ""}.`
+  ? `🏷️ Topics: ${call.topics.slice(0, 3).join(", ")}${call.topics.length > 3 ? " and more" : ""}`
   : ""
 }
-${call.fee ? `Submission fee: ${call.fee}.` : "No submission fee required."}
+${call.fee ? `💰 Submission fee: ${call.fee}` : "🆓 No submission fee required"}
+${call.contentLink ? `🔗 More details: ${call.contentLink}` : ""}
 
-Don't miss this opportunity to contribute to our journal. Review the submission guidelines and submit your research today!`
+Don't miss this opportunity to contribute to our journal!`
 
         await prisma.notification.update({
           where: { id: associatedNotification.id },
           data: {
             title: call.title,
             content: notificationContent,
-            image: call.image || null,
+            linkUrl: call.contentLink || `/call-for-papers/${call.id}`,
             expiresAt: call.deadline,
           },
         })
@@ -536,7 +531,9 @@ export async function deleteCallForPapers(id: string) {
       await tx.notification.deleteMany({
         where: {
           type: NotificationType.call_for_papers,
-          link: `/call-for-papers/${id}`,
+          linkUrl: {
+            contains: id
+          },
         },
       })
     })
@@ -593,89 +590,85 @@ export async function getActiveCallsForPapers() {
   }
 }
 
-// NEW: Function to check call for papers permissions
-export async function checkCallForPapersPermissions(callId?: string) {
-  try {
-    const currentUser = await getCurrentUserWithPermissions()
-    
-    if (!currentUser) {
-      return { 
-        success: false, 
-        error: "Authentication required",
-        permissions: { canRead: false, canCreate: false, canUpdate: false, canDelete: false }
-      }
-    }
-
-    let permissions = {
-      canRead: checkPermission(currentUser, 'callforpapers.READ').allowed,
-      canCreate: checkPermission(currentUser, 'callforpapers.CREATE').allowed,
-      canUpdate: false,
-      canDelete: false,
-    }
-
-    // If specific call ID is provided, check update/delete permissions
-    if (callId) {
-      const call = await prisma.callForPapers.findUnique({
-        where: { id: callId }
-      })
-
-      if (call) {
-        permissions.canUpdate = checkPermission(currentUser, 'callforpapers.UPDATE').allowed
-
-        permissions.canDelete = checkPermission(currentUser, 'callforpapers.DELETE').allowed
-      }
-    }
-
-    return { success: true, permissions }
-  } catch (error) {
-    console.error("Failed to check call for papers permissions:", error)
-    return { 
-      success: false, 
-      error: "Failed to check permissions",
-      permissions: { canRead: false, canCreate: false, canUpdate: false, canDelete: false }
-    }
-  }
+// Simple helper functions for basic CRUD operations (matching your provided template)
+export async function getCallsForPapersSimple() {
+  return prisma.callForPapers.findMany({
+    orderBy: {
+      deadline: "asc",
+    },
+  })
 }
 
-// NEW: Function to get calls for papers with permission context
-export async function getCallsForPapersWithPermissions() {
-  try {
-    const currentUser = await getCurrentUserWithPermissions()
-    
-    if (!currentUser) {
-      return { success: false, error: "Authentication required" }
-    }
+export async function getActiveCallsForPapersSimple() {
+  const now = new Date()
 
-    // Check if user has permission to read call for papers
-    const permissionCheck = checkPermission(currentUser, 'callforpapers.READ')
-    if (!permissionCheck.allowed) {
-      return { 
-        success: false, 
-        error: "You don't have permission to view calls for papers" 
-      }
-    }
+  return prisma.callForPapers.findMany({
+    where: {
+      deadline: {
+        gt: now,
+      },
+    },
+    orderBy: {
+      deadline: "asc",
+    },
+  })
+}
 
-    const calls = await prisma.callForPapers.findMany({
-      orderBy: [
-        { deadline: "asc" },
-        { createdAt: "desc" }
-      ],
-    })
+export async function getCallForPapersByIdSimple(id: string) {
+  return prisma.callForPapers.findUnique({
+    where: { id },
+  })
+}
 
-    // Add permission context to each call
-    const callsWithPermissions = calls.map(call => ({
-      ...call,
-      canEdit: checkPermission(currentUser, 'callforpapers.UPDATE').allowed,
-      canDelete: checkPermission(currentUser, 'callforpapers.DELETE').allowed,
-    }))
+export async function createCallForPapersSimple(data: {
+  title: string
+  thematicFocus: string
+  description: string
+  deadline: Date | string
+  volume: number
+  issue: number
+  year: number
+  fee?: string
+  topics?: string[]
+  contentLink?: string
+  publisher: string
+}) {
+  return prisma.callForPapers.create({
+    data: {
+      ...data,
+      deadline: typeof data.deadline === 'string' ? new Date(data.deadline) : data.deadline,
+      topics: data.topics || [],
+    },
+  })
+}
 
-    return { 
-      success: true, 
-      data: callsWithPermissions,
-      canCreate: checkPermission(currentUser, 'callforpapers.CREATE').allowed
-    }
-  } catch (error) {
-    console.error("Failed to fetch calls for papers with permissions:", error)
-    return { success: false, error: "Failed to fetch calls for papers" }
-  }
+export async function updateCallForPapersSimple(
+  id: string,
+  data: {
+    title?: string
+    thematicFocus?: string
+    description?: string
+    deadline?: Date | string
+    volume?: number
+    issue?: number
+    year?: number
+    fee?: string
+    topics?: string[]
+    contentLink?: string
+    publisher?: string
+  },
+) {
+  return prisma.callForPapers.update({
+    where: { id },
+    data: {
+      ...data,
+      deadline: data.deadline ? (typeof data.deadline === 'string' ? new Date(data.deadline) : data.deadline) : undefined,
+    },
+  })
+}
+
+export async function deleteCallForPapersSimple(id: string) {
+  return prisma.callForPapers.delete({
+    where: { id },
+  })
 }

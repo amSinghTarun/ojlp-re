@@ -1,4 +1,5 @@
-import prisma from "@/lib/prisma"
+// lib/controllers/journal-issues.ts - Updated for actual schema
+import { prisma } from "@/lib/prisma"
 
 export async function getJournalIssues() {
   return prisma.journalIssue.findMany({
@@ -10,9 +11,17 @@ export async function getJournalIssues() {
             include: {
               author: true,
             },
+            orderBy: {
+              authorOrder: 'asc'
+            }
           },
         },
       },
+      _count: {
+        select: {
+          Article: true
+        }
+      }
     },
   })
 }
@@ -27,18 +36,27 @@ export async function getJournalIssueById(id: string) {
             include: {
               author: true,
             },
+            orderBy: {
+              authorOrder: 'asc'
+            }
           }
         },
       },
+      _count: {
+        select: {
+          Article: true
+        }
+      }
     },
   })
 }
 
-export async function getJournalIssueByVolume(volume: number, issue: number) {
+export async function getJournalIssueByVolume(volume: number, issue: number, year: number) {
   return prisma.journalIssue.findFirst({
     where: {
       volume,
       issue,
+      year,
     },
     include: {
       Article: {
@@ -47,6 +65,9 @@ export async function getJournalIssueByVolume(volume: number, issue: number) {
             include: {
               author: true,
             },
+            orderBy: {
+              authorOrder: 'asc'
+            }
           }
         },
       },
@@ -55,18 +76,21 @@ export async function getJournalIssueByVolume(volume: number, issue: number) {
 }
 
 export async function createJournalIssue(data: {
-  title: string
-  description?: string
   volume: number
+  theme?: string
   issue: number
   year: number
-  publishDate: string
-  coverImage?: string
+  publishDate?: string
 }) {
   return prisma.journalIssue.create({
     data,
     include: {
       Article: true,
+      _count: {
+        select: {
+          Article: true
+        }
+      }
     },
   })
 }
@@ -74,13 +98,11 @@ export async function createJournalIssue(data: {
 export async function updateJournalIssue(
   id: string,
   data: {
-    title?: string
-    description?: string
     volume?: number
+    theme?: string
     issue?: number
     year?: number
     publishDate?: string
-    coverImage?: string
   },
 ) {
   return prisma.journalIssue.update({
@@ -88,6 +110,11 @@ export async function updateJournalIssue(
     data,
     include: {
       Article: true,
+      _count: {
+        select: {
+          Article: true
+        }
+      }
     },
   })
 }
@@ -108,6 +135,9 @@ export async function getLatestIssue() {
             include: {
               author: true,
             },
+            orderBy: {
+              authorOrder: 'asc'
+            }
           },
         },
       },
@@ -119,6 +149,13 @@ export async function getJournalVolumes() {
   // Get all journal issues
   const issues = await prisma.journalIssue.findMany({
     orderBy: [{ volume: "desc" }, { issue: "asc" }],
+    include: {
+      _count: {
+        select: {
+          Article: true
+        }
+      }
+    }
   })
 
   // Group issues by volume
@@ -131,6 +168,7 @@ export async function getJournalVolumes() {
         year: issue.year,
         title: `Volume ${issue.volume}`,
         issueCount: 0,
+        articleCount: 0,
         issues: [],
       })
     }
@@ -138,6 +176,7 @@ export async function getJournalVolumes() {
     const volume = volumeMap.get(issue.volume)
     volume.issues.push(issue)
     volume.issueCount++
+    volume.articleCount += issue._count.Article
 
     // Use the latest year for the volume
     if (issue.year > volume.year) {
@@ -165,13 +204,21 @@ export async function getVolumeByNumber(volumeNumber: number) {
     include: {
       Article: {
         include: {
-          authors: {
+          authorArticles: {
             include: {
               author: true,
             },
+            orderBy: {
+              authorOrder: 'asc'
+            }
           },
         },
       },
+      _count: {
+        select: {
+          Article: true
+        }
+      }
     },
   })
 
@@ -181,6 +228,7 @@ export async function getVolumeByNumber(volumeNumber: number) {
 
   // Get the year from the latest issue in the volume
   const year = Math.max(...issues.map((issue) => issue.year))
+  const totalArticles = issues.reduce((sum, issue) => sum + issue._count.Article, 0)
 
   return {
     id: `vol-${volumeNumber}`,
@@ -188,6 +236,7 @@ export async function getVolumeByNumber(volumeNumber: number) {
     title: `Volume ${volumeNumber}`,
     year,
     issueCount: issues.length,
+    articleCount: totalArticles,
     issues,
   }
 }

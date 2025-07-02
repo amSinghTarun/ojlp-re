@@ -1,4 +1,4 @@
-// app/admin/journals/new/page.tsx - WITH SIMPLE PERMISSION CHECKS
+// app/admin/journals/new/page.tsx - Updated for actual schema
 import { DashboardHeader } from "@/components/admin/dashboard-header"
 import { JournalIssueForm } from "@/components/admin/journal-issue-form"
 import { getCurrentUser } from "@/lib/auth"

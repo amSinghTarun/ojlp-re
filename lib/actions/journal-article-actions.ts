@@ -1,14 +1,12 @@
-// lib/actions/journal-article-actions.ts - UPDATED with permission checks
+// lib/actions/journal-article-actions.ts - Updated for actual schema
 "use server"
 
-import { PrismaClient } from "@prisma/client"
 import { revalidatePath } from "next/cache"
 import { getCurrentUser } from "@/lib/auth"
 import { checkPermission } from "@/lib/permissions/checker"
 import { UserWithPermissions } from "@/lib/permissions/types"
+import { prisma } from "@/lib/prisma"
 import { z } from "zod"
-
-const prisma = new PrismaClient()
 
 // Helper function to get current user with permissions
 async function getCurrentUserWithPermissions(): Promise<UserWithPermissions | null> {
@@ -38,23 +36,22 @@ const authorSchema = z.object({
   email: z.string().email(),
 })
 
-// Updated form schema with multiple authors
+// Updated form schema to match actual Article model
 const journalArticleSchema = z.object({
   title: z.string().min(5).max(200),
   slug: z.string().min(3).max(100),
-  excerpt: z.string().min(20).max(500),
+  abstract: z.string().min(20).max(500), // Changed from 'excerpt'
   content: z.string().min(100),
-  date: z.date(),
+  publishedAt: z.date(), // Changed from 'date'
   readTime: z.number().int().min(1).max(180),
   image: z.string().optional(),
-  images: z.array(z.string()).default([]),
   authors: z.array(authorSchema).min(1).max(10),
   issueId: z.string().optional(),
-  doi: z.string().optional(),
   keywords: z.array(z.string()).default([]),
-  draft: z.boolean().default(false),
+  archived: z.boolean().default(false), // Changed from 'draft' (inverted logic)
   contentLink: z.string().optional(),
-  categories: z.array(z.string()).default([]),
+  featured: z.boolean().default(false),
+  carousel: z.boolean().default(false),
 })
 
 type JournalArticleFormData = z.infer<typeof journalArticleSchema>
@@ -106,7 +103,7 @@ async function findOrCreateAuthors(authors: { name: string; email: string }[]) {
 }
 
 /**
- * Get a single journal article with all its authors - UPDATED
+ * Get a single journal article with all its authors
  */
 export async function getJournalArticle(slug: string) {
   try {
@@ -137,7 +134,6 @@ export async function getJournalArticle(slug: string) {
         type: 'journal',
       },
       include: {
-        // UPDATED: Include multiple authors through AuthorArticle junction
         authors: {
           include: {
             author: true
@@ -154,10 +150,15 @@ export async function getJournalArticle(slug: string) {
       return createErrorResponse("Journal article not found. It may have been deleted or the slug is incorrect.")
     }
 
-    // Transform the data to include Authors array for backward compatibility
+    // Transform the data to match form expectations
     const transformedArticle = {
       ...article,
-      Authors: article.authors.map(aa => aa.author)
+      Authors: article.authors.map(aa => aa.author),
+      // Map schema fields to form fields
+      excerpt: article.abstract, // For backward compatibility
+      date: article.publishedAt,
+      draft: article.archived, // Inverted logic
+      journalIssue: article.JournalIssue
     }
 
     console.log(`✅ User ${currentUser.email} fetched journal article: ${article.title} with ${article.authors.length} author(s)`)
@@ -169,7 +170,7 @@ export async function getJournalArticle(slug: string) {
 }
 
 /**
- * Get all journal articles with their authors - UPDATED
+ * Get all journal articles with their authors
  */
 export async function getJournalArticles() {
   try {
@@ -195,7 +196,6 @@ export async function getJournalArticles() {
         type: 'journal',
       },
       include: {
-        // UPDATED: Include multiple authors through AuthorArticle junction
         authors: {
           include: {
             author: true
@@ -211,12 +211,16 @@ export async function getJournalArticles() {
       },
     })
 
-    // Transform the data to include Authors array for backward compatibility
+    // Transform the data to match UI expectations
     const transformedArticles = articles.map(article => ({
       ...article,
       Authors: article.authors.map(aa => aa.author),
-      // Keep the primary author for backward compatibility (first author)
-      Author: article.authors.length > 0 ? article.authors[0].author : null
+      Author: article.authors.length > 0 ? article.authors[0].author : null,
+      // Map schema fields to form fields
+      excerpt: article.abstract,
+      date: article.publishedAt,
+      draft: article.archived, // Inverted logic
+      journalIssue: article.JournalIssue
     }))
 
     console.log(`✅ User ${currentUser.email} fetched ${articles.length} journal articles`)
@@ -228,7 +232,7 @@ export async function getJournalArticles() {
 }
 
 /**
- * Create a new journal article with multiple authors - UPDATED
+ * Create a new journal article with multiple authors
  */
 export async function createJournalArticle(data: JournalArticleFormData) {
   try {
@@ -270,16 +274,6 @@ export async function createJournalArticle(data: JournalArticleFormData) {
       return { success: false, error: "An article with this slug already exists" }
     }
 
-    // Check for duplicate DOI if provided
-    if (validatedData.doi) {
-      const existingDOI = await prisma.article.findUnique({
-        where: { doi: validatedData.doi }
-      })
-      if (existingDOI) {
-        return { success: false, error: "An article with this DOI already exists" }
-      }
-    }
-
     // Find or create all authors
     const authors = await findOrCreateAuthors(validatedData.authors)
 
@@ -290,19 +284,18 @@ export async function createJournalArticle(data: JournalArticleFormData) {
         data: {
           title: validatedData.title,
           slug: validatedData.slug,
-          excerpt: validatedData.excerpt,
+          abstract: validatedData.abstract,
           content: validatedData.content,
           contentLink: validatedData.contentLink,
-          date: validatedData.date,
+          publishedAt: validatedData.publishedAt,
           readTime: validatedData.readTime,
           image: validatedData.image || null,
-          images: validatedData.images,
           type: 'journal',
           issueId: validatedData.issueId || null,
-          doi: validatedData.doi || null,
           keywords: validatedData.keywords,
-          draft: validatedData.draft,
-          // Note: categories handling would need to be implemented based on your current structure
+          archived: validatedData.archived,
+          featured: validatedData.featured,
+          carousel: validatedData.carousel,
         }
       })
 
@@ -312,7 +305,7 @@ export async function createJournalArticle(data: JournalArticleFormData) {
           data: {
             articleId: article.id,
             authorId: authors[i].id,
-            authorOrder: i + 1, // First author is order 1, second is order 2, etc.
+            authorOrder: i + 1,
           }
         })
       }
@@ -339,7 +332,7 @@ export async function createJournalArticle(data: JournalArticleFormData) {
 }
 
 /**
- * Update an existing journal article with multiple authors - UPDATED
+ * Update an existing journal article with multiple authors
  */
 export async function updateJournalArticle(slug: string, data: JournalArticleFormData) {
   try {
@@ -352,7 +345,7 @@ export async function updateJournalArticle(slug: string, data: JournalArticleFor
       return { success: false, error: "Authentication required" }
     }
 
-    // Find the existing article to check ownership
+    // Find the existing article
     const existingArticle = await prisma.article.findUnique({
       where: { slug },
       include: {
@@ -398,16 +391,6 @@ export async function updateJournalArticle(slug: string, data: JournalArticleFor
       }
     }
 
-    // Check for duplicate DOI (excluding current article)
-    if (validatedData.doi && validatedData.doi !== existingArticle.doi) {
-      const duplicateDOI = await prisma.article.findUnique({
-        where: { doi: validatedData.doi }
-      })
-      if (duplicateDOI) {
-        return { success: false, error: "An article with this DOI already exists" }
-      }
-    }
-
     // Find or create all authors
     const authors = await findOrCreateAuthors(validatedData.authors)
 
@@ -419,17 +402,17 @@ export async function updateJournalArticle(slug: string, data: JournalArticleFor
         data: {
           title: validatedData.title,
           slug: validatedData.slug,
-          excerpt: validatedData.excerpt,
-          contentLink: validatedData.contentLink,
+          abstract: validatedData.abstract,
           content: validatedData.content,
-          date: validatedData.date,
+          contentLink: validatedData.contentLink,
+          publishedAt: validatedData.publishedAt,
           readTime: validatedData.readTime,
           image: validatedData.image || null,
-          images: validatedData.images,
           issueId: validatedData.issueId || null,
-          doi: validatedData.doi || null,
           keywords: validatedData.keywords,
-          draft: validatedData.draft,
+          archived: validatedData.archived,
+          featured: validatedData.featured,
+          carousel: validatedData.carousel,
         }
       })
 
@@ -483,7 +466,7 @@ export async function deleteJournalArticle(slug: string) {
       return { success: false, error: "Authentication required" }
     }
 
-    // Find the existing article to check ownership
+    // Find the existing article
     const existingArticle = await prisma.article.findUnique({
       where: { slug },
       include: {
@@ -498,8 +481,6 @@ export async function deleteJournalArticle(slug: string) {
     }
 
     // Check if user has permission to delete articles
-    const isOwner = existingArticle.authors.some(aa => aa.author.userId === currentUser.id)
-    
     const permissionCheck = checkPermission(currentUser, 'article.DELETE')
 
     if (!permissionCheck.allowed) {
@@ -531,7 +512,7 @@ export async function deleteJournalArticle(slug: string) {
 }
 
 /**
- * Get journal issues for dropdown (unchanged)
+ * Get journal issues for dropdown
  */
 export async function getJournalIssuesForDropdown() {
   try {
@@ -554,10 +535,10 @@ export async function getJournalIssuesForDropdown() {
     const issues = await prisma.journalIssue.findMany({
       select: {
         id: true,
-        title: true,
         volume: true,
         issue: true,
         year: true,
+        theme: true,
       },
       orderBy: [
         { year: 'desc' },
@@ -573,117 +554,6 @@ export async function getJournalIssuesForDropdown() {
     return { 
       success: false, 
       error: error instanceof Error ? error.message : "Failed to fetch journal issues" 
-    }
-  }
-}
-
-// NEW: Function to get journal articles with permission context
-export async function getJournalArticlesWithPermissions() {
-  try {
-    const currentUser = await getCurrentUserWithPermissions()
-    
-    if (!currentUser) {
-      return { error: "Authentication required" }
-    }
-
-    // Check if user has permission to read articles
-    const permissionCheck = checkPermission(currentUser, 'article.READ')
-    if (!permissionCheck.allowed) {
-      return { 
-        error: "You don't have permission to view journal articles" 
-      }
-    }
-
-    const articles = await prisma.article.findMany({
-      where: {
-        type: 'journal',
-      },
-      include: {
-        authors: {
-          include: {
-            author: true
-          },
-          orderBy: {
-            authorOrder: 'asc'
-          }
-        },
-        JournalIssue: true
-      },
-      orderBy: {
-        createdAt: 'desc',
-      },
-    })
-
-    // Add permission context to each article
-    const articlesWithPermissions = articles.map(article => {
-      const isOwner = article.authors.some(aa => aa.author.userId === currentUser.id)
-      
-      return {
-        ...article,
-        Authors: article.authors.map(aa => aa.author),
-        Author: article.authors.length > 0 ? article.authors[0].author : null,
-        canEdit: checkPermission(currentUser, 'article.UPDATE').allowed,
-        canDelete: checkPermission(currentUser, 'article.DELETE').allowed,
-      }
-    })
-
-    return { 
-      articles: articlesWithPermissions,
-      canCreate: checkPermission(currentUser, 'article.CREATE').allowed
-    }
-  } catch (error) {
-    console.error("Failed to fetch journal articles with permissions:", error)
-    return { error: "Failed to fetch journal articles" }
-  }
-}
-
-// NEW: Function to check journal article permissions
-export async function checkJournalArticlePermissions(slug?: string) {
-  try {
-    const currentUser = await getCurrentUserWithPermissions()
-    
-    if (!currentUser) {
-      return { 
-        success: false, 
-        error: "Authentication required",
-        permissions: { canRead: false, canCreate: false, canUpdate: false, canDelete: false }
-      }
-    }
-
-    let permissions = {
-      canRead: checkPermission(currentUser, 'article.READ').allowed,
-      canCreate: checkPermission(currentUser, 'article.CREATE').allowed,
-      canUpdate: false,
-      canDelete: false,
-    }
-
-    // If specific article slug is provided, check update/delete permissions
-    if (slug) {
-      const article = await prisma.article.findUnique({
-        where: { slug, type: 'journal' },
-        include: {
-          authors: {
-            include: { author: true }
-          }
-        }
-      })
-
-      if (article) {
-        const isOwner = article.authors.some(aa => aa.author.userId === currentUser.id)
-        
-        permissions.canUpdate = checkPermission(currentUser, 'article.UPDATE').allowed
-
-        permissions.canDelete = checkPermission(currentUser, 'article.DELETE').allowed
-      }
-    }
-
-    return { success: true, permissions }
-  } catch (error) {
-    console.error("Failed to check journal article permissions:", error)
-    return { 
-      success: false, 
-      error: "Failed to check permissions",
-      permissions: { canRead: false, canCreate: false, canUpdate: false, canDelete: false }
     }
   }
 }

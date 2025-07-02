@@ -1,5 +1,10 @@
 {
-  "/admin/journals/page": "app/admin/journals/page.js",
-  "/admin/roles/page": "app/admin/roles/page.js",
-  "/admin/users/page": "app/admin/users/page.js"
+  "/api/auth/[...nextauth]/route": "app/api/auth/[...nextauth]/route.js",
+  "/_not-found/page": "app/_not-found/page.js",
+  "/admin-protected-login/page": "app/admin-protected-login/page.js",
+  "/admin/journal-articles/new/page": "app/admin/journal-articles/new/page.js",
+  "/admin/page": "app/admin/page.js",
+  "/admin/call-for-papers/page": "app/admin/call-for-papers/page.js",
+  "/admin/call-for-papers/new/page": "app/admin/call-for-papers/new/page.js",
+  "/admin/notifications/page": "app/admin/notifications/page.js"
 }

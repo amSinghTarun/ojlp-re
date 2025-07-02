@@ -1,6 +1,6 @@
-// app/admin/journal-articles/page.tsx - WITH SIMPLE PERMISSION CHECKS
+// app/admin/journal-articles/page.tsx - Updated for actual schema
 import Link from "next/link"
-import { Plus, FileText, Eye, PenTool, ExternalLink, AlertTriangle, Shield } from "lucide-react"
+import { Plus, FileText, Eye, PenTool, ExternalLink, AlertTriangle, Shield, Archive, Star, ImageIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { DashboardHeader } from "@/components/admin/dashboard-header"
 import { JournalArticlesTable } from "@/components/admin/journal-articles-table"
@@ -10,7 +10,6 @@ import { getCurrentUser } from "@/lib/auth"
 import { checkPermission } from "@/lib/permissions/checker"
 import { 
   UserWithPermissions, 
-  SYSTEM_PERMISSIONS, 
   PERMISSION_ERRORS 
 } from "@/lib/permissions/types"
 import { Alert, AlertDescription } from "@/components/ui/alert"
@@ -64,7 +63,7 @@ export default async function JournalArticlesPage() {
       )
     }
 
-    // Check if user can create articles (for showing/hiding the New Article button)
+    // Check if user can create articles
     const canCreateArticles = checkPermission(currentUser, 'article.CREATE').allowed
 
     console.log("📰 Admin page: Fetching journal articles...")
@@ -103,43 +102,39 @@ export default async function JournalArticlesPage() {
       )
     }
 
-    // Transform database data to match table requirements
+    // Transform database data to match table requirements and handle field mappings
     const articlesForTable = result.articles?.map(article => ({
       id: article.id,
       slug: article.slug,
       title: article.title,
-      excerpt: article.excerpt,
+      abstract: article.abstract, // Use actual schema field
+      excerpt: article.abstract, // For backward compatibility
       content: article.content,
       contentLink: article.contentLink,
-      date: article.date.toISOString(),
+      publishedAt: article.publishedAt?.toISOString(), // Use actual schema field
+      date: article.publishedAt?.toISOString(), // For backward compatibility
       readTime: article.readTime,
       image: article.image,
-      draft: article.draft,
+      archived: article.archived, // Use actual schema field
+      draft: article.archived, // For backward compatibility (same logic)
+      featured: article.featured,
+      carousel: article.carousel,
       views: article.views || 0,
-      doi: article.doi,
       keywords: article.keywords,
       Author: article.Author,
       Authors: article.Authors,
       journalIssue: article.journalIssue,
-      categories: article.categories?.map(cat => cat.category) || [],
+      JournalIssue: article.journalIssue, // For backward compatibility
       // Add permission context for the table
-      canEdit: checkPermission(currentUser, 'article.UPDATE', {
-        resourceOwner: article.Authors?.some(author => author.userId === currentUser.id) 
-          ? currentUser.id 
-          : article.Author?.userId,
-        resourceId: article.id
-      }).allowed,
-      canDelete: checkPermission(currentUser, 'article.DELETE', {
-        resourceOwner: article.Authors?.some(author => author.userId === currentUser.id) 
-          ? currentUser.id 
-          : article.Author?.userId,
-        resourceId: article.id
-      }).allowed,
+      canEdit: checkPermission(currentUser, 'article.UPDATE').allowed,
+      canDelete: checkPermission(currentUser, 'article.DELETE').allowed,
     })) || []
 
-    // Calculate stats
-    const publishedCount = articlesForTable.filter(article => !article.draft).length
-    const draftCount = articlesForTable.filter(article => article.draft).length
+    // Calculate stats using actual schema fields
+    const publishedCount = articlesForTable.filter(article => !article.archived).length
+    const archivedCount = articlesForTable.filter(article => article.archived).length
+    const featuredCount = articlesForTable.filter(article => article.featured).length
+    const carouselCount = articlesForTable.filter(article => article.carousel).length
     const totalViews = articlesForTable.reduce((sum, article) => sum + (article.views || 0), 0)
     const totalAuthors = new Set(
       articlesForTable.flatMap(article => 
@@ -173,159 +168,7 @@ export default async function JournalArticlesPage() {
           )}
         </div>
 
-        {/* Permission Info Alert */}
-        {!canCreateArticles && (
-          <Alert>
-            <Shield className="h-4 w-4" />
-            <AlertDescription>
-              You have read-only access to journal articles. Contact your administrator to request creation permissions.
-            </AlertDescription>
-          </Alert>
-        )}
-
-        {/* Content Link Warning Alert */}
-        {articlesWithoutContentLinks > 0 && (
-          <Alert variant="destructive">
-            <AlertTriangle className="h-4 w-4" />
-            <AlertDescription>
-              <strong>Attention Required:</strong> {articlesWithoutContentLinks} article{articlesWithoutContentLinks !== 1 ? 's' : ''} missing content link{articlesWithoutContentLinks !== 1 ? 's' : ''}. 
-              Journal articles require links to full content (PDF, DOI, etc.). Please update these articles.
-            </AlertDescription>
-          </Alert>
-        )}
-
-        {/* Summary Stats */}
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          <div className="rounded-lg border p-3">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">Total Articles</p>
-                <p className="text-2xl font-bold">{articlesForTable.length}</p>
-              </div>
-              <FileText className="h-8 w-8 text-muted-foreground" />
-            </div>
-          </div>
-          
-          <div className="rounded-lg border p-3">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">Published</p>
-                <p className="text-2xl font-bold text-green-600">{publishedCount}</p>
-              </div>
-              <Eye className="h-8 w-8 text-green-600" />
-            </div>
-          </div>
-          
-          <div className="rounded-lg border p-3">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">Drafts</p>
-                <p className="text-2xl font-bold text-orange-600">{draftCount}</p>
-              </div>
-              <PenTool className="h-8 w-8 text-orange-600" />
-            </div>
-          </div>
-          
-          <div className="rounded-lg border p-3">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">Total Views</p>
-                <p className="text-2xl font-bold">{totalViews.toLocaleString()}</p>
-              </div>
-              <Eye className="h-8 w-8 text-muted-foreground" />
-            </div>
-          </div>
-        </div>
-
-        {/* Enhanced Stats Grid */}
-        <div className="grid gap-4 md:grid-cols-3">
-          {/* Author Statistics */}
-          <div className="rounded-lg border p-4 bg-muted/50">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="font-semibold">Author Statistics</h3>
-                <p className="text-sm text-muted-foreground">
-                  {totalAuthors} unique authors contributing to {articlesForTable.length} articles
-                </p>
-              </div>
-              <div className="text-right">
-                <p className="text-sm font-medium">Average Authors per Article</p>
-                <p className="text-lg font-bold">
-                  {articlesForTable.length > 0 
-                    ? (articlesForTable.reduce((sum, article) => 
-                        sum + (article.Authors?.length || (article.Author ? 1 : 0)), 0
-                      ) / articlesForTable.length).toFixed(1)
-                    : "0"}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* Content Link Statistics */}
-          <div className="rounded-lg border p-4 bg-muted/50">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="font-semibold flex items-center gap-2">
-                  <ExternalLink className="h-4 w-4" />
-                  Content Link Status
-                </h3>
-                <p className="text-sm text-muted-foreground">
-                  {articlesWithContentLinks} articles have full content links
-                </p>
-              </div>
-              <div className="text-right">
-                <p className="text-sm font-medium">Coverage</p>
-                <p className="text-lg font-bold">
-                  {articlesForTable.length > 0 
-                    ? Math.round((articlesWithContentLinks / articlesForTable.length) * 100)
-                    : 0}%
-                </p>
-                {articlesWithoutContentLinks > 0 && (
-                  <p className="text-xs text-destructive mt-1">
-                    {articlesWithoutContentLinks} missing
-                  </p>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* Permission Statistics */}
-          <div className="rounded-lg border p-4 bg-muted/50">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="font-semibold flex items-center gap-2">
-                  <Shield className="h-4 w-4" />
-                  Your Permissions
-                </h3>
-                <p className="text-sm text-muted-foreground">
-                  Your access level for these articles
-                </p>
-              </div>
-              <div className="text-right space-y-1">
-                <div>
-                  <p className="text-sm font-medium">Can Edit</p>
-                  <p className="text-lg font-bold text-blue-600">{editableArticles}</p>
-                </div>
-                <div>
-                  <p className="text-sm font-medium">Can Delete</p>
-                  <p className="text-lg font-bold text-red-600">{deletableArticles}</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Content Link Requirements Info */}
-        <Alert>
-          <ExternalLink className="h-4 w-4" />
-          <AlertDescription>
-            <strong>Content Link Requirement:</strong> All journal articles must include a link to the full content. 
-            This can be a PDF link, DOI URL, or link to an academic platform (arXiv, PubMed, etc.). 
-            Articles without content links will be flagged and may not be displayed properly to readers.
-          </AlertDescription>
-        </Alert>
-
-        {/* Articles Table - Pass permission context */}
+        {/* Articles Table */}
         <JournalArticlesTable 
           articles={articlesForTable} 
           currentUser={currentUser}

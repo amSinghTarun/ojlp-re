@@ -1,11 +1,11 @@
-import prisma from "@/lib/prisma"
+// lib/controllers/authors.ts - Updated for actual schema
+import { prisma } from "@/lib/prisma"
 import { slugify } from "@/lib/utils"
 
 export async function getAuthors() {
   try {
     return await prisma.author.findMany({
       include: {
-        // UPDATED: Include articles through the new AuthorArticle junction
         authorArticles: {
           include: {
             article: {
@@ -14,15 +14,14 @@ export async function getAuthors() {
                 title: true,
                 slug: true,
                 type: true,
-                draft: true,
-                createdAt: true,
+                publishedAt: true,
               }
             }
           },
-          take: 5, // Limit to recent articles for performance
+          take: 5,
           orderBy: {
             article: {
-              createdAt: 'desc'
+              publishedAt: 'desc'
             }
           }
         },
@@ -42,7 +41,6 @@ export async function getAuthorBySlug(slug: string) {
     return await prisma.author.findUnique({
       where: { slug },
       include: {
-        // UPDATED: Include articles through the new AuthorArticle junction
         authorArticles: {
           include: {
             article: {
@@ -50,20 +48,18 @@ export async function getAuthorBySlug(slug: string) {
                 id: true,
                 title: true,
                 slug: true,
-                excerpt: true,
+                abstract: true,
                 image: true,
                 type: true,
-                draft: true,
-                date: true,
                 readTime: true,
                 views: true,
-                createdAt: true,
+                publishedAt: true,
               }
             }
           },
           orderBy: {
             article: {
-              createdAt: 'desc'
+              publishedAt: 'desc'
             }
           }
         },
@@ -91,53 +87,28 @@ export async function createAuthor(data: {
   email: string
   title?: string
   bio?: string
-  image?: string
-  expertise?: string[]
-  education?: string[]
-  socialLinks?: {
-    twitter?: string
-    linkedin?: string
-    email?: string
-    orcid?: string
-  }
-  userId?: string
 }) {
   try {
-    const { socialLinks, ...authorData } = data
-
-    // Clean up the data - remove empty strings and undefined values
-    const cleanData: any = {
-      name: authorData.name.trim(),
-      email: authorData.email.toLowerCase().trim(),
-      slug: slugify(authorData.email.toLowerCase().trim()),
+    // Clean up the data - only use fields that exist in schema
+    const cleanData = {
+      name: data.name.trim(),
+      email: data.email.toLowerCase().trim(),
+      slug: slugify(data.name.trim()), // Generate slug from name
       
       // Only include optional fields if they have actual values
-      ...(authorData.title && authorData.title.trim() && { title: authorData.title.trim() }),
-      ...(authorData.bio && authorData.bio.trim() && { bio: authorData.bio.trim() }),
-      ...(authorData.image && authorData.image.trim() && { image: authorData.image.trim() }),
-      ...(authorData.expertise && authorData.expertise.length > 0 && { expertise: authorData.expertise.filter(Boolean) }),
-      ...(authorData.education && authorData.education.length > 0 && { education: authorData.education.filter(Boolean) }),
-      
-      // Handle social links - only include if they have values
-      ...(socialLinks?.twitter && socialLinks.twitter.trim() && { twitter: socialLinks.twitter.trim() }),
-      ...(socialLinks?.linkedin && socialLinks.linkedin.trim() && { linkedin: socialLinks.linkedin.trim() }),
-      ...(socialLinks?.email && socialLinks.email.trim() && { socialEmail: socialLinks.email.trim() }),
-      ...(socialLinks?.orcid && socialLinks.orcid.trim() && { orcid: socialLinks.orcid.trim() }),
-      
-      // Only include userId if it's provided and not empty
-      ...(authorData.userId && authorData.userId.trim() && { userId: authorData.userId.trim() }),
+      ...(data.title && data.title.trim() && { title: data.title.trim() }),
+      ...(data.bio && data.bio.trim() && { bio: data.bio.trim() }),
     }
 
     console.log("🔧 Creating author with cleaned data:", cleanData)
 
     const author = await prisma.author.create({
       data: cleanData,
-
     })
 
     console.log("✅ Author created successfully:", author.name)
     return author
-  } catch (error) {
+  } catch (error: any) {
     console.error("💥 Error creating author:", error)
     
     // Handle specific Prisma errors
@@ -163,73 +134,28 @@ export async function updateAuthor(
     email?: string
     title?: string
     bio?: string
-    image?: string
-    expertise?: string[]
-    education?: string[]
-    socialLinks?: {
-      twitter?: string
-      linkedin?: string
-      email?: string
-      orcid?: string
-    }
-    userId?: string
   }
 ) {
   try {
-    const { socialLinks, ...authorData } = data
-
-    // Clean up the data - remove empty strings and undefined values
+    // Clean up the data - only use fields that exist in schema
     const cleanData: any = {}
 
-    if (authorData.name && authorData.name.trim()) {
-      cleanData.name = authorData.name.trim()
-      cleanData.slug = slugify(authorData.name) // Update slug if name changes
+    if (data.name && data.name.trim()) {
+      cleanData.name = data.name.trim()
+      cleanData.slug = slugify(data.name.trim()) // Update slug if name changes
     }
     
-    if (authorData.email && authorData.email.trim()) {
-      cleanData.email = authorData.email.toLowerCase().trim()
+    if (data.email && data.email.trim()) {
+      cleanData.email = data.email.toLowerCase().trim()
     }
 
     // Handle optional fields - only update if provided
-    if (authorData.title !== undefined) {
-      cleanData.title = authorData.title.trim() || null
+    if (data.title !== undefined) {
+      cleanData.title = data.title?.trim() || null
     }
     
-    if (authorData.bio !== undefined) {
-      cleanData.bio = authorData.bio.trim() || null
-    }
-    
-    if (authorData.image !== undefined) {
-      cleanData.image = authorData.image.trim() || null
-    }
-    
-    if (authorData.expertise !== undefined) {
-      cleanData.expertise = authorData.expertise.filter(Boolean)
-    }
-    
-    if (authorData.education !== undefined) {
-      cleanData.education = authorData.education.filter(Boolean)
-    }
-
-    // Handle social links
-    if (socialLinks?.twitter !== undefined) {
-      cleanData.twitter = socialLinks.twitter.trim() || null
-    }
-    
-    if (socialLinks?.linkedin !== undefined) {
-      cleanData.linkedin = socialLinks.linkedin.trim() || null
-    }
-    
-    if (socialLinks?.email !== undefined) {
-      cleanData.socialEmail = socialLinks.email.trim() || null
-    }
-    
-    if (socialLinks?.orcid !== undefined) {
-      cleanData.orcid = socialLinks.orcid.trim() || null
-    }
-
-    if (authorData.userId !== undefined) {
-      cleanData.userId = authorData.userId.trim() || null
+    if (data.bio !== undefined) {
+      cleanData.bio = data.bio?.trim() || null
     }
 
     console.log("🔧 Updating author with cleaned data:", cleanData)
@@ -237,12 +163,11 @@ export async function updateAuthor(
     const author = await prisma.author.update({
       where: { slug },
       data: cleanData,
-
     })
 
     console.log("✅ Author updated successfully:", author.name)
     return author
-  } catch (error) {
+  } catch (error: any) {
     console.error("💥 Error updating author:", error)
     
     // Handle specific Prisma errors
@@ -293,7 +218,7 @@ export async function deleteAuthor(slug: string) {
 
     console.log("✅ Author deleted successfully:", author.name)
     return { success: true }
-  } catch (error) {
+  } catch (error: any) {
     console.error("💥 Error deleting author:", error)
     
     if (error.code === 'P2025') {

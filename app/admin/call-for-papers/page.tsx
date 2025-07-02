@@ -1,4 +1,3 @@
-// app/admin/call-for-papers/page.tsx - WITH PERMISSION CHECKS
 import Link from "next/link"
 import { Plus } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -15,7 +14,7 @@ import {
 import { redirect } from "next/navigation"
 import { prisma } from "@/lib/prisma"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { AlertCircle, FileText, Calendar, Eye } from "lucide-react"
+import { AlertCircle, FileText, Calendar, Eye, Building, DollarSign } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 
 // Get current user with permissions helper
@@ -129,7 +128,7 @@ export default async function CallForPapersPage() {
       )
     }
 
-    // Transform database data to match table requirements
+    // Transform database data to match table requirements (aligned with actual schema)
     const callsForTable = result.calls?.map(call => ({
       id: call.id,
       title: call.title,
@@ -138,7 +137,10 @@ export default async function CallForPapersPage() {
       volume: call.volume,
       issue: call.issue,
       year: call.year,
-      image: call.image,
+      publisher: call.publisher,
+      fee: call.fee,
+      contentLink: call.contentLink,
+      topics: call.topics,
     })) || []
 
     console.log("✅ Admin page: Transformed data for table:", callsForTable.length, "records")
@@ -149,6 +151,8 @@ export default async function CallForPapersPage() {
     const expiredCalls = totalCalls - activeCalls
     const currentYear = new Date().getFullYear()
     const thisYearCalls = callsForTable.filter(call => call.year === currentYear).length
+    const callsWithFee = callsForTable.filter(call => call.fee && call.fee.trim() !== "").length
+    const callsWithSubmissionLink = callsForTable.filter(call => call.contentLink && call.contentLink.trim() !== "").length
 
     return (
       <div className="space-y-6">
@@ -176,6 +180,9 @@ export default async function CallForPapersPage() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{totalCalls}</div>
+              <p className="text-xs text-muted-foreground">
+                All published calls for papers
+              </p>
             </CardContent>
           </Card>
           
@@ -187,11 +194,40 @@ export default async function CallForPapersPage() {
             <CardContent>
               <div className="text-2xl font-bold text-green-600">{activeCalls}</div>
               <p className="text-xs text-muted-foreground">
-                {totalCalls > 0 ? Math.round((activeCalls / totalCalls) * 100) : 0}% of total calls
+                {totalCalls > 0 ? Math.round((activeCalls / totalCalls) * 100) : 0}% accepting submissions
               </p>
             </CardContent>
           </Card>
           
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">This Year</CardTitle>
+              <Calendar className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{thisYearCalls}</div>
+              <p className="text-xs text-muted-foreground">
+                Calls for {currentYear}
+              </p>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">With Submission Links</CardTitle>
+              <Building className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{callsWithSubmissionLink}</div>
+              <p className="text-xs text-muted-foreground">
+                {totalCalls > 0 ? Math.round((callsWithSubmissionLink / totalCalls) * 100) : 0}% have external links
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Additional Statistics Row */}
+        <div className="grid gap-4 md:grid-cols-3">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Expired Calls</CardTitle>
@@ -200,20 +236,33 @@ export default async function CallForPapersPage() {
             <CardContent>
               <div className="text-2xl font-bold text-red-600">{expiredCalls}</div>
               <p className="text-xs text-muted-foreground">
-                {totalCalls > 0 ? Math.round((expiredCalls / totalCalls) * 100) : 0}% of total calls
+                {totalCalls > 0 ? Math.round((expiredCalls / totalCalls) * 100) : 0}% past deadline
               </p>
             </CardContent>
           </Card>
-          
+
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">This Year</CardTitle>
+              <CardTitle className="text-sm font-medium">With Fees</CardTitle>
+              <DollarSign className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{callsWithFee}</div>
+              <p className="text-xs text-muted-foreground">
+                {totalCalls > 0 ? Math.round((callsWithFee / totalCalls) * 100) : 0}% require payment
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Free Submissions</CardTitle>
               <FileText className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{thisYearCalls}</div>
+              <div className="text-2xl font-bold text-green-600">{totalCalls - callsWithFee}</div>
               <p className="text-xs text-muted-foreground">
-                Calls for {currentYear}
+                {totalCalls > 0 ? Math.round(((totalCalls - callsWithFee) / totalCalls) * 100) : 0}% no submission fee
               </p>
             </CardContent>
           </Card>
@@ -288,6 +337,14 @@ export default async function CallForPapersPage() {
           <AlertCircle className="h-4 w-4" />
           <AlertDescription>
             An unexpected error occurred while loading the page. Please check the console for more details or contact support if the problem persists.
+            {process.env.NODE_ENV === "development" && (
+              <details className="mt-2">
+                <summary className="cursor-pointer">Error Details (Development)</summary>
+                <pre className="mt-2 text-xs overflow-x-auto bg-muted p-2 rounded">
+                  {error instanceof Error ? error.stack || error.message : String(error)}
+                </pre>
+              </details>
+            )}
           </AlertDescription>
         </Alert>
 
@@ -296,7 +353,7 @@ export default async function CallForPapersPage() {
             <AlertCircle className="h-10 w-10 text-muted-foreground mb-4" />
             <h3 className="font-semibold">Unable to Load Page</h3>
             <p className="mb-4 mt-2 text-sm text-muted-foreground">
-              There was a problem loading the call for papers page. Please try refreshing the page.
+              There was a problem loading the call for papers page. Please try refreshing the page or contact support if the issue persists.
             </p>
             <div className="flex gap-2">
               <Button variant="outline" asChild>
@@ -309,6 +366,12 @@ export default async function CallForPapersPage() {
                 <Link href="/admin">
                   Go to Dashboard
                 </Link>
+              </Button>
+              <Button 
+                variant="outline" 
+                onClick={() => window.location.reload()}
+              >
+                Refresh Page
               </Button>
             </div>
           </div>

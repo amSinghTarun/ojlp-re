@@ -1,4 +1,3 @@
-// app/admin/call-for-papers/[id]/edit/page.tsx
 import type { Metadata } from "next"
 import { redirect, notFound } from "next/navigation"
 import { getCurrentUser } from "@/lib/auth"
@@ -120,7 +119,7 @@ export default async function EditCallForPapersPage({ params }: EditCallForPaper
 
     const cfp = result.call!
 
-    // Transform the data to match the form interface
+    // Transform the data to match the form interface (aligned with actual schema)
     const formCfp = {
       id: cfp.id,
       title: cfp.title,
@@ -131,12 +130,9 @@ export default async function EditCallForPapersPage({ params }: EditCallForPaper
       volume: cfp.volume,
       issue: cfp.issue,
       year: cfp.year,
-      guidelines: cfp.guidelines,
-      image: cfp.image,
       fee: cfp.fee,
       topics: cfp.topics,
-      eligibility: cfp.eligibility,
-      contact: cfp.contact,
+      publisher: cfp.publisher,
     }
 
     return (

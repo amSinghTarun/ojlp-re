@@ -1,4 +1,4 @@
-// app/admin/journals/page.tsx - WITH SIMPLE PERMISSION CHECKS
+// app/admin/journals/page.tsx - Updated for actual schema
 import Link from "next/link"
 import { Plus, BookOpen } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -102,18 +102,16 @@ export default async function JournalsPage() {
       )
     }
 
-    // Transform database data to match table requirements
+    // Transform database data to match table requirements (only actual schema fields)
     const issuesForTable = result.issues?.map(issue => ({
       id: issue.id,
-      title: issue.title,
-      description: issue.description,
       volume: issue.volume,
+      theme: issue.theme || undefined, // Optional field
       issue: issue.issue,
       year: issue.year,
-      publishDate: issue.publishDate,
-      coverImage: issue.coverImage,
-      articleCount: issue._count?.articles || 0,
-      articles: issue.articles || [],
+      publishDate: issue.publishDate || undefined, // Optional field
+      articleCount: issue._count?.Article || 0,
+      articles: issue.Article || [],
     })) || []
 
     console.log("✅ Admin page: Transformed data for table:", issuesForTable.length, "records")
@@ -154,7 +152,7 @@ export default async function JournalsPage() {
         )}
 
         {/* Statistics Cards */}
-        <div className="grid gap-4 md:grid-cols-3">
+        <div className="grid gap-4 md:grid-cols-4">
           <div className="rounded-lg border p-4">
             <div className="flex items-center gap-2">
               <BookOpen className="h-5 w-5 text-primary" />
@@ -182,6 +180,16 @@ export default async function JournalsPage() {
               {issuesForTable.length > 0 ? Math.max(...issuesForTable.map(i => i.year)) : '-'}
             </p>
             <p className="text-sm text-muted-foreground">Most recent publication</p>
+          </div>
+          <div className="rounded-lg border p-4">
+            <div className="flex items-center gap-2">
+              <BookOpen className="h-5 w-5 text-primary" />
+              <h3 className="font-semibold">With Themes</h3>
+            </div>
+            <p className="text-2xl font-bold mt-2">
+              {issuesForTable.filter(issue => issue.theme && issue.theme.trim()).length}
+            </p>
+            <p className="text-sm text-muted-foreground">Issues with themes</p>
           </div>
         </div>
 
