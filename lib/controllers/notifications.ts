@@ -1,3 +1,4 @@
+// lib/controllers/notifications.ts
 'use server'
 
 import prisma from "@/lib/prisma"
@@ -35,14 +36,13 @@ export async function createNotification(data: {
   content: string
   type: string
   priority?: "low" | "medium" | "high"
-  link?: string
-  image?: string
+  linkDisplay?: string
+  linkUrl?: string
   expiresAt?: Date | null
 }) {
   return prisma.notification.create({
     data: {
       ...data,
-      date: new Date(),
       priority: data.priority || "medium",
       type: data.type as NotificationType,
     },
@@ -56,8 +56,8 @@ export async function updateNotification(
     content?: string
     type?: NotificationType
     priority?: "low" | "medium" | "high"
-    link?: string
-    image?: string
+    linkDisplay?: string
+    linkUrl?: string
     expiresAt?: Date | null
   },
 ) {
@@ -73,11 +73,93 @@ export async function deleteNotification(id: string) {
   })
 }
 
-export async function markNotificationAsRead(id: string, userId: string) {
-  return prisma.notification.update({
-    where: { id },
-    data: {
-      read: true,
+export async function getNotificationsByType(type: NotificationType) {
+  return prisma.notification.findMany({
+    where: { 
+      type,
+      OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
+    },
+    orderBy: {
+      createdAt: "desc",
     },
   })
+}
+
+export async function getNotificationsByPriority(priority: "low" | "medium" | "high") {
+  return prisma.notification.findMany({
+    where: { 
+      priority,
+      OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
+    },
+    orderBy: {
+      createdAt: "desc",
+    },
+  })
+}
+
+export async function getExpiredNotifications() {
+  return prisma.notification.findMany({
+    where: {
+      expiresAt: { lt: new Date() },
+    },
+    orderBy: {
+      expiresAt: "desc",
+    },
+  })
+}
+
+export async function cleanupExpiredNotifications() {
+  const result = await prisma.notification.deleteMany({
+    where: {
+      expiresAt: { lt: new Date() },
+    },
+  })
+  
+  return result.count
+}
+
+export async function getNotificationStats() {
+  const total = await prisma.notification.count()
+  const active = await prisma.notification.count({
+    where: {
+      OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
+    },
+  })
+  const expired = await prisma.notification.count({
+    where: {
+      expiresAt: { lt: new Date() },
+    },
+  })
+  const byPriority = await prisma.notification.groupBy({
+    by: ['priority'],
+    _count: {
+      priority: true,
+    },
+    where: {
+      OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
+    },
+  })
+  const byType = await prisma.notification.groupBy({
+    by: ['type'],
+    _count: {
+      type: true,
+    },
+    where: {
+      OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
+    },
+  })
+
+  return {
+    total,
+    active,
+    expired,
+    byPriority: byPriority.reduce((acc, item) => {
+      acc[item.priority] = item._count.priority
+      return acc
+    }, {} as Record<string, number>),
+    byType: byType.reduce((acc, item) => {
+      acc[item.type] = item._count.type
+      return acc
+    }, {} as Record<string, number>),
+  }
 }

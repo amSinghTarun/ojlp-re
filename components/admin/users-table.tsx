@@ -1,10 +1,10 @@
-// components/admin/users-table.tsx
+// components/admin/users-table.tsx - Updated for simplified schema
 "use client"
 
 import { useState, useCallback } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { PlusCircle, Pencil, Trash2, Loader2, RefreshCw, Search, Filter } from "lucide-react"
+import { PlusCircle, Pencil, Trash2, Loader2, RefreshCw, Search, Filter, UserCog } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
@@ -40,10 +40,10 @@ export function UsersTable({ currentUser, initialUsers }: UsersTableProps) {
   const [searchTerm, setSearchTerm] = useState("")
   const [roleFilter, setRoleFilter] = useState("all")
 
-  // Check permissions
-  const canManageUsers = true //hasPermission(currentUser, PERMISSIONS.MANAGE_USERS)
-  const canAssignRoles = true //hasPermission(currentUser, PERMISSIONS.ASSIGN_ROLES)
-  const isCurrentUserSuperAdmin = true //isSuperAdmin(currentUser)
+  // Check permissions (simplified for now - you can implement proper permission checking)
+  const canManageUsers = true
+  const canAssignRoles = true
+  const isCurrentUserSuperAdmin = currentUser.role.name === "SUPER_ADMIN"
 
   // Get unique roles for filter
   const availableRoles = Array.from(new Set(users.map(user => user.role.name)))
@@ -64,7 +64,6 @@ export function UsersTable({ currentUser, initialUsers }: UsersTableProps) {
     setIsRefreshing(true)
     try {
       router.refresh()
-      // Optionally fetch updated data here if you want real-time updates
       toast({
         title: "Refreshed",
         description: "User list has been updated",
@@ -133,7 +132,7 @@ export function UsersTable({ currentUser, initialUsers }: UsersTableProps) {
     if (isCurrentUserSuperAdmin) return true
 
     // Regular admins cannot edit SUPER_ADMINs
-    // if (user.role.name === "SUPER_ADMIN") return false
+    if (user.role.name === "SUPER_ADMIN") return false
 
     // Regular admins can edit other users if they have permission
     return canManageUsers
@@ -148,7 +147,7 @@ export function UsersTable({ currentUser, initialUsers }: UsersTableProps) {
     if (isCurrentUserSuperAdmin) return true
 
     // Regular admins cannot delete SUPER_ADMINs
-    // if (user.role.name === "SUPER_ADMIN") return false
+    if (user.role.name === "SUPER_ADMIN") return false
 
     // Regular admins can delete other users if they have permission
     return canManageUsers
@@ -177,6 +176,11 @@ export function UsersTable({ currentUser, initialUsers }: UsersTableProps) {
       hour: "2-digit",
       minute: "2-digit",
     }).format(new Date(date))
+  }
+
+  // Generate user avatar
+  const generateAvatar = (name: string) => {
+    return name.charAt(0).toUpperCase()
   }
 
   const selectedUser = selectedUserId ? users.find(u => u.id === selectedUserId) : null
@@ -255,6 +259,7 @@ export function UsersTable({ currentUser, initialUsers }: UsersTableProps) {
             <TableRow>
               <TableHead>User</TableHead>
               <TableHead>Role</TableHead>
+              <TableHead>Permissions</TableHead>
               <TableHead>Created</TableHead>
               <TableHead>Status</TableHead>
               <TableHead className="text-right">Actions</TableHead>
@@ -263,7 +268,7 @@ export function UsersTable({ currentUser, initialUsers }: UsersTableProps) {
           <TableBody>
             {filteredUsers.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={5} className="text-center py-8">
+                <TableCell colSpan={6} className="text-center py-8">
                   <div className="flex flex-col items-center gap-2">
                     {searchTerm || roleFilter !== "all" ? (
                       <>
@@ -302,15 +307,7 @@ export function UsersTable({ currentUser, initialUsers }: UsersTableProps) {
                   <TableCell>
                     <div className="flex items-center gap-3">
                       <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary font-medium">
-                        {user.image ? (
-                          <img 
-                            src={user.image} 
-                            alt={user.name}
-                            className="h-10 w-10 rounded-full object-cover"
-                          />
-                        ) : (
-                          user.name.charAt(0).toUpperCase()
-                        )}
+                        {generateAvatar(user.name)}
                       </div>
                       <div>
                         <div className="font-medium">{user.name}</div>
@@ -331,6 +328,34 @@ export function UsersTable({ currentUser, initialUsers }: UsersTableProps) {
                     </Badge>
                   </TableCell>
 
+                  {/* Permissions */}
+                  <TableCell>
+                    <div className="space-y-1">
+                      {/* Role permissions */}
+                      {user.role.permissions && user.role.permissions.length > 0 && (
+                        <div className="flex flex-wrap gap-1">
+                          <Badge variant="outline" className="text-xs">
+                            Role: {user.role.permissions.length} permissions
+                          </Badge>
+                        </div>
+                      )}
+                      {/* Direct user permissions */}
+                      {user.permissions && user.permissions.length > 0 && (
+                        <div className="flex flex-wrap gap-1">
+                          <Badge variant="secondary" className="text-xs">
+                            Direct: {user.permissions.length} permissions
+                          </Badge>
+                        </div>
+                      )}
+                      {(!user.role.permissions || user.role.permissions.length === 0) && 
+                       (!user.permissions || user.permissions.length === 0) && (
+                        <Badge variant="outline" className="text-xs text-muted-foreground">
+                          No permissions
+                        </Badge>
+                      )}
+                    </div>
+                  </TableCell>
+
                   {/* Created Date */}
                   <TableCell className="text-muted-foreground text-sm">
                     {formatDate(user.createdAt)}
@@ -346,6 +371,7 @@ export function UsersTable({ currentUser, initialUsers }: UsersTableProps) {
                   {/* Actions */}
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-2">
+                      {/* Edit User */}
                       {canEditUser(user) && (
                         <Button variant="outline" size="sm" asChild>
                           <Link href={`/admin/users/${user.id}/edit`}>
@@ -355,6 +381,17 @@ export function UsersTable({ currentUser, initialUsers }: UsersTableProps) {
                         </Button>
                       )}
 
+                      {/* Manage Permissions */}
+                      {canManageUsers && (
+                        <Button variant="outline" size="sm" asChild>
+                          <Link href={`/admin/users/${user.id}/permissions`}>
+                            <UserCog className="h-4 w-4" />
+                            <span className="sr-only">Manage permissions for {user.name}</span>
+                          </Link>
+                        </Button>
+                      )}
+
+                      {/* Delete User */}
                       {canDeleteUser(user) && (
                         <AlertDialog open={deleteDialogOpen && selectedUserId === user.id} onOpenChange={setDeleteDialogOpen}>
                           <AlertDialogTrigger asChild>

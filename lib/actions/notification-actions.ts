@@ -36,9 +36,8 @@ export async function updateExistingNotification(
     content?: string
     type?: any
     priority?: any
-    read?: boolean
-    link?: string | null
-    image?: string | null
+    linkDisplay?: string | null
+    linkUrl?: string | null
     expiresAt?: Date | null
   }
 ) {
@@ -163,7 +162,6 @@ export async function getHighPriorityNotifications() {
 
     const notifications = await prisma.notification.findMany({
       where: {
-        read: false,
         priority: "high",
         OR: [
           { expiresAt: null },
@@ -182,17 +180,16 @@ export async function getHighPriorityNotifications() {
       id: notification.id,
       title: notification.title,
       content: notification.content,
-      date: notification.date.toLocaleDateString("en-US", {
+      createdAt: notification.createdAt.toLocaleDateString("en-US", {
         year: "numeric",
         month: "long",
         day: "numeric",
       }),
       type: notification.type,
       priority: notification.priority,
-      read: notification.read,
-      link: notification.link,
+      linkDisplay: notification.linkDisplay,
+      linkUrl: notification.linkUrl,
       expiresAt: notification.expiresAt?.toISOString(),
-      image: notification.image,
     }))
   } catch (error) {
     console.error("Failed to fetch notifications:", error)
@@ -239,69 +236,18 @@ export async function getAllNotifications() {
         id: notification.id,
         title: notification.title,
         content: notification.content,
-        date: notification.date.toISOString(), // Keep as ISO string for date-fns
-        type: notification.type.replace(/_/g, '-'), // Convert underscores to hyphens
+        type: notification.type,
         priority: notification.priority,
-        read: notification.read,
-        link: notification.link,
+        linkDisplay: notification.linkDisplay,
+        linkUrl: notification.linkUrl,
         expiresAt: notification.expiresAt?.toISOString(),
-        image: notification.image,
+        createdAt: notification.createdAt.toISOString(),
+        updatedAt: notification.updatedAt.toISOString(),
       })) 
     }
   } catch (error) {
     console.error("Failed to fetch all notifications:", error)
     return { success: false, error: "Failed to fetch notifications" }
-  }
-}
-
-export async function markNotificationAsRead(notificationId: string) {
-  try {
-    // Check authentication and permissions
-    const currentUser = await getCurrentUserWithPermissions()
-    
-    if (!currentUser) {
-      return { success: false, error: "Authentication required" }
-    }
-
-    if (!notificationId || typeof notificationId !== 'string') {
-      return { success: false, error: "Invalid notification ID provided" }
-    }
-
-    // Get the existing notification
-    const existingNotification = await prisma.notification.findUnique({
-      where: { id: notificationId }
-    })
-
-    if (!existingNotification) {
-      return { success: false, error: "Notification not found" }
-    }
-
-    // Check if user has permission to update notifications (marking as read is an update)
-    const permissionCheck = checkPermission(currentUser, 'notification.UPDATE', {
-      resourceId: existingNotification.id
-    })
-
-    if (!permissionCheck.allowed) {
-      return { 
-        success: false, 
-        error: permissionCheck.reason || "You don't have permission to mark this notification as read" 
-      }
-    }
-
-    await prisma.notification.update({
-      where: { id: notificationId },
-      data: { read: true }
-    })
-
-    console.log(`✅ User ${currentUser.email} marked notification as read: ${existingNotification.title}`)
-
-    revalidatePath("/admin/notifications")
-    revalidatePath("/notifications")
-
-    return { success: true }
-  } catch (error) {
-    console.error("Failed to mark notification as read:", error)
-    return { success: false, error: "Failed to mark notification as read" }
   }
 }
 
@@ -349,8 +295,8 @@ export async function createNotification(data: {
   content: string
   type: string
   priority?: "low" | "medium" | "high"
-  link?: string
-  image?: string
+  linkDisplay?: string
+  linkUrl?: string
   expiresAt?: Date | null
 }) {
   try {
@@ -384,7 +330,6 @@ export async function createNotification(data: {
     const notification = await prisma.notification.create({
       data: {
         ...data,
-        date: new Date(),
         priority: data.priority || "medium",
         type: data.type as NotificationType,
       },
@@ -409,8 +354,8 @@ export async function updateNotification(
     content?: string
     type?: NotificationType
     priority?: "low" | "medium" | "high"
-    link?: string
-    image?: string
+    linkDisplay?: string
+    linkUrl?: string
     expiresAt?: Date | null
   },
 ) {

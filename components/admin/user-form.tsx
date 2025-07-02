@@ -1,4 +1,4 @@
-// components/admin/user-form.tsx
+// components/admin/user-form.tsx - Updated for simplified schema
 "use client"
 
 import { useState, useEffect } from "react"
@@ -22,7 +22,7 @@ import { toast } from "@/components/ui/use-toast"
 // Types and Utils
 import type { User, Role } from "@prisma/client"
 
-// Base form validation schema
+// Updated form schema - removed image field
 const baseUserFormSchema = z.object({
   name: z.string()
     .min(2, { message: "Name must be at least 2 characters" })
@@ -33,10 +33,6 @@ const baseUserFormSchema = z.object({
   roleId: z.string({
     required_error: "Please select a role",
   }),
-  image: z.string()
-    .url({ message: "Please enter a valid URL" })
-    .optional()
-    .or(z.literal("")),
 })
 
 // For create mode: password is required
@@ -83,7 +79,6 @@ export function UserForm({ user, currentUser, availableRoles, mode }: UserFormPr
       email: user?.email || "",
       password: "",
       roleId: user?.roleId || "",
-      image: user?.image || "",
     },
   })
 
@@ -95,7 +90,6 @@ export function UserForm({ user, currentUser, availableRoles, mode }: UserFormPr
         email: user.email,
         password: "",
         roleId: user.roleId,
-        image: user.image || "",
       })
     }
   }, [user, mode, form])
@@ -129,7 +123,7 @@ export function UserForm({ user, currentUser, availableRoles, mode }: UserFormPr
         }
       }
 
-      // Prepare form data
+      // Prepare form data - removed image field
       const formData = new FormData()
       formData.append("name", data.name.trim())
       formData.append("email", data.email.trim().toLowerCase())
@@ -138,11 +132,6 @@ export function UserForm({ user, currentUser, availableRoles, mode }: UserFormPr
       // Only include password if provided and not empty
       if (data.password && data.password.trim() !== "") {
         formData.append("password", data.password)
-      }
-
-      // Only include image if provided
-      if (data.image && data.image.trim() !== "") {
-        formData.append("image", data.image.trim())
       }
 
       let result
@@ -255,6 +244,19 @@ export function UserForm({ user, currentUser, availableRoles, mode }: UserFormPr
                 {new Date(user.updatedAt).toLocaleDateString()}
               </span>
             </div>
+            {/* Show user-specific permissions if any */}
+            {user.permissions && user.permissions.length > 0 && (
+              <div className="space-y-2">
+                <span className="text-sm font-medium">Direct Permissions:</span>
+                <div className="flex flex-wrap gap-1">
+                  {user.permissions.map((permission, index) => (
+                    <Badge key={index} variant="outline" className="text-xs">
+                      {permission}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
       )}
@@ -406,30 +408,7 @@ export function UserForm({ user, currentUser, availableRoles, mode }: UserFormPr
                         </SelectContent>
                       </Select>
                       <FormDescription>
-                        Determines the user's permissions and access level
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                {/* Image URL Field */}
-                <FormField
-                  control={form.control}
-                  name="image"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Profile Image URL (Optional)</FormLabel>
-                      <FormControl>
-                        <Input 
-                          type="url"
-                          placeholder="https://example.com/avatar.jpg" 
-                          {...field} 
-                          disabled={isSubmitting}
-                        />
-                      </FormControl>
-                      <FormDescription>
-                        URL to the user's profile image. If not provided, a default avatar will be generated.
+                        Determines the user's permissions and access level. Individual permissions can be managed separately after creation.
                       </FormDescription>
                       <FormMessage />
                     </FormItem>
@@ -486,9 +465,27 @@ export function UserForm({ user, currentUser, availableRoles, mode }: UserFormPr
                   </Badge>
                   <div className="flex-1">
                     {role.description && (
-                      <p className="text-sm text-muted-foreground">
+                      <p className="text-sm text-muted-foreground mb-2">
                         {role.description}
                       </p>
+                    )}
+                    {/* Show role permissions */}
+                    {role.permissions && role.permissions.length > 0 && (
+                      <div className="space-y-1">
+                        <p className="text-xs font-medium text-muted-foreground">Role Permissions:</p>
+                        <div className="flex flex-wrap gap-1">
+                          {role.permissions.slice(0, 5).map((permission, index) => (
+                            <Badge key={index} variant="outline" className="text-xs">
+                              {permission}
+                            </Badge>
+                          ))}
+                          {role.permissions.length > 5 && (
+                            <Badge variant="outline" className="text-xs">
+                              +{role.permissions.length - 5} more
+                            </Badge>
+                          )}
+                        </div>
+                      </div>
                     )}
                   </div>
                 </div>

@@ -1,4 +1,4 @@
-// lib/actions/role-actions.ts - COMPLETE VERSION WITH PERMISSIONS
+// lib/actions/role-actions.ts - Updated bridge layer for simplified schema
 "use server"
 
 import { getCurrentUser } from "@/lib/auth"
@@ -11,7 +11,8 @@ import {
   createRoleWithPermissions,
   updateRolePermissions,
   deleteRole,
-  duplicateRole
+  duplicateRole,
+  getAvailablePermissions
 } from './role-permission-actions'
 
 // Helper function to get current user with permissions
@@ -36,374 +37,9 @@ async function getCurrentUserWithPermissions(): Promise<UserWithPermissions | nu
   }
 }
 
-// Complete permissions that match your schema.prisma file
-const WORKING_PERMISSIONS = {
-  "System": [
-    {
-      value: "SYSTEM.ADMIN",
-      label: "System Administrator",
-      description: "Full system access (bypasses all other permissions)",
-      category: "System"
-    },
-    {
-      value: "SYSTEM.USER_MANAGEMENT",
-      label: "User Management",
-      description: "Manage users and their permissions",
-      category: "System"
-    },
-    {
-      value: "SYSTEM.ROLE_MANAGEMENT",
-      label: "Role Management",
-      description: "Create and manage roles and permissions",
-      category: "System"
-    },
-    {
-      value: "SYSTEM.SETTINGS",
-      label: "System Settings",
-      description: "Access and modify system settings",
-      category: "System"
-    }
-  ],
-  "User": [
-    {
-      value: "user.CREATE",
-      label: "Create Users",
-      description: "Create new user accounts",
-      category: "User"
-    },
-    {
-      value: "user.READ",
-      label: "View Users",
-      description: "View user information",
-      category: "User"
-    },
-    {
-      value: "user.UPDATE",
-      label: "Edit Users",
-      description: "Edit existing user accounts",
-      category: "User"
-    },
-    {
-      value: "user.DELETE",
-      label: "Delete Users",
-      description: "Delete user accounts",
-      category: "User"
-    },
-    {
-      value: "user.ALL",
-      label: "All User Operations",
-      description: "Full access to user management",
-      category: "User"
-    }
-  ],
-  "Role": [
-    {
-      value: "role.CREATE",
-      label: "Create Roles",
-      description: "Create new roles",
-      category: "Role"
-    },
-    {
-      value: "role.READ",
-      label: "View Roles",
-      description: "View role information",
-      category: "Role"
-    },
-    {
-      value: "role.UPDATE",
-      label: "Edit Roles",
-      description: "Edit existing roles",
-      category: "Role"
-    },
-    {
-      value: "role.DELETE",
-      label: "Delete Roles",
-      description: "Delete roles",
-      category: "Role"
-    },
-    {
-      value: "role.ALL",
-      label: "All Role Operations",
-      description: "Full access to role management",
-      category: "Role"
-    }
-  ],
-  "Article": [
-    {
-      value: "article.CREATE",
-      label: "Create Articles",
-      description: "Create new articles",
-      category: "Article"
-    },
-    {
-      value: "article.READ",
-      label: "View Articles",
-      description: "View articles",
-      category: "Article"
-    },
-    {
-      value: "article.UPDATE",
-      label: "Edit Articles",
-      description: "Edit existing articles",
-      category: "Article"
-    },
-    {
-      value: "article.DELETE",
-      label: "Delete Articles",
-      description: "Delete articles",
-      category: "Article"
-    },
-    {
-      value: "article.PUBLISH",
-      label: "Publish Articles",
-      description: "Publish and unpublish articles",
-      category: "Article"
-    },
-    {
-      value: "article.ALL",
-      label: "All Article Operations",
-      description: "Full access to article management",
-      category: "Article"
-    }
-  ],
-  "Author": [
-    {
-      value: "author.CREATE",
-      label: "Create Authors",
-      description: "Create new author profiles",
-      category: "Author"
-    },
-    {
-      value: "author.READ",
-      label: "View Authors",
-      description: "View author information",
-      category: "Author"
-    },
-    {
-      value: "author.UPDATE",
-      label: "Edit Authors",
-      description: "Edit existing author profiles",
-      category: "Author"
-    },
-    {
-      value: "author.DELETE",
-      label: "Delete Authors",
-      description: "Delete author profiles",
-      category: "Author"
-    },
-    {
-      value: "author.ALL",
-      label: "All Author Operations",
-      description: "Full access to author management",
-      category: "Author"
-    }
-  ],
-  "CallForPapers": [
-    {
-      value: "callforpapers.CREATE",
-      label: "Create Call for Papers",
-      description: "Create new call for papers",
-      category: "CallForPapers"
-    },
-    {
-      value: "callforpapers.READ",
-      label: "View Call for Papers",
-      description: "View call for papers",
-      category: "CallForPapers"
-    },
-    {
-      value: "callforpapers.UPDATE",
-      label: "Edit Call for Papers",
-      description: "Edit existing call for papers",
-      category: "CallForPapers"
-    },
-    {
-      value: "callforpapers.DELETE",
-      label: "Delete Call for Papers",
-      description: "Delete call for papers",
-      category: "CallForPapers"
-    },
-    {
-      value: "callforpapers.ALL",
-      label: "All Call for Papers Operations",
-      description: "Full access to call for papers management",
-      category: "CallForPapers"
-    }
-  ],
-  "Category": [
-    {
-      value: "category.CREATE",
-      label: "Create Categories",
-      description: "Create new article categories",
-      category: "Category"
-    },
-    {
-      value: "category.READ",
-      label: "View Categories",
-      description: "View article categories",
-      category: "Category"
-    },
-    {
-      value: "category.UPDATE",
-      label: "Edit Categories",
-      description: "Edit existing categories",
-      category: "Category"
-    },
-    {
-      value: "category.DELETE",
-      label: "Delete Categories",
-      description: "Delete article categories",
-      category: "Category"
-    },
-    {
-      value: "category.ALL",
-      label: "All Category Operations",
-      description: "Full access to category management",
-      category: "Category"
-    }
-  ],
-  "EditorialBoardMember": [
-    {
-      value: "editorialboardmember.CREATE",
-      label: "Add Board Members",
-      description: "Add new editorial board members",
-      category: "EditorialBoardMember"
-    },
-    {
-      value: "editorialboardmember.READ",
-      label: "View Board Members",
-      description: "View editorial board members",
-      category: "EditorialBoardMember"
-    },
-    {
-      value: "editorialboardmember.UPDATE",
-      label: "Edit Board Members",
-      description: "Edit editorial board member information",
-      category: "EditorialBoardMember"
-    },
-    {
-      value: "editorialboardmember.DELETE",
-      label: "Remove Board Members",
-      description: "Remove editorial board members",
-      category: "EditorialBoardMember"
-    },
-    {
-      value: "editorialboardmember.ALL",
-      label: "All Board Member Operations",
-      description: "Full access to editorial board management",
-      category: "EditorialBoardMember"
-    }
-  ],
-  "JournalIssue": [
-    {
-      value: "journalissue.CREATE",
-      label: "Create Journal Issues",
-      description: "Create new journal issues",
-      category: "JournalIssue"
-    },
-    {
-      value: "journalissue.READ",
-      label: "View Journal Issues",
-      description: "View journal issues",
-      category: "JournalIssue"
-    },
-    {
-      value: "journalissue.UPDATE",
-      label: "Edit Journal Issues",
-      description: "Edit existing journal issues",
-      category: "JournalIssue"
-    },
-    {
-      value: "journalissue.DELETE",
-      label: "Delete Journal Issues",
-      description: "Delete journal issues",
-      category: "JournalIssue"
-    },
-    {
-      value: "journalissue.PUBLISH",
-      label: "Publish Journal Issues",
-      description: "Publish and manage journal issue releases",
-      category: "JournalIssue"
-    },
-    {
-      value: "journalissue.ALL",
-      label: "All Journal Issue Operations",
-      description: "Full access to journal issue management",
-      category: "JournalIssue"
-    }
-  ],
-  "Media": [
-    {
-      value: "media.CREATE",
-      label: "Upload Media",
-      description: "Upload new media files",
-      category: "Media"
-    },
-    {
-      value: "media.READ",
-      label: "View Media",
-      description: "View media files",
-      category: "Media"
-    },
-    {
-      value: "media.UPDATE",
-      label: "Edit Media",
-      description: "Edit media information",
-      category: "Media"
-    },
-    {
-      value: "media.DELETE",
-      label: "Delete Media",
-      description: "Delete media files",
-      category: "Media"
-    },
-    {
-      value: "media.ALL",
-      label: "All Media Operations",
-      description: "Full access to media management",
-      category: "Media"
-    }
-  ],
-  "Notification": [
-    {
-      value: "notification.CREATE",
-      label: "Create Notifications",
-      description: "Create new system notifications",
-      category: "Notification"
-    },
-    {
-      value: "notification.READ",
-      label: "View Notifications",
-      description: "View system notifications",
-      category: "Notification"
-    },
-    {
-      value: "notification.UPDATE",
-      label: "Edit Notifications",
-      description: "Edit existing notifications",
-      category: "Notification"
-    },
-    {
-      value: "notification.DELETE",
-      label: "Delete Notifications",
-      description: "Delete system notifications",
-      category: "Notification"
-    },
-    {
-      value: "notification.SEND",
-      label: "Send Notifications",
-      description: "Send notifications to users",
-      category: "Notification"
-    },
-    {
-      value: "notification.ALL",
-      label: "All Notification Operations",
-      description: "Full access to notification management",
-      category: "Notification"
-    }
-  ]
-}
-
+/**
+ * Get all roles (bridge function)
+ */
 export async function getRoles() {
   try {
     console.log("🔄 getRoles bridge called")
@@ -449,6 +85,9 @@ export async function getRoles() {
   }
 }
 
+/**
+ * Get single role by ID (bridge function)
+ */
 export async function getRole(roleId: string) {
   try {
     console.log("🔄 getRole bridge called for:", roleId)
@@ -498,9 +137,12 @@ export async function getRole(roleId: string) {
   }
 }
 
+/**
+ * Get available permissions (bridge function)
+ */
 export async function getPermissions() {
   try {
-    console.log("🔄 getPermissions bridge called - using complete hardcoded permissions")
+    console.log("🔄 getPermissions bridge called")
     
     // Check authentication and permissions
     const currentUser = await getCurrentUserWithPermissions()
@@ -519,19 +161,22 @@ export async function getPermissions() {
       }
     }
     
-    // Calculate totals for logging
-    const totalPermissions = Object.values(WORKING_PERMISSIONS).reduce((total, perms) => total + perms.length, 0)
+    const result = await getAvailablePermissions()
     
+    if (!result.success) {
+      console.log("❌ getAvailablePermissions failed:", result.error)
+      return { permissions: null, error: result.error }
+    }
+
     console.log(`✅ User ${currentUser.email} fetched permissions:`, {
-      tableCount: Object.keys(WORKING_PERMISSIONS).length,
-      tables: Object.keys(WORKING_PERMISSIONS),
-      totalPermissions,
-      samplePermission: WORKING_PERMISSIONS.System[0]
+      tableCount: Object.keys(result.data.grouped).length,
+      tables: Object.keys(result.data.grouped),
+      totalPermissions: result.data.total
     })
 
-    // Return the complete hardcoded permissions
+    // Return the grouped permissions for compatibility
     return { 
-      permissions: WORKING_PERMISSIONS, 
+      permissions: result.data.grouped, 
       error: null 
     }
   } catch (error) {
@@ -543,7 +188,9 @@ export async function getPermissions() {
   }
 }
 
-// Enhanced createRoleWithPermissions with permission checks
+/**
+ * Create new role (bridge function)
+ */
 export async function createRole(data: {
   name: string
   description?: string
@@ -602,7 +249,9 @@ export async function createRole(data: {
   }
 }
 
-// Enhanced updateRolePermissions with permission checks
+/**
+ * Update role permissions (bridge function)
+ */
 export async function updateRole(roleId: string, permissions: string[]) {
   try {
     // Check authentication and permissions
@@ -664,7 +313,9 @@ export async function updateRole(roleId: string, permissions: string[]) {
   }
 }
 
-// Enhanced deleteRole with permission checks
+/**
+ * Delete role (bridge function)
+ */
 export async function removeRole(roleId: string) {
   try {
     // Check authentication and permissions
@@ -723,7 +374,9 @@ export async function removeRole(roleId: string) {
   }
 }
 
-// Enhanced duplicateRole with permission checks
+/**
+ * Duplicate role (bridge function)
+ */
 export async function copyRole(roleId: string, newName: string) {
   try {
     // Check authentication and permissions
@@ -767,7 +420,9 @@ export async function copyRole(roleId: string, newName: string) {
   }
 }
 
-// NEW: Function to check role management permissions
+/**
+ * Check role management permissions
+ */
 export async function checkRolePermissions(roleId?: string) {
   try {
     const currentUser = await getCurrentUserWithPermissions()
@@ -810,7 +465,9 @@ export async function checkRolePermissions(roleId?: string) {
   }
 }
 
-// NEW: Function to get roles with permission context
+/**
+ * Get roles with permission context
+ */
 export async function getRolesWithPermissionContext() {
   try {
     const currentUser = await getCurrentUserWithPermissions()

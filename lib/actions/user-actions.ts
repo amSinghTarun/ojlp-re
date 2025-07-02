@@ -1,4 +1,4 @@
-// lib/actions/user-actions.ts - WITH PROPER PERMISSION CHECKS
+// lib/actions/user-actions.ts - Updated for simplified schema
 "use server"
 
 import { revalidatePath } from "next/cache"
@@ -54,13 +54,13 @@ async function getCurrentUserWithPermissions(): Promise<UserWithPermissions | nu
   }
 }
 
-// Validation schemas
+// Validation schemas - Updated to remove image field
 const userSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters").max(100, "Name is too long"),
   email: z.string().email("Invalid email address").max(255, "Email is too long"),
   password: z.string().min(8, "Password must be at least 8 characters").max(128, "Password is too long").optional(),
   roleId: z.string().min(1, "Role is required"),
-  image: z.string().url("Invalid image URL").optional().or(z.literal("")),
+  permissions: z.array(z.string()).optional().default([]), // Added permissions field
 })
 
 const createUserSchema = userSchema.extend({
@@ -175,13 +175,13 @@ export async function createUser(formData: FormData) {
       return createErrorResponse(PERMISSION_ERRORS.INSUFFICIENT_PERMISSIONS)
     }
 
-    // Extract and validate form data
+    // Extract and validate form data - removed image field
     const rawData = {
       name: formData.get("name") as string,
       email: formData.get("email") as string,
       password: formData.get("password") as string,
       roleId: formData.get("roleId") as string,
-      image: (formData.get("image") as string) || undefined,
+      permissions: [], // Initialize with empty permissions, will be inherited from role
     }
 
     // Validate data
@@ -263,19 +263,11 @@ export async function updateUser(id: string, formData: FormData) {
       }
     }
 
-    // Prevent self-editing through admin interface (unless it's profile update)
-    if (id === currentUser.id) {
-      // You might want to allow profile updates here, or redirect to profile page
-      // For now, we'll allow it but you can modify this logic
-      console.log("User editing own profile through admin interface")
-    }
-
-    // Extract form data
+    // Extract form data - removed image field
     const rawData = {
       name: formData.get("name") as string,
       email: formData.get("email") as string,
       roleId: formData.get("roleId") as string,
-      image: (formData.get("image") as string) || undefined,
     }
 
     // Only include password if it's provided and not empty

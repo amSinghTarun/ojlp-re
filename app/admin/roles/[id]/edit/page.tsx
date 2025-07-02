@@ -1,4 +1,5 @@
-// app/admin/roles/[id]/edit/page.tsx
+
+// app/admin/roles/[id]/edit/page.tsx - Updated for simplified schema
 import type { Metadata } from "next"
 import { redirect, notFound } from "next/navigation"
 import { getCurrentUser } from "@/lib/auth"
@@ -25,17 +26,13 @@ async function getCurrentUserWithPermissions(): Promise<UserWithPermissions | nu
     const user = await getCurrentUser()
     if (!user) return null
 
-    // If user already has role and permissions, return as is
-    if ('role' in user && user.role && 'permissions' in user.role) {
+    if ('role' in user && user.role) {
       return user as UserWithPermissions
     }
 
-    // Otherwise fetch the complete user data with role and permissions
     const fullUser = await prisma.user.findUnique({
       where: { id: user.id },
-      include: {
-        role: true
-      }
+      include: { role: true }
     })
 
     return fullUser as UserWithPermissions
@@ -77,8 +74,7 @@ export default async function EditRolePage({ params }: EditRolePageProps) {
     }
 
     // Check if user has permission to manage roles
-    const permissionCheck = { allowed: true }
-    // checkPermission(currentUser, 'SYSTEM.ROLE_MANAGEMENT')
+    const permissionCheck = checkPermission(currentUser, 'SYSTEM.ROLE_MANAGEMENT')
     if (!permissionCheck.allowed) {
       return (
         <div className="max-w-2xl mx-auto space-y-6">
@@ -124,11 +120,13 @@ export default async function EditRolePage({ params }: EditRolePageProps) {
       throw new Error(roleError || "Failed to load role")
     }
 
-    
+    if (permissionsError || !permissions) {
+      throw new Error(permissionsError || "Failed to load permissions")
+    }
 
     return (
       <RoleForm
-        role={role as Role}
+        role={role as Role & { userCount: number; users?: Array<{ id: string; name: string; email: string }> }}
         availablePermissions={permissions as Record<string, PermissionOption[]>}
         mode="edit"
       />

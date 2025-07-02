@@ -4,15 +4,7 @@ import { revalidatePath } from "next/cache"
 import { getCurrentUser } from "@/lib/auth"
 import { checkPermission } from "@/lib/permissions/checker"
 import { UserWithPermissions } from "@/lib/permissions/types"
-import { prisma } from "@/lib/prisma"
-import {
-  getEditorialBoardMembers,
-  getEditorialBoardMemberById,
-  createEditorialBoardMember,
-  updateEditorialBoardMember,
-  deleteEditorialBoardMember,
-  reorderEditorialBoardMembers,
-} from "../controllers/editorial-board"
+import prisma from "@/lib/prisma"
 import { z } from "zod"
 import { BoardMemberType } from "@prisma/client"
 
@@ -38,6 +30,7 @@ async function getCurrentUserWithPermissions(): Promise<UserWithPermissions | nu
   }
 }
 
+// Updated schema to match the actual Prisma model
 const memberSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
   designation: z.string().min(2, "Designation must be at least 2 characters"),
@@ -46,19 +39,10 @@ const memberSchema = z.object({
   }),
   image: z.string().min(1, "Image is required"),
   order: z.number().optional(),
-  bio: z.string().optional(),
-  detailedBio: z.string().optional(),
+  bio: z.string().min(1, "Bio is required"),
   email: z.string().email("Invalid email address").optional(),
   expertise: z.array(z.string()).optional(),
-  education: z.array(z.string()).optional(),
-  achievements: z.array(z.string()).optional(),
-  publications: z.array(z.string()).optional(),
-  location: z.string().optional(),
-  affiliation: z.string().optional(),
-  website: z.string().optional(),
-  twitter: z.string().optional(),
   linkedin: z.string().optional(),
-  instagram: z.string().optional(),
   orcid: z.string().optional(),
 })
 
@@ -80,7 +64,12 @@ export async function getEditorialBoard() {
       }
     }
 
-    const members = await getEditorialBoardMembers()
+    const members = await prisma.editorialBoardMember.findMany({
+      orderBy: {
+        order: "asc",
+      },
+    })
+    
     console.log(`✅ User ${currentUser.email} fetched ${members.length} editorial board members`)
     
     return { success: true, data: members }
@@ -108,7 +97,10 @@ export async function getEditorialBoardMember(id: string) {
       }
     }
 
-    const member = await getEditorialBoardMemberById(id)
+    const member = await prisma.editorialBoardMember.findUnique({
+      where: { id }
+    })
+    
     if (!member) {
       return { success: false, error: "Member not found" }
     }
@@ -146,7 +138,10 @@ export async function createBoardMember(data: z.infer<typeof memberSchema>) {
     // Check for duplicate email if provided
     if (validatedData.email) {
       const existingMember = await prisma.editorialBoardMember.findFirst({
-        where: { email: validatedData.email }
+        where: { 
+          email: validatedData.email,
+          archived: false
+        }
       })
 
       if (existingMember) {
@@ -163,7 +158,8 @@ export async function createBoardMember(data: z.infer<typeof memberSchema>) {
         name: {
           equals: validatedData.name,
           mode: 'insensitive'
-        }
+        },
+        archived: false
       }
     })
 
@@ -174,7 +170,36 @@ export async function createBoardMember(data: z.infer<typeof memberSchema>) {
       }
     }
 
-    const member = await createEditorialBoardMember(validatedData)
+    // Get the highest order number and add 1
+    const highestOrder = await prisma.editorialBoardMember.findFirst({
+      where: {
+        memberType: validatedData.memberType,
+        archived: false
+      },
+      orderBy: {
+        order: "desc",
+      },
+      select: {
+        order: true,
+      },
+    })
+
+    const order = validatedData.order || (highestOrder ? highestOrder.order + 1 : 1)
+
+    const member = await prisma.editorialBoardMember.create({
+      data: {
+        name: validatedData.name,
+        designation: validatedData.designation,
+        memberType: validatedData.memberType,
+        image: validatedData.image,
+        order,
+        bio: validatedData.bio,
+        email: validatedData.email,
+        expertise: validatedData.expertise || [],
+        linkedin: validatedData.linkedin,
+        orcid: validatedData.orcid,
+      },
+    })
     
     console.log(`✅ User ${currentUser.email} created editorial board member: ${member.name}`)
     
@@ -229,6 +254,7 @@ export async function updateBoardMember(id: string, data: Partial<z.infer<typeof
       const duplicateEmail = await prisma.editorialBoardMember.findFirst({
         where: { 
           email: validatedData.email,
+          archived: false,
           NOT: { id }
         }
       })
@@ -249,6 +275,7 @@ export async function updateBoardMember(id: string, data: Partial<z.infer<typeof
             equals: validatedData.name,
             mode: 'insensitive'
           },
+          archived: false,
           NOT: { id }
         }
       })
@@ -261,7 +288,10 @@ export async function updateBoardMember(id: string, data: Partial<z.infer<typeof
       }
     }
 
-    const member = await updateEditorialBoardMember(id, validatedData)
+    const member = await prisma.editorialBoardMember.update({
+      where: { id },
+      data: validatedData,
+    })
     
     console.log(`✅ User ${currentUser.email} updated editorial board member: ${member.name}`)
     
@@ -308,9 +338,13 @@ export async function deleteBoardMember(id: string) {
       }
     }
 
-    await deleteEditorialBoardMember(id)
+    // Instead of deleting, we archive the member to preserve data integrity
+    await prisma.editorialBoardMember.update({
+      where: { id },
+      data: { archived: true }
+    })
     
-    console.log(`✅ User ${currentUser.email} deleted editorial board member: ${existingMember.name}`)
+    console.log(`✅ User ${currentUser.email} archived editorial board member: ${existingMember.name}`)
     
     revalidatePath("/admin/editorial-board")
     revalidatePath("/editorial-board")
@@ -340,22 +374,33 @@ export async function reorderBoardMembers(orderedIds: string[]) {
       }
     }
 
-    // Validate that all provided IDs exist
+    // Validate that all provided IDs exist and are not archived
     if (orderedIds.length > 0) {
       const existingMembers = await prisma.editorialBoardMember.findMany({
-        where: { id: { in: orderedIds } },
+        where: { 
+          id: { in: orderedIds },
+          archived: false
+        },
         select: { id: true }
       })
 
       if (existingMembers.length !== orderedIds.length) {
         return { 
           success: false, 
-          error: "Some board members not found" 
+          error: "Some board members not found or are archived" 
         }
       }
     }
 
-    await reorderEditorialBoardMembers(orderedIds)
+    // Update the order of each member based on their position in the array
+    const updates = orderedIds.map((id, index) => {
+      return prisma.editorialBoardMember.update({
+        where: { id },
+        data: { order: index + 1 },
+      })
+    })
+
+    await Promise.all(updates)
     
     console.log(`✅ User ${currentUser.email} reordered ${orderedIds.length} editorial board members`)
     
@@ -387,7 +432,14 @@ export async function getEditorialBoardWithPermissions() {
       }
     }
 
-    const members = await getEditorialBoardMembers()
+    const members = await prisma.editorialBoardMember.findMany({
+      where: {
+        archived: false
+      },
+      orderBy: {
+        order: "asc",
+      },
+    })
     
     // Add permission context to each member
     const membersWithPermissions = members.map(member => ({

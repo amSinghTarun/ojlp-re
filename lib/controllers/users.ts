@@ -1,3 +1,4 @@
+// lib/controllers/users.ts - Updated for simplified schema
 import prisma from "@/lib/prisma"
 import bcrypt from "bcryptjs"
 
@@ -5,7 +6,7 @@ export async function getUsers() {
   try {
     return await prisma.user.findMany({
       include: {
-        role:  true,
+        role: true,
       },
       orderBy: {
         createdAt: 'desc'
@@ -56,7 +57,7 @@ export async function createUser(data: {
   email: string
   password: string
   roleId: string
-  image?: string
+  permissions?: string[] // Optional direct permissions
 }) {
   try {
     // Check if email already exists
@@ -88,7 +89,7 @@ export async function createUser(data: {
         email: data.email,
         password: hashedPassword,
         roleId: data.roleId,
-        image: data.image || null,
+        permissions: data.permissions || [], // Set permissions array
       },
       include: {
         role: true,
@@ -111,7 +112,7 @@ export async function updateUser(
     email?: string
     password?: string
     roleId?: string
-    image?: string
+    permissions?: string[] // Optional direct permissions
   },
 ) {
   try {
@@ -149,7 +150,7 @@ export async function updateUser(
     if (data.name !== undefined) updateData.name = data.name
     if (data.email !== undefined) updateData.email = data.email
     if (data.roleId !== undefined) updateData.roleId = data.roleId
-    if (data.image !== undefined) updateData.image = data.image
+    if (data.permissions !== undefined) updateData.permissions = data.permissions
 
     // Hash password if provided
     if (data.password && data.password.trim() !== "") {
@@ -208,14 +209,14 @@ export async function deleteUser(id: string) {
 }
 
 /**
- * Update user permissions (simplified for array-based permissions schema)
+ * Update user permissions directly
  */
 export async function updateUserPermissions(userId: string, permissions: string[]) {
   try {
     // Check if user exists
     const existingUser = await getUserById(userId)
 
-    // Update user permissions directly in the user record
+    // Update user permissions directly
     const updatedUser = await prisma.user.update({
       where: { id: userId },
       data: {

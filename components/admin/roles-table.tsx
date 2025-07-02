@@ -1,4 +1,4 @@
-// components/admin/roles-table.tsx
+// components/admin/roles-table.tsx - Updated for simplified schema
 "use client"
 
 import { useState } from "react"
@@ -26,13 +26,13 @@ import {
 } from "@/components/ui/alert-dialog"
 import { toast } from "@/components/ui/use-toast"
 import { deleteRole, duplicateRole } from "@/lib/actions/role-permission-actions"
-import { Shield, Users, MoreHorizontal, Edit, Trash2, Copy, Plus } from "lucide-react"
+import { Shield, Users, MoreHorizontal, Edit, Trash2, Copy, Plus, Database } from "lucide-react"
 import Link from "next/link"
 
 interface Role {
   id: string
   name: string
-  description?: string
+  description?: string | null
   permissions: string[]
   isSystem?: boolean
   isSystemRole?: boolean
@@ -129,6 +129,32 @@ export function RolesTable({ initialRoles }: RolesTableProps) {
     return "secondary"
   }
 
+  // Helper function to categorize permissions for display
+  const getPermissionSummary = (permissions: string[]) => {
+    if (!permissions || permissions.length === 0) return { categories: [], systemCount: 0 }
+    
+    const categories = new Set<string>()
+    let systemCount = 0
+    
+    permissions.forEach(permission => {
+      if (permission.startsWith('SYSTEM.')) {
+        systemCount++
+        categories.add('System')
+      } else {
+        const [table] = permission.split('.')
+        if (table) {
+          categories.add(table.charAt(0).toUpperCase() + table.slice(1))
+        }
+      }
+    })
+    
+    return {
+      categories: Array.from(categories).slice(0, 3), // Show max 3 categories
+      systemCount,
+      total: permissions.length
+    }
+  }
+
   return (
     <>
       <Card>
@@ -172,78 +198,130 @@ export function RolesTable({ initialRoles }: RolesTableProps) {
                   <TableHead>Type</TableHead>
                   <TableHead>Users</TableHead>
                   <TableHead>Permissions</TableHead>
+                  <TableHead>Categories</TableHead>
                   <TableHead className="w-[70px]">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {roles.map((role) => (
-                  <TableRow key={role.id}>
-                    <TableCell>
-                      <div>
-                        <div className="font-medium">{role.name}</div>
-                        {role.description && (
-                          <div className="text-sm text-muted-foreground">
-                            {role.description}
-                          </div>
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant={getRoleBadgeVariant(role)}>
-                        {role.isSystem || role.isSystemRole ? "System" : "Custom"}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <Users className="h-4 w-4 text-muted-foreground" />
-                        <span>{role.userCount}</span>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant={getPermissionsBadgeVariant(role.permissions.length)}>
-                        {role.permissions.length} permissions
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="sm">
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem asChild>
-                            <Link href={`/admin/roles/${role.id}/edit`}>
-                              <Edit className="h-4 w-4 mr-2" />
-                              Edit
-                            </Link>
-                          </DropdownMenuItem>
-                          <DropdownMenuItem 
-                            onClick={() => handleDuplicateRole(role)}
-                          >
-                            <Copy className="h-4 w-4 mr-2" />
-                            Duplicate
-                          </DropdownMenuItem>
-                          {!(role.isSystem || role.isSystemRole) && (
-                            <>
-                              <DropdownMenuSeparator />
-                              <DropdownMenuItem 
-                                className="text-destructive"
-                                onClick={() => {
-                                  setSelectedRole(role)
-                                  setDeleteDialogOpen(true)
-                                }}
-                              >
-                                <Trash2 className="h-4 w-4 mr-2" />
-                                Delete
-                              </DropdownMenuItem>
-                            </>
+                {roles.map((role) => {
+                  const permissionSummary = getPermissionSummary(role.permissions)
+                  
+                  return (
+                    <TableRow key={role.id}>
+                      {/* Role Name & Description */}
+                      <TableCell>
+                        <div>
+                          <div className="font-medium">{role.name}</div>
+                          {role.description && (
+                            <div className="text-sm text-muted-foreground line-clamp-1">
+                              {role.description}
+                            </div>
                           )}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                        </div>
+                      </TableCell>
+
+                      {/* Role Type */}
+                      <TableCell>
+                        <Badge variant={getRoleBadgeVariant(role)}>
+                          {role.isSystem || role.isSystemRole ? "System" : "Custom"}
+                        </Badge>
+                      </TableCell>
+
+                      {/* User Count */}
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <Users className="h-4 w-4 text-muted-foreground" />
+                          <span>{role.userCount}</span>
+                          {role.userCount > 0 && (
+                            <Badge variant="outline" className="text-xs">
+                              Active
+                            </Badge>
+                          )}
+                        </div>
+                      </TableCell>
+
+                      {/* Permission Count */}
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <Badge variant={getPermissionsBadgeVariant(role.permissions.length)}>
+                            {role.permissions.length} permissions
+                          </Badge>
+                          {permissionSummary.systemCount > 0 && (
+                            <Badge variant="destructive" className="text-xs">
+                              {permissionSummary.systemCount} system
+                            </Badge>
+                          )}
+                        </div>
+                      </TableCell>
+
+                      {/* Permission Categories */}
+                      <TableCell>
+                        <div className="flex flex-wrap gap-1 max-w-48">
+                          {permissionSummary.categories.map((category, index) => (
+                            <Badge key={index} variant="outline" className="text-xs">
+                              {category}
+                            </Badge>
+                          ))}
+                          {permissionSummary.categories.length > 3 && (
+                            <Badge variant="outline" className="text-xs">
+                              +{permissionSummary.categories.length - 3} more
+                            </Badge>
+                          )}
+                          {permissionSummary.categories.length === 0 && (
+                            <span className="text-xs text-muted-foreground">No permissions</span>
+                          )}
+                        </div>
+                      </TableCell>
+
+                      {/* Actions */}
+                      <TableCell>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="sm">
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem asChild>
+                              <Link href={`/admin/roles/${role.id}/edit`}>
+                                <Edit className="h-4 w-4 mr-2" />
+                                Edit
+                              </Link>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem 
+                              onClick={() => handleDuplicateRole(role)}
+                            >
+                              <Copy className="h-4 w-4 mr-2" />
+                              Duplicate
+                            </DropdownMenuItem>
+                            {/* Show permissions details */}
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem disabled>
+                              <Database className="h-4 w-4 mr-2" />
+                              {role.permissions.length} permissions
+                            </DropdownMenuItem>
+                            {/* Delete option for non-system roles without users */}
+                            {!(role.isSystem || role.isSystemRole) && role.userCount === 0 && (
+                              <>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem 
+                                  className="text-destructive"
+                                  onClick={() => {
+                                    setSelectedRole(role)
+                                    setDeleteDialogOpen(true)
+                                  }}
+                                >
+                                  <Trash2 className="h-4 w-4 mr-2" />
+                                  Delete
+                                </DropdownMenuItem>
+                              </>
+                            )}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  )
+                })}
               </TableBody>
             </Table>
           )}
@@ -266,13 +344,31 @@ export function RolesTable({ initialRoles }: RolesTableProps) {
                   </p>
                 </div>
               )}
+              {selectedRole && (selectedRole.isSystem || selectedRole.isSystemRole) && (
+                <div className="mt-2 p-3 bg-destructive/10 rounded-md border border-destructive/20">
+                  <p className="text-sm font-medium text-destructive">
+                    Warning: This is a system role and cannot be deleted.
+                  </p>
+                </div>
+              )}
+              {selectedRole && selectedRole.permissions.length > 0 && (
+                <div className="mt-2 p-2 bg-muted rounded-md">
+                  <p className="text-sm">
+                    This role has {selectedRole.permissions.length} permission(s) that will be removed.
+                  </p>
+                </div>
+              )}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
             <AlertDialogAction 
               onClick={handleDeleteRole}
-              disabled={isDeleting || (selectedRole?.userCount && selectedRole.userCount > 0)}
+              disabled={
+                isDeleting || 
+                (selectedRole?.userCount && selectedRole.userCount > 0) ||
+                (selectedRole && (selectedRole.isSystem || selectedRole.isSystemRole))
+              }
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               {isDeleting ? "Deleting..." : "Delete Role"}

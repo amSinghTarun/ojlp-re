@@ -1,4 +1,4 @@
-// app/admin/roles/new/page.tsx
+// app/admin/roles/new/page.tsx - Updated for simplified schema
 import type { Metadata } from "next"
 import { redirect } from "next/navigation"
 import { getCurrentUser } from "@/lib/auth"
@@ -23,17 +23,13 @@ async function getCurrentUserWithPermissions(): Promise<UserWithPermissions | nu
     const user = await getCurrentUser()
     if (!user) return null
 
-    // If user already has role and permissions, return as is
-    if ('role' in user && user.role && 'permissions' in user.role) {
+    if ('role' in user && user.role) {
       return user as UserWithPermissions
     }
 
-    // Otherwise fetch the complete user data with role and permissions
     const fullUser = await prisma.user.findUnique({
       where: { id: user.id },
-      include: {
-        role: true
-      }
+      include: { role: true }
     })
 
     return fullUser as UserWithPermissions

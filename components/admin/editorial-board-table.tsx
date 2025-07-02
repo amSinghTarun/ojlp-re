@@ -15,7 +15,7 @@ import {
   getSortedRowModel,
   useReactTable,
 } from "@tanstack/react-table"
-import { ArrowUpDown, ChevronDown, MoreHorizontal, Pencil, Trash, ArrowUp, ArrowDown, Loader2, Users, UserCheck } from "lucide-react"
+import { ArrowUpDown, ChevronDown, MoreHorizontal, Pencil, Trash, ArrowUp, ArrowDown, Loader2, Users, UserCheck, ExternalLink } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import {
@@ -50,10 +50,16 @@ export type Member = {
   name: string
   designation: string
   memberType: BoardMemberType
-  image?: string
+  image: string
   order: number
-  bio?: string
-  email: string
+  bio: string
+  email?: string | null
+  expertise: string[]
+  linkedin?: string | null
+  orcid?: string | null
+  archived: boolean
+  createdAt: Date
+  updatedAt: Date
 }
 
 interface MemberTableProps {
@@ -72,7 +78,7 @@ function MemberTable({ members, memberType, onDelete, onMoveUp, onMoveDown, acti
 
   // Memoize filtered members to prevent recalculation
   const filteredMembers = useMemo(() => 
-    members.filter(member => member.memberType === memberType), 
+    members.filter(member => member.memberType === memberType && !member.archived), 
     [members, memberType]
   )
 
@@ -136,7 +142,69 @@ function MemberTable({ members, memberType, onDelete, onMoveUp, onMoveDown, acti
     {
       accessorKey: "email",
       header: "Email",
-      cell: ({ row }) => <div className="text-sm text-muted-foreground">{row.getValue("email")}</div>,
+      cell: ({ row }) => {
+        const email = row.getValue("email") as string | null
+        return email ? (
+          <div className="text-sm text-muted-foreground">{email}</div>
+        ) : (
+          <div className="text-sm text-muted-foreground">No email</div>
+        )
+      },
+    },
+    {
+      accessorKey: "expertise",
+      header: "Expertise",
+      cell: ({ row }) => {
+        const expertise = row.getValue("expertise") as string[]
+        return expertise && expertise.length > 0 ? (
+          <div className="flex flex-wrap gap-1">
+            {expertise.slice(0, 2).map((area, index) => (
+              <Badge key={index} variant="outline" className="text-xs">
+                {area}
+              </Badge>
+            ))}
+            {expertise.length > 2 && (
+              <Badge variant="outline" className="text-xs">
+                +{expertise.length - 2} more
+              </Badge>
+            )}
+          </div>
+        ) : (
+          <span className="text-sm text-muted-foreground">None specified</span>
+        )
+      },
+      enableSorting: false,
+    },
+    {
+      accessorKey: "linkedin",
+      header: "Links",
+      cell: ({ row }) => {
+        const linkedin = row.getValue("linkedin") as string | null
+        const orcid = row.original.orcid
+        
+        return (
+          <div className="flex gap-1">
+            {linkedin && (
+              <Button variant="ghost" size="sm" asChild>
+                <a href={linkedin} target="_blank" rel="noopener noreferrer">
+                  <ExternalLink className="h-3 w-3" />
+                </a>
+              </Button>
+            )}
+            {orcid && (
+              <Button variant="ghost" size="sm" asChild>
+                <a href={`https://orcid.org/${orcid}`} target="_blank" rel="noopener noreferrer">
+                  ORCID
+                </a>
+              </Button>
+            )}
+            {!linkedin && !orcid && (
+              <span className="text-sm text-muted-foreground">None</span>
+            )}
+          </div>
+        )
+      },
+      enableSorting: false,
     },
     {
       id: "actions",
@@ -437,7 +505,7 @@ export function EditorialBoardTable() {
   const handleMoveUp = useCallback(async (id: string, memberType: BoardMemberType) => {
     if (actionLoading) return
     
-    const typeMembers = members.filter(m => m.memberType === memberType).sort((a, b) => a.order - b.order)
+    const typeMembers = members.filter(m => m.memberType === memberType && !m.archived).sort((a, b) => a.order - b.order)
     const index = typeMembers.findIndex((m) => m.id === id)
     if (index <= 0) return
 
@@ -486,7 +554,7 @@ export function EditorialBoardTable() {
   const handleMoveDown = useCallback(async (id: string, memberType: BoardMemberType) => {
     if (actionLoading) return
     
-    const typeMembers = members.filter(m => m.memberType === memberType).sort((a, b) => a.order - b.order)
+    const typeMembers = members.filter(m => m.memberType === memberType && !m.archived).sort((a, b) => a.order - b.order)
     const index = typeMembers.findIndex((m) => m.id === id)
     if (index >= typeMembers.length - 1) return
 
@@ -552,8 +620,8 @@ export function EditorialBoardTable() {
   const handleAdvisorMoveDown = useCallback((id: string) => handleMoveDown(id, BoardMemberType.Advisor), [handleMoveDown])
 
   // Memoize counts
-  const editorCount = useMemo(() => members.filter(m => m.memberType === BoardMemberType.Editor).length, [members])
-  const advisorCount = useMemo(() => members.filter(m => m.memberType === BoardMemberType.Advisor).length, [members])
+  const editorCount = useMemo(() => members.filter(m => m.memberType === BoardMemberType.Editor && !m.archived).length, [members])
+  const advisorCount = useMemo(() => members.filter(m => m.memberType === BoardMemberType.Advisor && !m.archived).length, [members])
 
   if (loading) {
     return (

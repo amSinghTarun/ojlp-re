@@ -1,8 +1,14 @@
+// lib/controllers/editorial-board.ts
+'use server'
+
 import prisma from "@/lib/prisma"
 import { BoardMemberType } from "@prisma/client"
 
 export async function getEditorialBoardMembers() {
   return prisma.editorialBoardMember.findMany({
+    where: {
+      archived: false,
+    },
     orderBy: {
       order: "asc",
     },
@@ -11,7 +17,10 @@ export async function getEditorialBoardMembers() {
 
 export async function getEditorialBoardMemberById(id: string) {
   return prisma.editorialBoardMember.findUnique({
-    where: { id },
+    where: { 
+      id,
+      archived: false,
+    },
   })
 }
 
@@ -21,23 +30,18 @@ export async function createEditorialBoardMember(data: {
   memberType: BoardMemberType
   image: string
   order?: number
-  bio?: string
-  detailedBio?: string
+  bio: string
   email?: string
   expertise?: string[]
-  education?: string[]
-  achievements?: string[]
-  publications?: string[]
-  location?: string
-  affiliation?: string
-  website?: string
-  twitter?: string
   linkedin?: string
-  instagram?: string
   orcid?: string
 }) {
-  // Get the highest order number and add 1
+  // Get the highest order number and add 1 for the specific member type
   const highestOrder = await prisma.editorialBoardMember.findFirst({
+    where: {
+      memberType: data.memberType,
+      archived: false,
+    },
     orderBy: {
       order: "desc",
     },
@@ -56,18 +60,9 @@ export async function createEditorialBoardMember(data: {
       image: data.image,
       order,
       bio: data.bio,
-      detailedBio: data.detailedBio,
       email: data.email,
       expertise: data.expertise || [],
-      education: data.education || [],
-      achievements: data.achievements || [],
-      publications: data.publications || [],
-      location: data.location,
-      affiliation: data.affiliation,
-      website: data.website,
-      twitter: data.twitter,
       linkedin: data.linkedin,
-      instagram: data.instagram,
       orcid: data.orcid,
     },
   })
@@ -82,18 +77,9 @@ export async function updateEditorialBoardMember(
     image?: string
     order?: number
     bio?: string
-    detailedBio?: string
     email?: string
     expertise?: string[]
-    education?: string[]
-    achievements?: string[]
-    publications?: string[]
-    location?: string
-    affiliation?: string
-    website?: string
-    twitter?: string
     linkedin?: string
-    instagram?: string
     orcid?: string
   },
 ) {
@@ -104,8 +90,10 @@ export async function updateEditorialBoardMember(
 }
 
 export async function deleteEditorialBoardMember(id: string) {
-  return prisma.editorialBoardMember.delete({
+  // Instead of hard delete, we archive the member
+  return prisma.editorialBoardMember.update({
     where: { id },
+    data: { archived: true },
   })
 }
 
@@ -119,4 +107,105 @@ export async function reorderEditorialBoardMembers(orderedIds: string[]) {
   })
 
   return Promise.all(updates)
+}
+
+export async function getEditorialBoardMembersByType(memberType: BoardMemberType) {
+  return prisma.editorialBoardMember.findMany({
+    where: { 
+      memberType,
+      archived: false,
+    },
+    orderBy: {
+      order: "asc",
+    },
+  })
+}
+
+export async function getEditorialBoardStats() {
+  const total = await prisma.editorialBoardMember.count({
+    where: {
+      archived: false,
+    },
+  })
+  
+  const editors = await prisma.editorialBoardMember.count({
+    where: {
+      memberType: BoardMemberType.Editor,
+      archived: false,
+    },
+  })
+  
+  const advisors = await prisma.editorialBoardMember.count({
+    where: {
+      memberType: BoardMemberType.Advisor,
+      archived: false,
+    },
+  })
+
+  const archived = await prisma.editorialBoardMember.count({
+    where: {
+      archived: true,
+    },
+  })
+
+  return {
+    total,
+    editors,
+    advisors,
+    archived,
+  }
+}
+
+export async function searchEditorialBoardMembers(searchTerm: string) {
+  return prisma.editorialBoardMember.findMany({
+    where: {
+      archived: false,
+      OR: [
+        {
+          name: {
+            contains: searchTerm,
+            mode: 'insensitive',
+          },
+        },
+        {
+          designation: {
+            contains: searchTerm,
+            mode: 'insensitive',
+          },
+        },
+        {
+          bio: {
+            contains: searchTerm,
+            mode: 'insensitive',
+          },
+        },
+        {
+          expertise: {
+            hasSome: [searchTerm],
+          },
+        },
+      ],
+    },
+    orderBy: {
+      order: "asc",
+    },
+  })
+}
+
+export async function restoreEditorialBoardMember(id: string) {
+  return prisma.editorialBoardMember.update({
+    where: { id },
+    data: { archived: false },
+  })
+}
+
+export async function getArchivedEditorialBoardMembers() {
+  return prisma.editorialBoardMember.findMany({
+    where: {
+      archived: true,
+    },
+    orderBy: {
+      updatedAt: "desc",
+    },
+  })
 }

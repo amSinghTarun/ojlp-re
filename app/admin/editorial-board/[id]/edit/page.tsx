@@ -1,4 +1,3 @@
-// app/admin/editorial-board/[id]/edit/page.tsx
 import type { Metadata } from "next"
 import { redirect, notFound } from "next/navigation"
 import { getCurrentUser } from "@/lib/auth"
@@ -7,10 +6,11 @@ import { getEditorialBoardMember } from "@/lib/actions/editorial-board-actions"
 import { checkPermission } from "@/lib/permissions/checker"
 import { UserWithPermissions } from "@/lib/permissions/types"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { AlertTriangle, ArrowLeft } from "lucide-react"
+import { AlertTriangle, ArrowLeft, Pencil, Users } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { Card, CardContent } from "@/components/ui/card"
 import Link from "next/link"
-import { prisma } from "@/lib/prisma"
+import prisma from "@/lib/prisma"
 
 interface EditEditorialBoardMemberPageProps {
   params: {
@@ -24,17 +24,13 @@ async function getCurrentUserWithPermissions(): Promise<UserWithPermissions | nu
     const user = await getCurrentUser()
     if (!user) return null
 
-    // If user already has role and permissions, return as is
-    if ('role' in user && user.role && 'permissions' in user.role) {
+    if ('role' in user && user.role) {
       return user as UserWithPermissions
     }
 
-    // Otherwise fetch the complete user data with role and permissions
     const fullUser = await prisma.user.findUnique({
       where: { id: user.id },
-      include: {
-        role: true
-      }
+      include: { role: true }
     })
 
     return fullUser as UserWithPermissions
@@ -103,6 +99,28 @@ export default async function EditEditorialBoardMemberPage({ params }: EditEdito
               {permissionCheck.reason || "You don't have permission to edit editorial board members. Contact your administrator for access."}
             </AlertDescription>
           </Alert>
+
+          <Card className="border-blue-200 bg-blue-50">
+            <CardContent className="pt-6">
+              <div className="flex items-start gap-3">
+                <Pencil className="h-5 w-5 text-blue-600 mt-0.5" />
+                <div>
+                  <h4 className="font-semibold text-blue-900 mb-2">Editing Editorial Board Members</h4>
+                  <p className="text-sm text-blue-800 mb-3">
+                    To edit editorial board members, you need:
+                  </p>
+                  <ul className="text-sm text-blue-800 space-y-1">
+                    <li>• <code className="bg-blue-100 px-1 rounded">editorialboard.UPDATE</code> permission</li>
+                    <li>• Access to manage member profiles</li>
+                    <li>• Authority to modify board information</li>
+                  </ul>
+                  <p className="text-sm text-blue-800 mt-3">
+                    Contact your system administrator to request these permissions.
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </div>
       )
     }
@@ -112,7 +130,7 @@ export default async function EditEditorialBoardMemberPage({ params }: EditEdito
 
     // Handle errors
     if (!result.success) {
-      if (result.error?.includes("not found")) {
+      if (result.error?.includes("not found") || result.error?.includes("Member not found")) {
         notFound()
       }
       throw new Error(result.error || "Failed to load member")
@@ -132,10 +150,32 @@ export default async function EditEditorialBoardMemberPage({ params }: EditEdito
           <div>
             <h1 className="text-2xl font-bold">Edit Board Member: {member.name}</h1>
             <p className="text-muted-foreground">
-              Edit member information and profile details
+              Edit member information and profile details for {member.designation}
             </p>
           </div>
         </div>
+
+        {/* Edit Guidelines */}
+        <Card className="border-blue-200 bg-blue-50">
+          <CardContent className="pt-6">
+            <div className="flex items-start gap-3">
+              <Users className="h-5 w-5 text-blue-600 mt-0.5" />
+              <div>
+                <h4 className="font-semibold text-blue-900 mb-2">Editing Guidelines</h4>
+                <p className="text-sm text-blue-800 mb-3">
+                  When updating member information:
+                </p>
+                <ul className="text-sm text-blue-800 space-y-1">
+                  <li>• Ensure all changes are accurate and up-to-date</li>
+                  <li>• Maintain professional standards for all content</li>
+                  <li>• Update expertise areas to reflect current focus</li>
+                  <li>• Verify any new contact information or social links</li>
+                  <li>• Consider the impact of order changes on display hierarchy</li>
+                </ul>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
         <EditorialBoardForm member={member} />
       </div>
@@ -144,7 +184,7 @@ export default async function EditEditorialBoardMemberPage({ params }: EditEdito
     console.error("Error loading edit editorial board member page:", error)
     
     // Check if it's a not found error
-    if (error instanceof Error && error.message.includes("not found")) {
+    if (error instanceof Error && (error.message.includes("not found") || error.message.includes("Member not found"))) {
       notFound()
     }
     
@@ -184,6 +224,11 @@ export default async function EditEditorialBoardMemberPage({ params }: EditEdito
           <Button asChild>
             <Link href="/admin/editorial-board">
               Back to Editorial Board
+            </Link>
+          </Button>
+          <Button variant="outline" asChild>
+            <Link href="/admin/editorial-board/new">
+              Add New Member
             </Link>
           </Button>
         </div>

@@ -1,4 +1,3 @@
-// components/admin/notifications-table.tsx - Updated to handle server action responses
 "use client"
 
 import { useState, useEffect, useCallback, useMemo } from "react"
@@ -15,7 +14,7 @@ import {
   getSortedRowModel,
   useReactTable,
 } from "@tanstack/react-table"
-import { ArrowUpDown, ChevronDown, MoreHorizontal, Pencil, Trash, Eye, EyeOff, Loader2 } from "lucide-react"
+import { ArrowUpDown, ChevronDown, MoreHorizontal, Pencil, Trash, ExternalLink, Loader2 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -43,7 +42,6 @@ import {
 import { toast } from "@/components/ui/use-toast"
 import {
   getAllNotifications,
-  updateExistingNotification,
   deleteExistingNotification,
 } from "@/lib/actions/notification-actions"
 import { NotificationType, Priority } from "@prisma/client"
@@ -52,12 +50,10 @@ export type NotificationItem = {
   id: string
   title: string
   content: string
-  date: Date
   type: NotificationType
   priority: Priority
-  link?: string | null
-  image?: string | null
-  read: boolean
+  linkDisplay?: string | null
+  linkUrl?: string | null
   createdAt: Date
   updatedAt: Date
   expiresAt?: Date | null
@@ -87,7 +83,6 @@ export function NotificationsTable() {
         // Transform dates from server response
         const transformedNotifications = result.data.map(notification => ({
           ...notification,
-          date: new Date(notification.date),
           createdAt: new Date(notification.createdAt),
           updatedAt: new Date(notification.updatedAt),
           expiresAt: notification.expiresAt ? new Date(notification.expiresAt) : null,
@@ -128,7 +123,7 @@ export function NotificationsTable() {
         setNotifications(prev => prev.filter((notification) => notification.id !== id))
         toast({
           title: "Success",
-          description: result.message || "Notification deleted successfully",
+          description: "Notification deleted successfully",
         })
       } else {
         toast({
@@ -148,42 +143,6 @@ export function NotificationsTable() {
       setActionLoading(null)
     }
   }, [])
-
-  const toggleReadStatus = useCallback(async (notification: NotificationItem) => {
-    if (actionLoading) return
-    
-    setActionLoading(notification.id)
-    try {
-      const result = await updateExistingNotification(notification.id, {
-        read: !notification.read,
-      })
-      
-      if (result.success) {
-        setNotifications(prev => prev.map((n) => 
-          n.id === notification.id ? { ...n, read: !n.read } : n
-        ))
-        toast({
-          title: "Success",
-          description: `Notification marked as ${!notification.read ? "read" : "unread"}`,
-        })
-      } else {
-        toast({
-          title: "Error",
-          description: result.error || "Failed to update notification",
-          variant: "destructive",
-        })
-      }
-    } catch (err) {
-      console.error("Failed to update notification:", err)
-      toast({
-        title: "Error",
-        description: "Failed to update notification. Please try again.",
-        variant: "destructive",
-      })
-    } finally {
-      setActionLoading(null)
-    }
-  }, [actionLoading])
 
   const confirmDelete = useCallback((id: string) => {
     setSelectedNotificationId(id)
@@ -229,8 +188,12 @@ export function NotificationsTable() {
             <span className={`max-w-[300px] truncate font-medium ${expired ? 'text-muted-foreground line-through' : ''}`}>
               {row.getValue("title")}
             </span>
-            {!notification.read && <Badge variant="secondary">Unread</Badge>}
             {expired && <Badge variant="destructive">Expired</Badge>}
+            {notification.linkUrl && (
+              <Badge variant="outline" className="text-xs">
+                Has Link
+              </Badge>
+            )}
           </div>
         )
       },
@@ -251,6 +214,25 @@ export function NotificationsTable() {
                            priority === Priority.medium ? "default" : "outline"
 
         return <Badge variant={badgeVariant}>{priority}</Badge>
+      },
+    },
+    {
+      accessorKey: "linkDisplay",
+      header: "Link",
+      cell: ({ row }) => {
+        const linkDisplay = row.original.linkDisplay
+        const linkUrl = row.original.linkUrl
+        
+        if (!linkDisplay || !linkUrl) {
+          return <span className="text-muted-foreground">No link</span>
+        }
+        
+        return (
+          <div className="flex items-center gap-1 text-sm">
+            <ExternalLink className="h-3 w-3" />
+            <span className="truncate max-w-[150px]">{linkDisplay}</span>
+          </div>
+        )
       },
     },
     {
@@ -307,22 +289,14 @@ export function NotificationsTable() {
                   Edit
                 </Link>
               </DropdownMenuItem>
-              <DropdownMenuItem 
-                onClick={() => toggleReadStatus(notification)}
-                disabled={isActionLoadingForRow}
-              >
-                {notification.read ? (
-                  <>
-                    <EyeOff className="mr-2 h-4 w-4" />
-                    Mark as unread
-                  </>
-                ) : (
-                  <>
-                    <Eye className="mr-2 h-4 w-4" />
-                    Mark as read
-                  </>
-                )}
-              </DropdownMenuItem>
+              {notification.linkUrl && (
+                <DropdownMenuItem asChild>
+                  <a href={notification.linkUrl} target="_blank" rel="noopener noreferrer">
+                    <ExternalLink className="mr-2 h-4 w-4" />
+                    Open Link
+                  </a>
+                </DropdownMenuItem>
+              )}
               <DropdownMenuSeparator />
               <DropdownMenuItem 
                 className="text-destructive"
@@ -337,7 +311,7 @@ export function NotificationsTable() {
         )
       },
     },
-  ], [actionLoading, toggleReadStatus, confirmDelete])
+  ], [actionLoading, confirmDelete])
 
   const table = useReactTable({
     data: notifications,

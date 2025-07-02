@@ -1,4 +1,4 @@
-// app/admin/roles/page.tsx - WITH SIMPLE PERMISSION CHECKS
+// app/admin/roles/page.tsx - Updated for simplified schema
 import type { Metadata } from "next"
 import { redirect } from "next/navigation"
 import { getCurrentUser } from "@/lib/auth"
@@ -95,6 +95,10 @@ export default async function RolesPage() {
     const customRoles = roles.filter(role => !(role.isSystemRole || role.isSystem)).length
     const totalUsers = roles.reduce((sum, role) => sum + (role.userCount || 0), 0)
 
+    // Calculate permission stats
+    const totalPermissions = roles.reduce((sum, role) => sum + (role.permissions?.length || 0), 0)
+    const avgPermissionsPerRole = totalRoles > 0 ? Math.round(totalPermissions / totalRoles) : 0
+
     // User has permission - show the actual component
     return (
       <div className="space-y-6">
@@ -115,7 +119,7 @@ export default async function RolesPage() {
         </div>
 
         {/* Stats Cards */}
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Total Roles</CardTitle>
@@ -157,13 +161,13 @@ export default async function RolesPage() {
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Users</CardTitle>
-              <Users className="h-4 w-4 text-muted-foreground" />
+              <CardTitle className="text-sm font-medium">Avg Permissions</CardTitle>
+              <Key className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{totalUsers}</div>
+              <div className="text-2xl font-bold">{avgPermissionsPerRole}</div>
               <p className="text-xs text-muted-foreground">
-                Users with roles assigned
+                Per role average
               </p>
             </CardContent>
           </Card>

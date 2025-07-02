@@ -1,3 +1,4 @@
+// app/admin/users/new/page.tsx - Updated for simplified schema
 import type { Metadata } from "next"
 import { redirect } from "next/navigation"
 import { getCurrentUser } from "@/lib/auth"
@@ -11,6 +12,10 @@ export const metadata: Metadata = {
 
 export default async function NewUserPage() {
   const currentUser = await getCurrentUser()
+
+  if (!currentUser) {
+    redirect("/admin/login")
+  }
 
   try {
     // Get available roles

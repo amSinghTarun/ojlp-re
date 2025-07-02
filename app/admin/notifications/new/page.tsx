@@ -1,3 +1,4 @@
+
 // app/admin/notifications/new/page.tsx - WITH SIMPLE PERMISSION CHECKS
 import { DashboardHeader } from "@/components/admin/dashboard-header"
 import { NotificationForm } from "@/components/admin/notification-form"
@@ -8,7 +9,7 @@ import {
   PERMISSION_ERRORS 
 } from "@/lib/permissions/types"
 import { redirect } from "next/navigation"
-import { prisma } from "@/lib/prisma"
+import prisma from "@/lib/prisma"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { AlertCircle } from "lucide-react"
 

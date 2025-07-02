@@ -1,31 +1,26 @@
-// lib/permissions/checker.ts - Simplified for array-based permissions
+// lib/permissions/checker.ts - Updated for simplified schema
 import { 
-    UserWithPermissions, 
-    PermissionCheckResult, 
-    PermissionContext,
-    PermissionOperation,
-    PermissionString,
-    SYSTEM_PERMISSIONS,
-    PERMISSION_HIERARCHY,
-    ROUTE_TABLE_MAPPING,
-    PERMISSION_ERRORS,
-    parsePermissionString,
-    createPermissionString,
-    getAllUserPermissions
-  } from './types'
-  import { getTableNameFromRoute } from './schema-reader'
-  
-  /**
-   * Route-level permission checker
-   * Usage: checkPermission(user, "article.CREATE")
-   * Usage: checkPermission(user, "user.READ", { userId: "123" })
-   */
-  export function checkPermission(
-    user: UserWithPermissions | null,
-    requiredPermission: PermissionString,
-    context: PermissionContext = {}
-  ): PermissionCheckResult {
-    // Check if user exists
+  UserWithPermissions, 
+  PermissionContext, 
+  PermissionCheckResult,
+  SYSTEM_PERMISSIONS,
+  PERMISSION_ERRORS,
+  getUserPermissions,
+  hasPermission,
+  hasSystemAdminAccess,
+  isSystemPermission
+} from './types'
+
+/**
+ * Main permission checking function - Updated for simplified schema
+ */
+export function checkPermission(
+  user: UserWithPermissions,
+  requiredPermission: string,
+  context?: PermissionContext
+): PermissionCheckResult {
+  try {
+    // Basic validation
     if (!user) {
       return {
         allowed: false,
@@ -34,321 +29,292 @@ import {
       }
     }
 
-    console.log("REQUIRED PERMISSION", requiredPermission);
-  
-    // System admin bypasses all checks
-    // if (hasSystemPermission(user, 'SUPER_ADMIN')) {
-    //   return { allowed: true }
-    // }
-  
-    // Parse the required permission
-    const parsed = parsePermissionString(requiredPermission)
-    if (!parsed) {
+    // System admin bypass - check user's combined permissions
+    if (hasSystemAdminAccess(user)) {
+      return { allowed: true }
+    }
+
+    // Get all user permissions (role + direct)
+    const userPermissions = getUserPermissions(user)
+
+    // Self-access rules (users can usually read/update their own data)
+    if (context?.userId && context.resourceId && context.userId === context.resourceId) {
+      if (requiredPermission.endsWith('.READ') || requiredPermission.endsWith('.UPDATE')) {
+        return { allowed: true }
+      }
+    }
+
+    // Check if user has the required permission
+    if (hasPermission(userPermissions, requiredPermission)) {
+      return { allowed: true }
+    }
+
+    // Special handling for system permissions
+    if (isSystemPermission(requiredPermission)) {
       return {
         allowed: false,
-        reason: 'Invalid permission format',
+        reason: PERMISSION_ERRORS.SYSTEM_ADMIN_REQUIRED,
         requiredPermission
       }
     }
-  
-    const { table, operation } = parsed
-  
-    // Check if user has the exact permission
-    if (hasExactPermission(user, requiredPermission)) {
-      return checkAdditionalConditions(user, table, operation, context)
-    }
-  
-    // Check if user has higher-level permission (e.g., ALL includes CREATE)
-    if (hasHigherPermission(user, table, operation)) {
-      return checkAdditionalConditions(user, table, operation, context)
-    }
-    
+
+    // Default denial
     return {
       allowed: false,
       reason: PERMISSION_ERRORS.INSUFFICIENT_PERMISSIONS,
       requiredPermission
     }
-  }
-  
-  /**
-   * Database operation permission checker
-   * Usage: checkOperationPermission(user, "article", "CREATE")
-   * Usage: checkOperationPermission(user, "user", "UPDATE", { resourceId: "123" })
-   */
-  export function checkOperationPermission(
-    user: UserWithPermissions | null,
-    tableName: string,
-    operation: PermissionOperation,
-    context: PermissionContext = {}
-  ): PermissionCheckResult {
-    const permissionString = createPermissionString(tableName, operation)
-    return checkPermission(user, permissionString, context)
-  }
-  
-  /**
-   * Route-based permission checker
-   * Usage: checkRoutePermission(user, "/admin/articles", "CREATE")
-   */
-  export function checkRoutePermission(
-    user: UserWithPermissions | null,
-    routePath: string,
-    operation: PermissionOperation,
-    context: PermissionContext = {}
-  ): PermissionCheckResult {
-    // Get table name from route
-    const tableName = getTableNameFromRoute(routePath) || ROUTE_TABLE_MAPPING[routePath]
-    
-    if (!tableName) {
-      return {
-        allowed: false,
-        reason: 'Unknown route or table mapping not found',
-        requiredPermission: `${routePath}.${operation}`
-      }
-    }
-  
-    return checkOperationPermission(user, tableName, operation, context)
-  }
-  
-  /**
-   * Bulk permission checker
-   * Usage: checkMultiplePermissions(user, ["article.READ", "article.CREATE"])
-   */
-  export function checkMultiplePermissions(
-    user: UserWithPermissions | null,
-    requiredPermissions: PermissionString[],
-    requireAll: boolean = true
-  ): PermissionCheckResult {
-    if (!user) {
-      return {
-        allowed: false,
-        reason: PERMISSION_ERRORS.UNAUTHORIZED
-      }
-    }
-  
-    const results = requiredPermissions.map(permission => 
-      checkPermission(user, permission)
-    )
-  
-    if (requireAll) {
-      // All permissions must be granted
-      const failed = results.find(result => !result.allowed)
-      if (failed) {
-        return {
-          allowed: false,
-          reason: failed.reason,
-          requiredPermission: failed.requiredPermission
-        }
-      }
-      return { allowed: true }
-    } else {
-      // At least one permission must be granted
-      const hasAny = results.some(result => result.allowed)
-      if (!hasAny) {
-        return {
-          allowed: false,
-          reason: PERMISSION_ERRORS.INSUFFICIENT_PERMISSIONS,
-          requiredPermission: requiredPermissions.join(' OR ')
-        }
-      }
-      return { allowed: true }
+
+  } catch (error) {
+    console.error('Permission check error:', error)
+    return {
+      allowed: false,
+      reason: 'Permission check failed',
+      requiredPermission
     }
   }
-  
-  // Helper functions (simplified)
-  
-  function hasSystemPermission(user: UserWithPermissions, permission: string): boolean {
-    const systemPermission = `SYSTEM.${permission}`
-    return hasExactPermission(user, systemPermission as PermissionString)
-  }
-  
-  function hasExactPermission(user: UserWithPermissions, permission: PermissionString): boolean {
-    const allPermissions = getAllUserPermissions(user)
-    return allPermissions.includes(permission)
-  }
-  
-  function hasHigherPermission(user: UserWithPermissions, table: string, operation: PermissionOperation): boolean {
-    const allPermissions = getAllUserPermissions(user)
-    
-    // Check if user has 'ALL' permission for the table
-    const allPermission = createPermissionString(table, 'ALL')
-    if (allPermissions.includes(allPermission)) {
-      return true
-    }
-  
-    // Check permission hierarchy - if user has a higher permission that includes this operation
-    for (const userPermission of allPermissions) {
-      const parsed = parsePermissionString(userPermission as PermissionString)
-      if (parsed && parsed.table === table) {
-        const hierarchy = PERMISSION_HIERARCHY[parsed.operation] || []
-        if (hierarchy.includes(operation)) {
-          return true
-        }
-      }
-    }
-  
-    return false
-  }
-  
-  function checkAdditionalConditions(
-    user: UserWithPermissions,
-    table: string,
-    operation: PermissionOperation,
-    context: PermissionContext
-  ): PermissionCheckResult {
-    // Add custom business logic here
-    
-    // Example: Only allow users to modify their own profile
-    if (table === 'user' && operation !== 'READ' && context.resourceId) {
-      if (context.resourceId !== user.id && !hasSystemPermission(user, 'USER_MANAGEMENT')) {
-        return {
-          allowed: false,
-          reason: PERMISSION_ERRORS.OWNER_ONLY,
-          requiredPermission: createPermissionString(table, operation)
-        }
-      }
-    }
-  
-    // Example: Authors can only edit their own articles
-    if (table === 'article' && (operation === 'UPDATE' || operation === 'DELETE')) {
-      if (context.resourceOwner && context.resourceOwner !== user.id && !hasSystemPermission(user, 'ADMIN')) {
-        return {
-          allowed: false,
-          reason: PERMISSION_ERRORS.RESOURCE_ACCESS_DENIED,
-          requiredPermission: createPermissionString(table, operation)
-        }
-      }
-    }
-  
+}
+
+/**
+ * Check multiple permissions (user must have ALL)
+ */
+export function checkPermissions(
+  user: UserWithPermissions,
+  requiredPermissions: string[],
+  context?: PermissionContext
+): PermissionCheckResult {
+  if (!requiredPermissions.length) {
     return { allowed: true }
   }
-  
-  /**
-   * Get all permissions for a user (flattened)
-   */
-  export function getUserPermissions(user: UserWithPermissions): string[] {
-    return getAllUserPermissions(user)
-  }
-  
-  /**
-   * Check if user has any admin privileges
-   */
-  export function isAdmin(user: UserWithPermissions | null): boolean {
-    if (!user) return false
-    
-    return hasSystemPermission(user, 'ADMIN') || 
-           hasSystemPermission(user, 'USER_MANAGEMENT') ||
-           hasSystemPermission(user, 'ROLE_MANAGEMENT')
-  }
-  
-  /**
-   * Check if user has specific system permission
-   */
-  export function hasSystemAccess(user: UserWithPermissions | null, systemPermission: keyof typeof SYSTEM_PERMISSIONS): boolean {
-    if (!user) return false
-    
-    return hasSystemPermission(user, systemPermission)
-  }
-  
-  /**
-   * Permission middleware helper for route protection
-   */
-  export function createPermissionMiddleware(
-    requiredPermission: PermissionString,
-    context?: PermissionContext
-  ) {
-    return (user: UserWithPermissions | null) => {
-      return checkPermission(user, requiredPermission, context)
+
+  for (const permission of requiredPermissions) {
+    const result = checkPermission(user, permission, context)
+    if (!result.allowed) {
+      return result
     }
   }
-  
-  /**
-   * Generate permission summary for debugging
-   */
-  export function getPermissionSummary(user: UserWithPermissions): {
-    userId: string
-    roleName: string
-    allPermissions: string[]
-    rolePermissions: string[]
-    directPermissions: string[]
-    systemPermissions: string[]
-    tablePermissions: Record<string, string[]>
-  } {
-    const allPermissions = getAllUserPermissions(user)
-    const rolePermissions = user.role.permissions || []
-    const directPermissions = user.permissions || []
-    
-    const systemPermissions = allPermissions.filter(p => p.startsWith('SYSTEM.'))
-    const tablePermissions: Record<string, string[]> = {}
-    
-    allPermissions
-      .filter(p => !p.startsWith('SYSTEM.'))
-      .forEach(permission => {
-        const parsed = parsePermissionString(permission as PermissionString)
-        if (parsed) {
-          if (!tablePermissions[parsed.table]) {
-            tablePermissions[parsed.table] = []
-          }
-          tablePermissions[parsed.table].push(parsed.operation)
-        }
-      })
-  
+
+  return { allowed: true }
+}
+
+/**
+ * Check if user has ANY of the specified permissions
+ */
+export function checkAnyPermission(
+  user: UserWithPermissions,
+  permissions: string[],
+  context?: PermissionContext
+): PermissionCheckResult {
+  if (!permissions.length) {
+    return { allowed: false, reason: 'No permissions specified' }
+  }
+
+  // System admin bypass
+  if (hasSystemAdminAccess(user)) {
+    return { allowed: true }
+  }
+
+  for (const permission of permissions) {
+    const result = checkPermission(user, permission, context)
+    if (result.allowed) {
+      return { allowed: true }
+    }
+  }
+
+  return {
+    allowed: false,
+    reason: PERMISSION_ERRORS.INSUFFICIENT_PERMISSIONS,
+    requiredPermission: permissions.join(' OR ')
+  }
+}
+
+/**
+ * Check if user can manage another user (special business logic)
+ */
+export function canManageUser(
+  currentUser: UserWithPermissions,
+  targetUser: UserWithPermissions
+): PermissionCheckResult {
+  // Users cannot manage themselves through admin interface
+  if (currentUser.id === targetUser.id) {
     return {
-      userId: user.id,
-      roleName: user.role.name,
-      allPermissions,
-      rolePermissions,
-      directPermissions,
-      systemPermissions,
-      tablePermissions
+      allowed: false,
+      reason: "Cannot manage your own account through this interface"
     }
   }
-  
-  /**
-   * Check if user can access a specific table
-   */
-  export function canAccessTable(user: UserWithPermissions | null, tableName: string): boolean {
-    if (!user) return false
-    
-    const allPermissions = getAllUserPermissions(user)
-    
-    // Check if user has any permission for this table
-    return allPermissions.some(permission => {
-      if (permission.startsWith('SYSTEM.ADMIN')) return true
-      return permission.startsWith(`${tableName}.`)
-    })
+
+  // System admin can manage anyone
+  if (hasSystemAdminAccess(currentUser)) {
+    return { allowed: true }
   }
-  
-  /**
-   * Get available operations for a user on a specific table
-   */
-  export function getTableOperations(user: UserWithPermissions | null, tableName: string): PermissionOperation[] {
-    if (!user) return []
-    
-    if (hasSystemPermission(user, 'ADMIN')) {
-      return ['CREATE', 'READ', 'UPDATE', 'DELETE']
+
+  // Check if user has user management permission
+  const userManagementCheck = checkPermission(currentUser, SYSTEM_PERMISSIONS.USER_MANAGEMENT)
+  if (userManagementCheck.allowed) {
+    // Non-system admins cannot manage SUPER_ADMINs
+    if (hasSystemAdminAccess(targetUser)) {
+      return {
+        allowed: false,
+        reason: "Only system administrators can manage system users"
+      }
     }
-    
-    const allPermissions = getAllUserPermissions(user)
-    const operations: Set<PermissionOperation> = new Set()
-    
-    allPermissions
-      .filter(permission => permission.startsWith(`${tableName}.`))
-      .forEach(permission => {
-        const parsed = parsePermissionString(permission as PermissionString)
-        if (parsed) {
-          if (parsed.operation === 'ALL') {
-            operations.add('CREATE')
-            operations.add('READ')
-            operations.add('UPDATE')
-            operations.add('DELETE')
-          } else {
-            operations.add(parsed.operation)
-            // Add included operations from hierarchy
-            const hierarchy = PERMISSION_HIERARCHY[parsed.operation] || []
-            hierarchy.forEach(op => operations.add(op))
-          }
-        }
-      })
-    
-    return Array.from(operations)
+    return { allowed: true }
   }
+
+  // Check basic user permissions
+  const userUpdateCheck = checkPermission(currentUser, 'user.UPDATE')
+  if (userUpdateCheck.allowed) {
+    // Same restriction for basic user management
+    if (hasSystemAdminAccess(targetUser)) {
+      return {
+        allowed: false,
+        reason: "Only system administrators can manage system users"
+      }
+    }
+    return { allowed: true }
+  }
+
+  return {
+    allowed: false,
+    reason: PERMISSION_ERRORS.INSUFFICIENT_PERMISSIONS
+  }
+}
+
+/**
+ * Check if user can assign a specific role
+ */
+export function canAssignRole(
+  user: UserWithPermissions,
+  roleToAssign: { name: string; isSystem?: boolean; permissions?: string[] }
+): PermissionCheckResult {
+  // System admin can assign any role
+  if (hasSystemAdminAccess(user)) {
+    return { allowed: true }
+  }
+
+  // Check if user has role management permission
+  const roleManagementCheck = checkPermission(user, SYSTEM_PERMISSIONS.ROLE_MANAGEMENT)
+  if (!roleManagementCheck.allowed) {
+    return roleManagementCheck
+  }
+
+  // Non-system admins cannot assign system roles
+  if (roleToAssign.isSystem || roleToAssign.name === 'SUPER_ADMIN') {
+    return {
+      allowed: false,
+      reason: "Only system administrators can assign system roles"
+    }
+  }
+
+  // Check if role contains system permissions
+  if (roleToAssign.permissions) {
+    const hasSystemPerms = roleToAssign.permissions.some(perm => isSystemPermission(perm))
+    if (hasSystemPerms) {
+      return {
+        allowed: false,
+        reason: "Only system administrators can assign roles with system permissions"
+      }
+    }
+  }
+
+  return { allowed: true }
+}
+
+/**
+ * Check if user can manage permissions
+ */
+export function canManagePermissions(
+  user: UserWithPermissions,
+  targetUser?: UserWithPermissions,
+  permissionsToAssign?: string[]
+): PermissionCheckResult {
+  // System admin can manage any permissions
+  if (hasSystemAdminAccess(user)) {
+    return { allowed: true }
+  }
+
+  // Check if user has user management permission
+  const userManagementCheck = checkPermission(user, SYSTEM_PERMISSIONS.USER_MANAGEMENT)
+  if (!userManagementCheck.allowed) {
+    return userManagementCheck
+  }
+
+  // If target user is specified, check if they can manage that user
+  if (targetUser) {
+    const canManageCheck = canManageUser(user, targetUser)
+    if (!canManageCheck.allowed) {
+      return canManageCheck
+    }
+  }
+
+  // If specific permissions are being assigned, validate them
+  if (permissionsToAssign) {
+    const systemPermissions = permissionsToAssign.filter(perm => isSystemPermission(perm))
+    if (systemPermissions.length > 0) {
+      return {
+        allowed: false,
+        reason: "Only system administrators can assign system-level permissions"
+      }
+    }
+  }
+
+  return { allowed: true }
+}
+
+/**
+ * Helper function to check resource ownership
+ */
+export function checkResourceOwnership(
+  user: UserWithPermissions,
+  resourceOwnerId?: string
+): boolean {
+  if (!resourceOwnerId) return false
+  return user.id === resourceOwnerId
+}
+
+/**
+ * Filter items based on user permissions (for lists)
+ */
+export function filterByPermissions<T extends { id?: string; createdBy?: string }>(
+  user: UserWithPermissions,
+  items: T[],
+  requiredPermission: string
+): T[] {
+  // System admin sees everything
+  if (hasSystemAdminAccess(user)) {
+    return items
+  }
+
+  // Check if user has general permission
+  const hasGeneralPermission = checkPermission(user, requiredPermission).allowed
+
+  if (hasGeneralPermission) {
+    return items
+  }
+
+  // If no general permission, only show items they own
+  return items.filter(item => 
+    item.createdBy === user.id || item.id === user.id
+  )
+}
+
+/**
+ * Get user's effective permissions (for debugging/display)
+ */
+export function getEffectivePermissions(user: UserWithPermissions): {
+  rolePermissions: string[]
+  directPermissions: string[]
+  allPermissions: string[]
+  hasSystemAccess: boolean
+} {
+  const rolePermissions = user.role?.permissions || []
+  const directPermissions = user.permissions || []
+  const allPermissions = getUserPermissions(user)
+
+  return {
+    rolePermissions,
+    directPermissions,
+    allPermissions,
+    hasSystemAccess: hasSystemAdminAccess(user)
+  }
+}

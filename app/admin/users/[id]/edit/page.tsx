@@ -1,6 +1,8 @@
+
+// app/admin/users/[id]/edit/page.tsx - Updated for simplified schema
 import type { Metadata } from "next"
 import { redirect, notFound } from "next/navigation"
-import { getCurrentUser, isSuperAdmin } from "@/lib/auth"
+import { getCurrentUser } from "@/lib/auth"
 import { UserForm } from "@/components/admin/user-form"
 import { getUser, getRoles } from "@/lib/actions/user-actions"
 import { Role, User } from "@prisma/client"
@@ -30,6 +32,10 @@ export async function generateMetadata({ params }: EditUserPageProps): Promise<M
 export default async function EditUserPage({ params }: EditUserPageProps) {
   const currentUser = await getCurrentUser()
 
+  if (!currentUser) {
+    redirect("/admin/login")
+  }
+
   try {
     // Get user and roles data
     const [userResult, rolesResult] = await Promise.all([
@@ -53,7 +59,8 @@ export default async function EditUserPage({ params }: EditUserPageProps) {
     }
 
     // Additional permission checks
-    if (!isSuperAdmin(currentUser)) {
+    const isSystemAdmin = currentUser.role.name === "SUPER_ADMIN"
+    if (!isSystemAdmin) {
       // Non-SUPER_ADMINs cannot edit SUPER_ADMINs
       if (user.role.name === "SUPER_ADMIN") {
         redirect("/admin/users")

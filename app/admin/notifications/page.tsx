@@ -8,7 +8,7 @@ import {
   PERMISSION_ERRORS 
 } from "@/lib/permissions/types"
 import { redirect } from "next/navigation"
-import { prisma } from "@/lib/prisma"
+import prisma from "@/lib/prisma"
 import { Button } from "@/components/ui/button"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { AlertCircle, PlusCircle } from "lucide-react"

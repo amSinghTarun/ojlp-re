@@ -1,4 +1,3 @@
-// app/admin/editorial-board/new/page.tsx
 import type { Metadata } from "next"
 import { redirect } from "next/navigation"
 import { getCurrentUser } from "@/lib/auth"
@@ -6,10 +5,11 @@ import { EditorialBoardForm } from "@/components/admin/editorial-board-form"
 import { checkPermission } from "@/lib/permissions/checker"
 import { UserWithPermissions } from "@/lib/permissions/types"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { AlertTriangle, ArrowLeft } from "lucide-react"
+import { AlertTriangle, ArrowLeft, PlusCircle, Users } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { Card, CardContent } from "@/components/ui/card"
 import Link from "next/link"
-import { prisma } from "@/lib/prisma"
+import prisma from "@/lib/prisma"
 
 export const metadata: Metadata = {
   title: "Add Editorial Board Member",
@@ -22,17 +22,13 @@ async function getCurrentUserWithPermissions(): Promise<UserWithPermissions | nu
     const user = await getCurrentUser()
     if (!user) return null
 
-    // If user already has role and permissions, return as is
-    if ('role' in user && user.role && 'permissions' in user.role) {
+    if ('role' in user && user.role) {
       return user as UserWithPermissions
     }
 
-    // Otherwise fetch the complete user data with role and permissions
     const fullUser = await prisma.user.findUnique({
       where: { id: user.id },
-      include: {
-        role: true
-      }
+      include: { role: true }
     })
 
     return fullUser as UserWithPermissions
@@ -78,6 +74,28 @@ export default async function NewEditorialBoardMemberPage() {
               {permissionCheck.reason || "You don't have permission to add editorial board members. Contact your administrator for access."}
             </AlertDescription>
           </Alert>
+
+          <Card className="border-blue-200 bg-blue-50">
+            <CardContent className="pt-6">
+              <div className="flex items-start gap-3">
+                <PlusCircle className="h-5 w-5 text-blue-600 mt-0.5" />
+                <div>
+                  <h4 className="font-semibold text-blue-900 mb-2">Creating Editorial Board Members</h4>
+                  <p className="text-sm text-blue-800 mb-3">
+                    To add new editorial board members, you need:
+                  </p>
+                  <ul className="text-sm text-blue-800 space-y-1">
+                    <li>• <code className="bg-blue-100 px-1 rounded">editorialboard.CREATE</code> permission</li>
+                    <li>• Access to upload member photos</li>
+                    <li>• Authority to manage board composition</li>
+                  </ul>
+                  <p className="text-sm text-blue-800 mt-3">
+                    Contact your system administrator to request these permissions.
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </div>
       )
     }
@@ -94,10 +112,33 @@ export default async function NewEditorialBoardMemberPage() {
           <div>
             <h1 className="text-2xl font-bold">Add Editorial Board Member</h1>
             <p className="text-muted-foreground">
-              Add a new member to the editorial board
+              Add a new member to the editorial board with their profile information
             </p>
           </div>
         </div>
+
+        {/* Guidelines Card */}
+        <Card className="border-green-200 bg-green-50">
+          <CardContent className="pt-6">
+            <div className="flex items-start gap-3">
+              <Users className="h-5 w-5 text-green-600 mt-0.5" />
+              <div>
+                <h4 className="font-semibold text-green-900 mb-2">Member Information Guidelines</h4>
+                <p className="text-sm text-green-800 mb-3">
+                  Please ensure all information is accurate and professional:
+                </p>
+                <ul className="text-sm text-green-800 space-y-1">
+                  <li>• Use full professional name and current designation</li>
+                  <li>• Upload a high-quality professional headshot</li>
+                  <li>• Write a concise but informative bio</li>
+                  <li>• Include relevant areas of expertise</li>
+                  <li>• Verify contact information and social links</li>
+                  <li>• Set appropriate display order for hierarchy</li>
+                </ul>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
         <EditorialBoardForm />
       </div>

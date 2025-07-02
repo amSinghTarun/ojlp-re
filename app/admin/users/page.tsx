@@ -1,6 +1,5 @@
-// app/admin/users/page.tsx
+// app/admin/users/page.tsx - Updated for simplified schema
 import type { Metadata } from "next"
-import { redirect } from "next/navigation"
 import { getCurrentUser } from "@/lib/auth"
 import { UsersTable } from "@/components/admin/users-table"
 import { getUsers } from "@/lib/actions/user-actions"
@@ -16,6 +15,19 @@ export const metadata: Metadata = {
 
 export default async function UsersPage() {
   const currentUser = await getCurrentUser()
+
+  if (!currentUser) {
+    return (
+      <div className="space-y-6">
+        <Alert variant="destructive">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertDescription>
+            Authentication required. Please log in to access user management.
+          </AlertDescription>
+        </Alert>
+      </div>
+    )
+  }
 
   try {
     // Fetch users from the database using the proper action
@@ -43,6 +55,9 @@ export default async function UsersPage() {
       })
       .length
 
+    // Calculate permission stats
+    const usersWithDirectPermissions = users.filter(user => user.permissions && user.permissions.length > 0).length
+
     return (
       <div className="space-y-6">
         {/* Page Header */}
@@ -54,7 +69,7 @@ export default async function UsersPage() {
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Total Users</CardTitle>
@@ -83,17 +98,35 @@ export default async function UsersPage() {
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Custom Permissions</CardTitle>
+              <Database className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{usersWithDirectPermissions}</div>
+              <p className="text-xs text-muted-foreground">
+                Users with direct permissions
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Role Distribution</CardTitle>
               <Database className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
               <div className="space-y-1">
-                {Object.entries(roleStats).map(([role, count]) => (
+                {Object.entries(roleStats).slice(0, 3).map(([role, count]) => (
                   <div key={role} className="flex justify-between items-center text-sm">
-                    <span>{role}</span>
+                    <span className="truncate">{role}</span>
                     <Badge variant="outline">{count}</Badge>
                   </div>
                 ))}
+                {Object.keys(roleStats).length > 3 && (
+                  <div className="text-xs text-muted-foreground">
+                    +{Object.keys(roleStats).length - 3} more roles
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>

@@ -1,4 +1,4 @@
-// components/admin/role-form.tsx
+// components/admin/role-form.tsx - Updated for simplified schema
 "use client"
 
 import { useState } from "react"
@@ -29,7 +29,7 @@ interface PermissionOption {
 interface Role {
   id: string
   name: string
-  description?: string
+  description?: string | null
   permissions: string[]
   isSystem?: boolean
   isSystemRole?: boolean
@@ -46,9 +46,11 @@ interface RoleFormProps {
 export function RoleForm({ role, availablePermissions, mode }: RoleFormProps) {
   const router = useRouter()
   const [isLoading, setIsLoading] = useState(false)
-  const [selectedPermissions, setSelectedPermissions] = useState<string[]>(
-    role?.permissions?.filter(p => p && typeof p === 'string') || []
-  )
+  
+  // Filter out any invalid permissions from the role
+  const initialPermissions = role?.permissions?.filter(p => p && typeof p === 'string') || []
+  
+  const [selectedPermissions, setSelectedPermissions] = useState<string[]>(initialPermissions)
   const [formData, setFormData] = useState({
     name: role?.name || "",
     description: role?.description || ""
@@ -296,7 +298,7 @@ export function RoleForm({ role, availablePermissions, mode }: RoleFormProps) {
         </div>
       </div>
 
-      {/* Debug Panel */}
+      {/* Debug Panel (Development Only) */}
       {process.env.NODE_ENV === "development" && (
         <Card className="border-blue-200 bg-blue-50">
           <CardHeader>

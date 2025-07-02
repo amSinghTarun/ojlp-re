@@ -6,7 +6,6 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
 import { Loader2 } from "lucide-react"
-
 import { Button } from "@/components/ui/button"
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
@@ -27,29 +26,22 @@ const formSchema = z.object({
   memberType: z.enum(["Editor", "Advisor"], {
     required_error: "Please select a member type.",
   }),
-  bio: z.string().optional(),
-  detailedBio: z.string().optional(),
+  bio: z.string().min(1, {
+    message: "Bio is required.",
+  }),
   email: z.string().email({
     message: "Please enter a valid email address.",
-  }),
+  }).optional().or(z.literal("")),
   image: z.string().min(1, {
     message: "Please select an image.",
   }),
   order: z.coerce.number().int().positive({
     message: "Order must be a positive number.",
   }),
-  // Additional fields from the schema
+  // Schema fields based on actual Prisma model
   expertise: z.array(z.string()).optional(),
-  education: z.array(z.string()).optional(),
-  achievements: z.array(z.string()).optional(),
-  publications: z.array(z.string()).optional(),
-  location: z.string().optional(),
-  affiliation: z.string().optional(),
-  website: z.string().optional(),
-  twitter: z.string().optional(),
-  linkedin: z.string().optional(),
-  instagram: z.string().optional(),
-  orcid: z.string().optional(),
+  linkedin: z.string().optional().or(z.literal("")),
+  orcid: z.string().optional().or(z.literal("")),
 })
 
 interface EditorialBoardFormProps {
@@ -68,20 +60,11 @@ export function EditorialBoardForm({ member }: EditorialBoardFormProps) {
       designation: member?.designation || "",
       memberType: member?.memberType || "Editor",
       bio: member?.bio || "",
-      detailedBio: member?.detailedBio || "",
       email: member?.email || "",
       image: member?.image || "",
       order: member?.order || 999,
       expertise: member?.expertise || [],
-      education: member?.education || [],
-      achievements: member?.achievements || [],
-      publications: member?.publications || [],
-      location: member?.location || "",
-      affiliation: member?.affiliation || "",
-      website: member?.website || "",
-      twitter: member?.twitter || "",
       linkedin: member?.linkedin || "",
-      instagram: member?.instagram || "",
       orcid: member?.orcid || "",
     },
   })
@@ -94,52 +77,25 @@ export function EditorialBoardForm({ member }: EditorialBoardFormProps) {
     try {
       let result
       
+      const submitData = {
+        name: values.name,
+        designation: values.designation,
+        memberType: values.memberType,
+        bio: values.bio,
+        email: values.email || undefined,
+        image: values.image,
+        order: values.order,
+        expertise: values.expertise,
+        linkedin: values.linkedin || undefined,
+        orcid: values.orcid || undefined,
+      }
+      
       if (member) {
         // Update existing member
-        result = await updateBoardMember(member.id, {
-          name: values.name,
-          designation: values.designation,
-          memberType: values.memberType,
-          bio: values.bio,
-          detailedBio: values.detailedBio,
-          email: values.email,
-          image: values.image,
-          order: values.order,
-          expertise: values.expertise,
-          education: values.education,
-          achievements: values.achievements,
-          publications: values.publications,
-          location: values.location,
-          affiliation: values.affiliation,
-          website: values.website,
-          twitter: values.twitter,
-          linkedin: values.linkedin,
-          instagram: values.instagram,
-          orcid: values.orcid,
-        })
+        result = await updateBoardMember(member.id, submitData)
       } else {
         // Create new member
-        result = await createBoardMember({
-          name: values.name,
-          designation: values.designation,
-          memberType: values.memberType,
-          bio: values.bio,
-          detailedBio: values.detailedBio,
-          email: values.email,
-          image: values.image,
-          order: values.order,
-          expertise: values.expertise,
-          education: values.education,
-          achievements: values.achievements,
-          publications: values.publications,
-          location: values.location,
-          affiliation: values.affiliation,
-          website: values.website,
-          twitter: values.twitter,
-          linkedin: values.linkedin,
-          instagram: values.instagram,
-          orcid: values.orcid,
-        })
+        result = await createBoardMember(submitData)
       }
 
       if (result.success) {
@@ -177,6 +133,27 @@ export function EditorialBoardForm({ member }: EditorialBoardFormProps) {
     setSelectedImage(url)
     form.setValue("image", url)
   }, [form])
+
+  // Handle expertise array management
+  const addExpertise = useCallback(() => {
+    const currentExpertise = form.getValues("expertise") || []
+    form.setValue("expertise", [...currentExpertise, ""])
+  }, [form])
+
+  const removeExpertise = useCallback((index: number) => {
+    const currentExpertise = form.getValues("expertise") || []
+    const newExpertise = currentExpertise.filter((_, i) => i !== index)
+    form.setValue("expertise", newExpertise)
+  }, [form])
+
+  const updateExpertise = useCallback((index: number, value: string) => {
+    const currentExpertise = form.getValues("expertise") || []
+    const newExpertise = [...currentExpertise]
+    newExpertise[index] = value
+    form.setValue("expertise", newExpertise)
+  }, [form])
+
+  const expertiseArray = form.watch("expertise") || []
 
   return (
     <Form {...form}>
@@ -238,7 +215,7 @@ export function EditorialBoardForm({ member }: EditorialBoardFormProps) {
               name="email"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Email</FormLabel>
+                  <FormLabel>Email (Optional)</FormLabel>
                   <FormControl>
                     <Input placeholder="Enter member email" {...field} />
                   </FormControl>
@@ -275,20 +252,6 @@ export function EditorialBoardForm({ member }: EditorialBoardFormProps) {
                 </FormItem>
               )}
             />
-
-            <FormField
-              control={form.control}
-              name="detailedBio"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Detailed Bio</FormLabel>
-                  <FormControl>
-                    <Textarea placeholder="Enter detailed member bio" className="resize-none h-40" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
           </div>
 
           <div className="space-y-6">
@@ -311,82 +274,12 @@ export function EditorialBoardForm({ member }: EditorialBoardFormProps) {
 
             <FormField
               control={form.control}
-              name="location"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Location</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Enter location" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="affiliation"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Affiliation</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Enter affiliation" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="website"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Website</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Enter website URL" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
               name="linkedin"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>LinkedIn</FormLabel>
+                  <FormLabel>LinkedIn (Optional)</FormLabel>
                   <FormControl>
                     <Input placeholder="Enter LinkedIn URL" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="twitter"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Twitter</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Enter Twitter URL" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="instagram"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Instagram</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Enter Instagram URL" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -398,7 +291,7 @@ export function EditorialBoardForm({ member }: EditorialBoardFormProps) {
               name="orcid"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>ORCID</FormLabel>
+                  <FormLabel>ORCID (Optional)</FormLabel>
                   <FormControl>
                     <Input placeholder="Enter ORCID ID" {...field} />
                   </FormControl>
@@ -406,6 +299,42 @@ export function EditorialBoardForm({ member }: EditorialBoardFormProps) {
                 </FormItem>
               )}
             />
+
+            {/* Expertise Management */}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <FormLabel>Areas of Expertise</FormLabel>
+                <Button type="button" variant="outline" size="sm" onClick={addExpertise}>
+                  Add Expertise
+                </Button>
+              </div>
+              
+              <div className="space-y-2">
+                {expertiseArray.map((expertise, index) => (
+                  <div key={index} className="flex items-center gap-2">
+                    <Input
+                      placeholder="Enter area of expertise"
+                      value={expertise}
+                      onChange={(e) => updateExpertise(index, e.target.value)}
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => removeExpertise(index)}
+                    >
+                      Remove
+                    </Button>
+                  </div>
+                ))}
+                
+                {expertiseArray.length === 0 && (
+                  <p className="text-sm text-muted-foreground">
+                    No areas of expertise added yet. Click "Add Expertise" to add some.
+                  </p>
+                )}
+              </div>
+            </div>
           </div>
         </div>
 
