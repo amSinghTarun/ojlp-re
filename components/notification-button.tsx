@@ -3,12 +3,13 @@
 import type React from "react"
 import { useState, useEffect } from "react"
 import Link from "next/link"
-import { Bell, Loader2, AlertTriangle } from "lucide-react"
+import { Bell, Loader2, AlertTriangle, ExternalLink } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { formatDistanceToNow } from "date-fns"
 import { cn } from "@/lib/utils"
-import { getAllNotifications, markNotificationAsRead } from "@/lib/actions/notification-actions"
+import { getAllNotifications } from "@/lib/actions/notification-actions"
+import { NotificationContentRenderer } from "@/components/notification-content-renderer"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -22,13 +23,12 @@ interface Notification {
   id: string
   title: string
   content: string
-  date: string
+  createdAt: string
   type: string
   priority: string
-  read: boolean
-  link?: string | null
+  linkDisplay?: string | null
+  linkUrl?: string | null
   expiresAt?: string | null
-  image?: string | null
 }
 
 export function NotificationButton() {
@@ -43,8 +43,12 @@ export function NotificationButton() {
       try {
         setIsLoading(true)
         setError(null)
-        const fetchedNotifications = await getAllNotifications()
-        setNotifications(fetchedNotifications.data)
+        const result = await getAllNotifications()
+        if (result.success && result.data) {
+          setNotifications(result.data)
+        } else {
+          setError(result.error || "Failed to load notifications")
+        }
       } catch (err) {
         console.error("Failed to fetch notifications:", err)
         setError("Failed to load notifications")
@@ -60,33 +64,16 @@ export function NotificationButton() {
 
     return () => clearInterval(refreshInterval)
   }, [])
-  console.log(notifications)
-  const unreadCount = notifications ? notifications.filter((notification) => !notification.read).length: 0;
 
-  // Group notifications by type
-  const callForPapers = notifications ? notifications.filter((n) => n.type === "call-for-papers").slice(0, 3) : [];
-  const studentCompetitions = notifications ? notifications.filter((n) => n.type === "student-competition").slice(0, 3) : [];
-  const editorialVacancies = notifications ? notifications.filter((n) => n.type === "editorial-vacancy").slice(0, 3) : [];
-  const specialIssues = notifications ? notifications.filter((n) => n.type === "special-issue").slice(0, 3) : [];
+  // Show most recent notifications (up to 5)
+  const recentNotifications = notifications.slice(0, 5)
 
-  // Count unread notifications by category
-  const unreadCfp = callForPapers.filter((n) => !n.read).length
-  const unreadCompetitions = studentCompetitions.filter((n) => !n.read).length
-  const unreadVacancies = editorialVacancies.filter((n) => !n.read).length
-  const unreadSpecialIssues = specialIssues.filter((n) => !n.read).length
-
-  const handleNotificationClick = async (notificationId: string) => {
-    // Mark notification as read
-    const notification = notifications.find(n => n.id === notificationId)
-    if (notification && !notification.read) {
-      try {
-        await markNotificationAsRead(notificationId)
-        // Update local state
-        setNotifications(prev => 
-          prev.map(n => n.id === notificationId ? { ...n, read: true } : n)
-        )
-      } catch (err) {
-        console.error("Failed to mark notification as read:", err)
+  const handleNotificationClick = (notification: Notification) => {
+    if (notification.linkUrl) {
+      if (notification.linkUrl.startsWith('http')) {
+        window.open(notification.linkUrl, '_blank', 'noopener,noreferrer')
+      } else {
+        window.location.href = notification.linkUrl
       }
     }
     setOpen(false)
@@ -96,66 +83,58 @@ export function NotificationButton() {
     <DropdownMenu open={open} onOpenChange={setOpen}>
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" className="relative">
-          {/* <Bell className="h-4 w-4 mr-2" /> */}
-          Notifications
-          {/* {unreadCount > 0 && (
-            <Badge 
-              variant="destructive" 
-              className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center text-xs rounded-full"
-            >
-              {unreadCount > 99 ? "99+" : unreadCount}
-            </Badge>
-          )} */}
+          <Bell className="h-4 w-4 mr-2"  />
+          <span className="text-xs font-bold">NOTIFICATIONS</span>
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-[350px]">
+      <DropdownMenuContent align="end" className="w-[400px]">
         <DropdownMenuLabel className="flex items-center justify-between">
-          <span>Notifications</span>
-          {/* {unreadCount > 0 && (
-            <Badge variant="secondary" className="text-xs">
-              {unreadCount} unread
-            </Badge>
-          )} */}
+          <span>Recent Notifications</span>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         
-        <div className="max-h-[300px] overflow-y-auto">
+        <div className="max-h-[400px] overflow-y-auto">
           {isLoading ? (
             <div className="flex items-center justify-center p-4 text-muted-foreground">
-              {/* <Loader2 className="h-4 w-4 animate-spin mr-2" /> */}
-              Notifications
+              <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              Loading notifications...
             </div>
           ) : error ? (
             <div className="flex items-center justify-center p-4 text-destructive">
               <AlertTriangle className="h-4 w-4 mr-2" />
               {error}
             </div>
-          ) : notifications && notifications.length === 0 ? (
-            <div className="p-4 text-center text-muted-foreground">
+          ) : notifications.length === 0 ? (
+            <div className="p-6 text-center text-muted-foreground">
               <Bell className="h-8 w-8 mx-auto mb-2 opacity-50" />
-              <p>No notifications</p>
+              <p className="text-sm">No notifications available</p>
             </div>
           ) : (
-            notifications && notifications.slice(0, 10).map((notification) => (
+            recentNotifications.map((notification) => (
               <NotificationItem 
                 key={notification.id} 
                 notification={notification} 
-                onClick={() => handleNotificationClick(notification.id)}
+                onClick={() => handleNotificationClick(notification)}
+                onClose={() => setOpen(false)}
               />
             ))
           )}
         </div>
         
-        <DropdownMenuSeparator />
-        <DropdownMenuItem asChild>
-          <Link 
-            href="/notifications" 
-            className="w-full text-white bg-primary cursor-pointer justify-center"
-            onClick={() => setOpen(false)}
-          >
-            View all notifications
-          </Link>
-        </DropdownMenuItem>
+        {notifications.length > 0 && (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem asChild>
+              <Link 
+                href="/notifications" 
+                className="w-full text-white bg-primary cursor-pointer justify-center font-medium"
+                onClick={() => setOpen(false)}
+              >
+                View all notifications
+              </Link>
+            </DropdownMenuItem>
+          </>
+        )}
       </DropdownMenuContent>
     </DropdownMenu>
   )
@@ -164,53 +143,66 @@ export function NotificationButton() {
 function NotificationItem({
   notification,
   onClick,
-  icon,
+  onClose,
 }: { 
   notification: Notification
   onClick: () => void
-  icon?: React.ReactNode 
+  onClose: () => void
 }) {
+  const typeDisplayName = notification.type.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
+  
+  // Check if notification is expired
+  const isExpired = notification.expiresAt 
+    ? new Date(notification.expiresAt) < new Date()
+    : false
+
+  // Truncate content for dropdown display
+  const truncatedContent = notification.content.length > 120 
+    ? notification.content.slice(0, 120) + "..."
+    : notification.content
+
   return (
     <div
       className={cn(
-        "py-2 rounded-md px-3 hover:bg-muted cursor-pointer border-b border-border/50 last:border-b-0",
-        !notification.read && "bg-muted/50",
+        "py-3 px-4 hover:bg-muted cursor-pointer border-b border-border/50 last:border-b-0 transition-colors",
+        isExpired && "opacity-75"
       )}
       onClick={onClick}
     >
-      <div className="flex justify-between items-start mb-1">
-        <h5 className={cn(
-          "text-sm font-medium line-clamp-1", 
-          !notification.read && "font-bold"
-        )}>
-          {notification.title}
+      <div className="flex justify-between items-start mb-2">
+        <h5 className="text-sm font-semibold line-clamp-1 pr-2">
+          {notification.title.toLocaleUpperCase()}
         </h5>
-        <div className="flex items-center gap-1 ml-2 flex-shrink-0">
-          {!notification.read && (
-            <div className="w-2 h-2 bg-primary rounded-full" />
-          )}
-          <Badge 
-            variant={notification.priority === "high" ? "destructive" : "secondary"} 
-            className="text-xs"
-          >
-            {notification.priority}
+      </div>
+      
+      <div className="space-y-2">
+        {/* Render content with proper hyperlink support */}
+        <div className="text-xs text-muted-foreground">
+          <NotificationContentRenderer 
+            content={truncatedContent}
+            className="text-xs text-muted-foreground leading-relaxed"
+            onLinkClick={onClose}
+          />
+        </div>
+        
+        <div className="flex items-center justify-between text-xs text-muted-foreground">
+          <span>
+            {formatDistanceToNow(new Date(notification.createdAt), { addSuffix: true })}
+          </span>
+          <Badge variant="outline" className="text-xs">
+            {typeDisplayName}
           </Badge>
         </div>
-      </div>
-      <div className="flex items-start gap-2">
-        <div className="flex-1">
-          <p className="text-xs text-muted-foreground mb-1 line-clamp-2">
-            {notification.content}
-          </p>
-          <div className="flex items-center justify-between text-xs text-muted-foreground">
-            <span>
-              {formatDistanceToNow(new Date(notification.date), { addSuffix: true })}
-            </span>
-            <Badge variant="outline" className="text-xs">
-              {notification.type.replace(/-/g, ' ')}
-            </Badge>
+        
+        {/* Primary action link using new schema fields */}
+        {notification.linkUrl && notification.linkDisplay && (
+          <div className="flex items-center gap-1 text-xs text-primary hover:underline">
+            <span>{notification.linkDisplay}</span>
+            {notification.linkUrl.startsWith('http') && (
+              <ExternalLink className="h-3 w-3" />
+            )}
           </div>
-        </div>
+        )}
       </div>
     </div>
   )

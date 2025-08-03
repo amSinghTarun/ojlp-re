@@ -93,13 +93,21 @@ export function JournalDownloadButton({ article }: JournalDownloadButtonProps) {
     }
   }
 
+  // Get the author string for display
+  const getAuthorString = () => {
+    if (article.authors && article.authors.length > 0) {
+      return article.authors.map(author => author.name).join(", ")
+    }
+    return article.author || "Unknown Author"
+  }
+
   const downloadAsTxt = async () => {
     setIsDownloading(true)
 
     try {
       // Create the content for the download
       const title = `# ${article.title}\n\n`
-      const author = `By: ${article.author}\n`
+      const author = `By: ${getAuthorString()}\n`
       const date = `Date: ${article.date}\n\n`
       const content = article.content
 
@@ -174,7 +182,7 @@ export function JournalDownloadButton({ article }: JournalDownloadButtonProps) {
       yPosition += 5
       doc.setFontSize(12)
       doc.setFont("times", "italic")
-      doc.text(article.author, pageWidth / 2, yPosition, { align: "center" })
+      doc.text(getAuthorString(), pageWidth / 2, yPosition, { align: "center" })
 
       // Add horizontal line
       yPosition += 10
@@ -199,9 +207,11 @@ export function JournalDownloadButton({ article }: JournalDownloadButtonProps) {
       // Update y position after abstract
       yPosition += abstractLines.length * 5 + 5
 
-      // Add keywords
+      // Add keywords if available
       doc.setFont("times", "italic")
-      const keywordsText = "Keywords: Legal Analysis, Constitutional Law, Jurisprudence, Case Study, Legal Theory"
+      const keywordsText = article.keywords && article.keywords.length > 0 
+        ? `Keywords: ${article.keywords.join(", ")}`
+        : "Keywords: Legal Analysis, Constitutional Law, Jurisprudence, Case Study, Legal Theory"
       const keywordsLines = doc.splitTextToSize(keywordsText, contentWidth)
       doc.text(keywordsLines, margin, yPosition)
 
@@ -212,8 +222,13 @@ export function JournalDownloadButton({ article }: JournalDownloadButtonProps) {
       // Add journal info at bottom left
       doc.setFontSize(10)
       doc.setFont("times", "italic")
-      const journalInfo = `${article.journal || "J. Legal Studies"} · ${article.volume || "Vol. 12"} · ${article.date.split(" ")[1] || "No. 2"}`
+      const journalInfo = `Legal Insight Journal · Vol. ${article.volume || "12"} · No. ${article.issue || "2"} · ${article.year || new Date(article.date).getFullYear()}`
       doc.text(journalInfo, margin, yPosition + 10)
+
+      // Add DOI if available
+      if (article.doi) {
+        doc.text(`DOI: ${article.doi}`, margin, yPosition + 15)
+      }
 
       // Add "Introduction" header
       yPosition += 20

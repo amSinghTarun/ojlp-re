@@ -44,7 +44,7 @@ export default async function PostsPage() {
   }
 
   // Check if user has permission to view posts
-  const postReadCheck = checkPermission(currentUser, 'post.READ')
+  const postReadCheck = checkPermission(currentUser, 'article.READ')
   
   if (!postReadCheck.allowed) {
     return (
@@ -53,7 +53,7 @@ export default async function PostsPage() {
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
           <AlertDescription>
-            {PERMISSION_ERRORS.INSUFFICIENT_PERMISSIONS} - You need 'post.READ' permission to view posts.
+            {PERMISSION_ERRORS.INSUFFICIENT_PERMISSIONS} - You need 'article.READ' permission to view posts.
           </AlertDescription>
         </Alert>
       </div>
@@ -61,7 +61,7 @@ export default async function PostsPage() {
   }
 
   // Check if user can create posts (for showing/hiding the New Post button)
-  const canCreatePosts = checkPermission(currentUser, 'post.CREATE').allowed
+  const canCreatePosts = checkPermission(currentUser, 'article.CREATE').allowed
 
   // User has permission - show the actual component
   return (

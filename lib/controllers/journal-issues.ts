@@ -1,4 +1,4 @@
-// lib/controllers/journal-issues.ts - Updated for actual schema
+// lib/controllers/journal-issues.ts - Enhanced for comprehensive archive view
 import { prisma } from "@/lib/prisma"
 
 export async function getJournalIssues() {
@@ -6,6 +6,9 @@ export async function getJournalIssues() {
     orderBy: [{ year: "desc" }, { volume: "desc" }, { issue: "desc" }],
     include: {
       Article: {
+        where: {
+          archived: false // Only include non-archived articles
+        },
         include: {
           authors: {
             include: {
@@ -19,7 +22,11 @@ export async function getJournalIssues() {
       },
       _count: {
         select: {
-          Article: true
+          Article: {
+            where: {
+              archived: false
+            }
+          }
         }
       }
     },
@@ -31,6 +38,9 @@ export async function getJournalIssueById(id: string) {
     where: { id },
     include: {
       Article: {
+        where: {
+          archived: false
+        },
         include: {
           authors: {
             include: {
@@ -41,10 +51,17 @@ export async function getJournalIssueById(id: string) {
             }
           }
         },
+        orderBy: {
+          publishedAt: 'desc'
+        }
       },
       _count: {
         select: {
-          Article: true
+          Article: {
+            where: {
+              archived: false
+            }
+          }
         }
       }
     },
@@ -60,6 +77,9 @@ export async function getJournalIssueByVolume(volume: number, issue: number, yea
     },
     include: {
       Article: {
+        where: {
+          archived: false
+        },
         include: {
           authors: {
             include: {
@@ -70,6 +90,38 @@ export async function getJournalIssueByVolume(volume: number, issue: number, yea
             }
           }
         },
+        orderBy: {
+          publishedAt: 'desc'
+        }
+      },
+    },
+  })
+}
+
+export async function getJournalIssueByVolumeAndIssue(volumeNumber: number, issueNumber: number) {
+  return prisma.journalIssue.findFirst({
+    where: {
+      volume: volumeNumber,
+      issue: issueNumber,
+    },
+    include: {
+      Article: {
+        where: {
+          archived: false
+        },
+        include: {
+          authors: {
+            include: {
+              author: true,
+            },
+            orderBy: {
+              authorOrder: 'asc'
+            }
+          }
+        },
+        orderBy: {
+          publishedAt: 'desc'
+        }
       },
     },
   })
@@ -85,10 +137,18 @@ export async function createJournalIssue(data: {
   return prisma.journalIssue.create({
     data,
     include: {
-      Article: true,
+      Article: {
+        where: {
+          archived: false
+        }
+      },
       _count: {
         select: {
-          Article: true
+          Article: {
+            where: {
+              archived: false
+            }
+          }
         }
       }
     },
@@ -109,10 +169,18 @@ export async function updateJournalIssue(
     where: { id },
     data,
     include: {
-      Article: true,
+      Article: {
+        where: {
+          archived: false
+        }
+      },
       _count: {
         select: {
-          Article: true
+          Article: {
+            where: {
+              archived: false
+            }
+          }
         }
       }
     },
@@ -130,6 +198,9 @@ export async function getLatestIssue() {
     orderBy: [{ year: "desc" }, { volume: "desc" }, { issue: "desc" }],
     include: {
       Article: {
+        where: {
+          archived: false
+        },
         include: {
           authors: {
             include: {
@@ -146,13 +217,28 @@ export async function getLatestIssue() {
 }
 
 export async function getJournalVolumes() {
-  // Get all journal issues
+  // Get all journal issues with their articles
   const issues = await prisma.journalIssue.findMany({
     orderBy: [{ volume: "desc" }, { issue: "asc" }],
     include: {
+      Article: {
+        where: {
+          archived: false
+        },
+        select: {
+          id: true,
+          title: true,
+          slug: true,
+          publishedAt: true,
+        }
+      },
       _count: {
         select: {
-          Article: true
+          Article: {
+            where: {
+              archived: false
+            }
+          }
         }
       }
     }
@@ -170,6 +256,8 @@ export async function getJournalVolumes() {
         issueCount: 0,
         articleCount: 0,
         issues: [],
+        earliestYear: issue.year,
+        latestYear: issue.year,
       })
     }
 
@@ -178,10 +266,16 @@ export async function getJournalVolumes() {
     volume.issueCount++
     volume.articleCount += issue._count.Article
 
-    // Use the latest year for the volume
-    if (issue.year > volume.year) {
-      volume.year = issue.year
+    // Track year range for the volume
+    if (issue.year < volume.earliestYear) {
+      volume.earliestYear = issue.year
     }
+    if (issue.year > volume.latestYear) {
+      volume.latestYear = issue.year
+    }
+    
+    // Use the latest year as the primary year for the volume
+    volume.year = volume.latestYear
   })
 
   // Convert map to array and sort by volume number (descending)
@@ -189,6 +283,12 @@ export async function getJournalVolumes() {
     .map((volume) => ({
       ...volume,
       id: `vol-${volume.number}`,
+      // Add year range if they differ
+      yearRange: volume.earliestYear !== volume.latestYear 
+        ? `${volume.earliestYear}-${volume.latestYear}`
+        : volume.year.toString(),
+      // Sort issues within each volume by issue number
+      issues: volume.issues.sort((a: any, b: any) => a.issue - b.issue)
     }))
     .sort((a, b) => b.number - a.number)
 }
@@ -203,8 +303,11 @@ export async function getVolumeByNumber(volumeNumber: number) {
     },
     include: {
       Article: {
+        where: {
+          archived: false
+        },
         include: {
-          authorArticles: {
+          authors: {
             include: {
               author: true,
             },
@@ -213,10 +316,17 @@ export async function getVolumeByNumber(volumeNumber: number) {
             }
           },
         },
+        orderBy: {
+          publishedAt: 'desc'
+        }
       },
       _count: {
         select: {
-          Article: true
+          Article: {
+            where: {
+              archived: false
+            }
+          }
         }
       }
     },
@@ -226,17 +336,101 @@ export async function getVolumeByNumber(volumeNumber: number) {
     return null
   }
 
-  // Get the year from the latest issue in the volume
-  const year = Math.max(...issues.map((issue) => issue.year))
+  // Get the year range from all issues in the volume
+  const years = issues.map((issue) => issue.year)
+  const earliestYear = Math.min(...years)
+  const latestYear = Math.max(...years)
   const totalArticles = issues.reduce((sum, issue) => sum + issue._count.Article, 0)
 
   return {
     id: `vol-${volumeNumber}`,
     number: volumeNumber,
     title: `Volume ${volumeNumber}`,
-    year,
+    year: latestYear,
+    yearRange: earliestYear !== latestYear ? `${earliestYear}-${latestYear}` : latestYear.toString(),
     issueCount: issues.length,
     articleCount: totalArticles,
     issues,
+  }
+}
+
+export async function getArchiveStats() {
+  const [volumeCount, issueCount, articleCount] = await Promise.all([
+    prisma.journalIssue.findMany({
+      select: { volume: true },
+      distinct: ['volume']
+    }).then(volumes => volumes.length),
+    
+    prisma.journalIssue.count(),
+    
+    prisma.article.count({
+      where: {
+        type: 'journal',
+        archived: false
+      }
+    })
+  ])
+
+  return {
+    volumes: volumeCount,
+    issues: issueCount,
+    articles: articleCount
+  }
+}
+
+export async function searchArchive(query: string) {
+  const [issues, articles] = await Promise.all([
+    // Search in issue themes
+    prisma.journalIssue.findMany({
+      where: {
+        theme: {
+          contains: query,
+          mode: 'insensitive'
+        }
+      },
+      include: {
+        _count: {
+          select: {
+            Article: {
+              where: { archived: false }
+            }
+          }
+        }
+      }
+    }),
+    
+    // Search in articles
+    prisma.article.findMany({
+      where: {
+        AND: [
+          { type: 'journal' },
+          { archived: false },
+          {
+            OR: [
+              { title: { contains: query, mode: 'insensitive' } },
+              { abstract: { contains: query, mode: 'insensitive' } },
+              { keywords: { hasSome: [query] } }
+            ]
+          }
+        ]
+      },
+      include: {
+        authors: {
+          include: {
+            author: true
+          },
+          orderBy: {
+            authorOrder: 'asc'
+          }
+        },
+        JournalIssue: true
+      },
+      take: 20
+    })
+  ])
+
+  return {
+    issues,
+    articles
   }
 }

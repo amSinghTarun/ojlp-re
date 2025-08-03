@@ -104,7 +104,7 @@ async function EditPostContent({ slug, currentUser }: { slug: string, currentUse
       userId: currentUser.id
     }
 
-    const postUpdateCheck = checkPermission(currentUser, 'post.UPDATE', context)
+    const postUpdateCheck = checkPermission(currentUser, 'article.UPDATE', context)
     
     if (!postUpdateCheck.allowed) {
       return (
@@ -116,7 +116,7 @@ async function EditPostContent({ slug, currentUser }: { slug: string, currentUse
           <Alert variant="destructive">
             <AlertCircle className="h-4 w-4" />
             <AlertDescription>
-              {PERMISSION_ERRORS.INSUFFICIENT_PERMISSIONS} - You need 'post.UPDATE' permission to edit posts.
+              {PERMISSION_ERRORS.INSUFFICIENT_PERMISSIONS} - You need 'article.UPDATE' permission to edit posts.
             </AlertDescription>
           </Alert>
         </div>

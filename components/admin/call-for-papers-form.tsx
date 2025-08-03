@@ -21,14 +21,14 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { toast } from "@/components/ui/use-toast"
 import { createCallForPapers, updateCallForPapers } from "@/lib/actions/call-for-papers-actions"
-import { CalendarIcon, Loader2, Plus, X, Bell, CheckCircle, AlertTriangle, XCircle, ExternalLink, Building } from "lucide-react"
+import { CalendarIcon, Loader2, Plus, X, Bell, CheckCircle, AlertTriangle, XCircle, FileText, User } from "lucide-react"
 import { Calendar } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { cn } from "@/lib/utils"
 import { Badge } from "@/components/ui/badge"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 
-// Schema aligned with actual Prisma model
+// Schema perfectly aligned with Prisma model - publisher auto-set from user
 const createFormSchema = () => z.object({
   title: z.string()
     .min(1, "Title is required")
@@ -44,6 +44,7 @@ const createFormSchema = () => z.object({
     .max(2000, "Description must be less than 2000 characters"),
   contentLink: z.string()
     .optional()
+    .nullable()
     .refine((url) => {
       // If no URL provided, it's valid (optional field)
       if (!url || url.trim() === '') return true;
@@ -66,24 +67,19 @@ const createFormSchema = () => z.object({
     .min(1, "Volume must be at least 1")
     .max(999, "Volume must be less than 999")
     .int("Volume must be a whole number"),
-  issue: z.coerce.number()
-    .min(1, "Issue must be at least 1")
-    .max(99, "Issue must be less than 99")
-    .int("Issue must be a whole number"),
+  issue: z.coerce.string(),
   year: z.coerce.number()
     .min(1900, "Year must be 1900 or later")
     .max(2100, "Year must be 2100 or earlier")
     .int("Year must be a whole number"),
   fee: z.string()
     .optional()
+    .nullable()
     .refine((val) => !val || val.length <= 50, {
       message: "Fee description must be less than 50 characters"
     }),
   topics: z.array(z.string()).default([]),
-  publisher: z.string()
-    .min(1, "Publisher is required")
-    .min(2, "Publisher must be at least 2 characters")
-    .max(100, "Publisher must be less than 100 characters"),
+  // publisher removed as it will be auto-set from current user's email
 })
 
 type FormData = z.infer<ReturnType<typeof createFormSchema>>
@@ -97,7 +93,7 @@ interface CallForPapersFormProps {
     contentLink?: string | null
     deadline: Date
     volume: number
-    issue: number
+    issue: string
     year: number
     fee?: string | null
     topics: string[]
@@ -127,7 +123,7 @@ export function CallForPapersForm({ cfp }: CallForPapersFormProps) {
       year: cfp?.year || new Date().getFullYear(),
       fee: cfp?.fee || "",
       topics: cfp?.topics || [],
-      publisher: cfp?.publisher || "",
+      // publisher removed from form - will be auto-set from user's email
     },
   })
 
@@ -171,7 +167,7 @@ export function CallForPapersForm({ cfp }: CallForPapersFormProps) {
           description: "You don't have permission to manage calls for papers. Please contact an administrator."
         }
       }
-      if (error.includes('duplicate')) {
+      if (error.includes('duplicate') || error.includes('unique constraint')) {
         return {
           title: "Duplicate Entry",
           description: "A call for papers already exists for this volume, issue, and year combination. Please use different values."
@@ -253,9 +249,16 @@ export function CallForPapersForm({ cfp }: CallForPapersFormProps) {
       console.log("✅ Client-side validation passed")
       console.log("📞 Calling server action...")
       
+      // Clean up empty strings to null for nullable fields
+      const cleanedData = {
+        ...data,
+        contentLink: data.contentLink?.trim() || null,
+        fee: data.fee?.trim() || null,
+      }
+      
       const result = cfp
-        ? await updateCallForPapers(cfp.id, data)
-        : await createCallForPapers(data)
+        ? await updateCallForPapers(cfp.id, cleanedData)
+        : await createCallForPapers(cleanedData)
 
       console.log("📥 Server response:", result)
 
@@ -263,29 +266,29 @@ export function CallForPapersForm({ cfp }: CallForPapersFormProps) {
         console.log("✅ Operation successful!")
         
         // Enhanced success message for new call for papers
-        if (!cfp && result.notification) {
+        if (!cfp) {
           toast({
             title: "🎉 Call for Papers Created Successfully!",
             description: (
               <div className="space-y-2">
                 <p className="font-medium">"{data.title}" has been published.</p>
-                <div className="flex items-center gap-2 text-sm">
+                {/* <div className="flex items-center gap-2 text-sm">
                   <Bell className="h-4 w-4 text-blue-500" />
                   <span>High-priority notification automatically created</span>
                 </div>
                 <div className="flex items-center gap-2 text-sm">
                   <CheckCircle className="h-4 w-4 text-green-500" />
                   <span>Now visible on public notifications page</span>
-                </div>
-                {data.contentLink && (
+                </div> */}
+                {/* {data.contentLink && (
                   <div className="flex items-center gap-2 text-sm">
-                    <ExternalLink className="h-4 w-4 text-purple-500" />
-                    <span>Submission link included in notification</span>
+                    <FileText className="h-4 w-4 text-purple-500" />
+                    <span>Details link included in notification</span>
                   </div>
                 )}
                 <div className="text-xs text-muted-foreground mt-2">
                   Notification expires: {format(data.deadline, "PPP")}
-                </div>
+                </div> */}
               </div>
             ),
             duration: 6000,
@@ -366,14 +369,14 @@ export function CallForPapersForm({ cfp }: CallForPapersFormProps) {
   return (
     <div className="space-y-6">
       {/* Information Alert for New Call for Papers */}
-      {!cfp && (
+      {/* {!cfp && (
         <Alert>
           <Bell className="h-4 w-4" />
           <AlertDescription>
-            <strong>Auto-Notification:</strong> When you create this call for papers, a high-priority notification will automatically be published to inform visitors about the submission opportunity. {contentLink ? "The notification will include the submission link and expire on the deadline." : "The notification will expire on the deadline."}
+            <strong>Auto-Notification:</strong> When you create this call for papers, a high-priority notification will automatically be published to inform visitors about the submission opportunity. {contentLink ? "The notification will include the details link and expire on the deadline." : "The notification will expire on the deadline."}
           </AlertDescription>
         </Alert>
-      )}
+      )} */}
 
       {/* Debug Info (Remove in production) */}
       {process.env.NODE_ENV === 'development' && (
@@ -390,8 +393,8 @@ export function CallForPapersForm({ cfp }: CallForPapersFormProps) {
           <CardTitle>{cfp ? "Edit Call for Papers" : "Create Call for Papers"}</CardTitle>
           <CardDescription>
             {cfp
-              ? "Update the details for your call for papers."
-              : "Create a new call for papers for your journal. You can optionally include submission instructions or links."}
+              ? "Update the details for your call for papers. The publisher information will remain unchanged."
+              : "Create a new call for papers for your journal. Your email will be automatically recorded as the publisher."}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -411,9 +414,9 @@ export function CallForPapersForm({ cfp }: CallForPapersFormProps) {
                           maxLength={200}
                         />
                       </FormControl>
-                      <FormDescription>
+                      {/* <FormDescription>
                         This will also be used as the notification title (5-200 characters)
-                      </FormDescription>
+                      </FormDescription> */}
                       <FormMessage />
                     </FormItem>
                   )}
@@ -454,69 +457,76 @@ export function CallForPapersForm({ cfp }: CallForPapersFormProps) {
                           maxLength={2000}
                         />
                       </FormControl>
-                      <FormDescription>
+                      {/* <FormDescription>
                         This description will be included in the auto-generated notification (20-2000 characters)
-                      </FormDescription>
+                      </FormDescription> */}
                       <FormMessage />
                     </FormItem>
                   )}
                 />
 
-                <FormField
-                  control={form.control}
-                  name="publisher"
-                  render={({ field }) => (
-                    <FormItem className="md:col-span-2">
-                      <FormLabel>Publisher *</FormLabel>
-                      <FormControl>
-                        <div className="relative">
-                          <Building className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                          <Input 
-                            placeholder="Enter the publisher name" 
-                            {...field} 
-                            className="pl-10"
-                            maxLength={100}
-                          />
+                {/* Publisher Display - Show current publisher for editing or indicate auto-assignment for new */}
+                <div className="md:col-span-2">
+                  <FormLabel>Publisher</FormLabel>
+                  <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg border">
+                    <User className="h-4 w-4 text-muted-foreground" />
+                    <div className="flex-1">
+                      {cfp ? (
+                        <div>
+                          <div className="font-medium text-sm">{cfp.publisher}</div>
+                          <div className="text-xs text-muted-foreground">
+                            Original publisher (cannot be changed)
+                          </div>
                         </div>
-                      </FormControl>
-                      <FormDescription>
-                        Name of the organization or publisher (2-100 characters)
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                      ) : (
+                        <div>
+                          <div className="font-medium text-sm">Your email will be used</div>
+                          <div className="text-xs text-muted-foreground">
+                            Publisher will be automatically set to your account email
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  <p className="text-sm text-muted-foreground mt-2">
+                    {cfp 
+                      ? "The original publisher information is preserved to maintain authorship integrity."
+                      : "Your email address will be automatically recorded as the publisher when you create this call for papers."
+                    }
+                  </p>
+                </div>
 
                 <FormField
                   control={form.control}
                   name="contentLink"
                   render={({ field }) => (
                     <FormItem className="md:col-span-2">
-                      <FormLabel>Submission Link (Optional)</FormLabel>
+                      <FormLabel>Details Link (Optional)</FormLabel>
                       <FormControl>
                         <div className="relative">
-                          <ExternalLink className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                          <FileText className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                           <Input 
-                            placeholder="https://easychair.org/conferences/?conf=yourconf or https://example.com/submit" 
-                            {...field} 
+                            placeholder="https://journal.example.com/call-for-papers-details or https://conference.org/cfp-info" 
+                            {...field}
+                            value={field.value || ""}
                             className="pl-10"
                           />
                         </div>
                       </FormControl>
                       <FormDescription>
-                        Optional link to submission system, detailed call for papers, or submission instructions. If provided, this will be included in notifications.
+                        Optional link to a page with more detailed information about this call for papers (guidelines, themes, requirements, etc.).
                       </FormDescription>
                       <FormMessage />
                       {contentLink && contentLink.trim() !== '' && (
                         <div className="flex items-center gap-2 text-sm text-green-600">
-                          <ExternalLink className="h-3 w-3" />
+                          <FileText className="h-3 w-3" />
                           <a 
                             href={contentLink} 
                             target="_blank" 
                             rel="noopener noreferrer" 
                             className="hover:underline"
                           >
-                            Preview link
+                            Preview details page
                           </a>
                         </div>
                       )}
@@ -560,7 +570,7 @@ export function CallForPapersForm({ cfp }: CallForPapersFormProps) {
                         </PopoverContent>
                       </Popover>
                       <FormDescription>
-                        Must be in the future. The notification will automatically expire on this date.
+                        Must be in the future
                       </FormDescription>
                       <FormMessage />
                     </FormItem>
@@ -589,9 +599,8 @@ export function CallForPapersForm({ cfp }: CallForPapersFormProps) {
                     <FormItem>
                       <FormLabel>Issue *</FormLabel>
                       <FormControl>
-                        <Input type="number" min="1" max="99" {...field} />
+                        <Input type="string" {...field} />
                       </FormControl>
-                      <FormDescription>1-99</FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -620,8 +629,9 @@ export function CallForPapersForm({ cfp }: CallForPapersFormProps) {
                       <FormLabel>Submission Fee (Optional)</FormLabel>
                       <FormControl>
                         <Input 
-                          placeholder="e.g., $50 USD" 
-                          {...field} 
+                          placeholder="e.g., $50 USD or Free" 
+                          {...field}
+                          value={field.value || ""}
                           maxLength={50}
                         />
                       </FormControl>
@@ -642,7 +652,6 @@ export function CallForPapersForm({ cfp }: CallForPapersFormProps) {
                         value={newTopic}
                         onChange={(e) => setNewTopic(e.target.value)}
                         onKeyPress={(e) => e.key === "Enter" && (e.preventDefault(), addTopic())}
-                        maxLength={50}
                       />
                       <Button type="button" onClick={addTopic} size="sm" disabled={topics.length >= 10}>
                         <Plus className="h-4 w-4" />
@@ -665,9 +674,9 @@ export function CallForPapersForm({ cfp }: CallForPapersFormProps) {
                       </div>
                     )}
                   </div>
-                  <p className="text-sm text-muted-foreground mt-2">
+                  {/* <p className="text-sm text-muted-foreground mt-2">
                     Topics will be featured in the notification (first 3 shown). {10 - topics.length} remaining.
-                  </p>
+                  </p> */}
                 </div>
               </div>
 
@@ -689,7 +698,7 @@ export function CallForPapersForm({ cfp }: CallForPapersFormProps) {
                   ) : (
                     <>
                       {!cfp && <Bell className="mr-2 h-4 w-4" />}
-                      {cfp ? "Update Call for Papers" : "Create Call for Papers & Notification"}
+                      {cfp ? "Update Call for Papers" : "Create Call for Papers"}
                     </>
                   )}
                 </Button>

@@ -20,42 +20,6 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 import { Menu, Search, X } from "lucide-react"
 import { NotificationButton } from "@/components/notification-button"
 
-const aboutLinks = [
-  {
-    title: "About Us",
-    href: "/about",
-    description: "Learn about our mission, values, and history.",
-  },
-  {
-    title: "Editorial Board",
-    href: "/editorial-board",
-    description: "Meet our distinguished editorial board members.",
-  },
-  {
-    title: "Board of Advisors",
-    href: "/board-of-advisors",
-    description: "Meet our expert advisors who guide our strategic direction.",
-  },
-  {
-    title: "Contact",
-    href: "/contact",
-    description: "Get in touch with our team.",
-  },
-]
-
-const journalLinks = [
-  {
-    title: "Current Issue",
-    href: "/journals",
-    description: "Read our latest journal issue.",
-  },
-  {
-    title: "Archive",
-    href: "/journals/archive",
-    description: "Browse our past journal issues.",
-  },
-]
-
 // Custom Celtic knot icon component
 const CelticKnot = () => (
   <svg
@@ -84,7 +48,7 @@ const CelticKnot = () => (
 
 // Custom navigation styles for the red theme
 const customNavLinkStyle = cn(
-  "text-white/90 hover:text-white hover:bg-white/10 font-medium text-sm tracking-wide transition-all duration-200 px-4 py-2 rounded-none border-b-2 border-transparent hover:border-white/30"
+  "text-white/90 hover:text-white hover:bg-white/10 font-bold text-xs tracking-wide transition-all duration-200 px-4 py-2 rounded-none border-b-2 border-transparent hover:border-white/30"
 )
 
 export function Navigation() {
@@ -100,14 +64,14 @@ export function Navigation() {
   }
 
   return (
-    <header className="sticky top-0 z-50 w-full bg-red-800 shadow-lg">
+    <header className="sticky top-0 z-50 w-full  shadow-lg">
       {/* Main Header Section */}
-      <div className="bg-red-800 py-4">
+      <div className="bg-red-900 py-4">
         <div className="container mx-auto px-4">
           <div className="flex flex-col items-center space-y-4">
             {/* Logo and Title */}
             <Link href="/" className="flex flex-col items-center space-y-3 group">
-              <div className="w-16 h-16 relative">
+              <div className="w-20 h-20 relative">
                 <Image
                   src="/logo.png"
                   alt="Open Journal of Law & Policy"
@@ -116,8 +80,8 @@ export function Navigation() {
                 />
               </div>
               <div className="text-center">
-                <h1 className="text-white text-lg md:text-3xl  tracking-wider">
-                  Open Journal of Law & Policy
+                <h1 className="text-stone-100 text-lg md:text-2xl">
+                  OPEN JOURNAL OF LAW & POLICY
                 </h1>
               </div>
             </Link>
@@ -126,52 +90,52 @@ export function Navigation() {
       </div>
 
       {/* Navigation Bar */}
-      <div className="bg-red-900 backdrop-blur-sm border-t border-red-700">
+      <div className="bg-red-900 backdrop-blur-sm border-t border-red-800">
         <div className="container mx-auto px-4">
           {/* Desktop Navigation */}
-          <div className="hidden md:block">
+          <div className="hidden lg:block">
             <nav className="flex items-center justify-center py-2">
               <div className="flex items-center space-x-1">
                 <Link
                   href="/about"
-                  className={cn(customNavLinkStyle, pathname === "/about" && "border-white text-white")}
+                  className={cn(customNavLinkStyle, pathname === "/about" && "border-white text-stone-100")}
                 >
-                  About Us
+                  ABOUT US
                 </Link>
                 
                 <Link
                   href="/submit"
-                  className={cn(customNavLinkStyle, pathname === "/submit" && "border-white text-white")}
+                  className={cn(customNavLinkStyle, pathname === "/submit" && "border-white text-stone-100")}
                 >
-                  Submissions
+                  SUBMISSIONS
                 </Link>
                 
                 <Link
-                  href="/contact"
-                  className={cn(customNavLinkStyle, pathname === "/contact" && "border-white text-white")}
+                  href="/journals"
+                  className={cn(customNavLinkStyle, pathname === "/contact" && "border-white text-stone-100")}
                 >
-                  Contacts
+                  ISSUE
                 </Link>
                 
                 <Link
-                  href="/journals/archive"
-                  className={cn(customNavLinkStyle, pathname === "/journals/archive" && "border-white text-white")}
+                  href="/journals/call-for-papers"
+                  className={cn(customNavLinkStyle, pathname === "/journals/archive" && "border-white text-stone-100")}
                 >
-                  Archives
+                  CALL FOR PAPERS
                 </Link>
                 
                 <Link
                   href="/editorial-board"
-                  className={cn(customNavLinkStyle, pathname === "/editorial-board" && "border-white text-white")}
+                  className={cn(customNavLinkStyle, pathname === "/editorial-board" && "border-white text-stone-100")}
                 >
-                  Editorial Board
+                  EDITORIAL BOARD
                 </Link>
                 
                 <Link
                   href="/board-of-advisors"
-                  className={cn(customNavLinkStyle, pathname === "/board-of-advisors" && "border-white text-white")}
+                  className={cn(customNavLinkStyle, pathname === "/board-of-advisors" && "border-white text-stone-100")}
                 >
-                  Advisory Board
+                  ADVISORY BOARD
                 </Link>
 
                 {/* Notification Button */}
@@ -185,7 +149,7 @@ export function Navigation() {
           </div>
 
           {/* Mobile Navigation */}
-          <div className="md:hidden py-3">
+          <div className="lg:hidden py-3">
             <div className="flex items-center justify-between">
               <Sheet>
                 <SheetTrigger asChild>
@@ -195,40 +159,40 @@ export function Navigation() {
                   </Button>
                 </SheetTrigger>
                 <SheetContent side="left" className="w-[280px] bg-red-800 border-red-700">
-                  <div className="flex flex-col space-y-4 mt-6">
+                  <div className="flex flex-col space-y-4 mt-6 font-bold">
                     <Link
                       href="/about"
-                      className="text-white hover:text-red-200 text-lg font-medium py-2 border-b border-red-700/50"
+                      className="text-white hover:text-red-200 text-xs font-medium py-2 border-b border-red-700/50"
                     >
                       About Us
                     </Link>
                     <Link
                       href="/submissions"
-                      className="text-white hover:text-red-200 text-lg font-medium py-2 border-b border-red-700/50"
+                      className="text-white hover:text-red-200 text-xs font-medium py-2 border-b border-red-700/50"
                     >
                       Submissions
                     </Link>
                     <Link
                       href="/contact"
-                      className="text-white hover:text-red-200 text-lg font-medium py-2 border-b border-red-700/50"
+                      className="text-white hover:text-red-200 text-xs font-medium py-2 border-b border-red-700/50"
                     >
                       Contacts
                     </Link>
                     <Link
                       href="/journals/archive"
-                      className="text-white hover:text-red-200 text-lg font-medium py-2 border-b border-red-700/50"
+                      className="text-white hover:text-red-200 text-xs font-medium py-2 border-b border-red-700/50"
                     >
                       Archives
                     </Link>
                     <Link
                       href="/editorial-board"
-                      className="text-white hover:text-red-200 text-lg font-medium py-2 border-b border-red-700/50"
+                      className="text-white hover:text-red-200 text-xs font-medium py-2 border-b border-red-700/50"
                     >
                       Editorial Board
                     </Link>
                     <Link
                       href="/board-of-advisors"
-                      className="text-white hover:text-red-200 text-lg font-medium py-2"
+                      className="text-white hover:text-red-200 text-xs font-medium py-2"
                     >
                       Advisory Board
                     </Link>

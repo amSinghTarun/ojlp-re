@@ -3,14 +3,12 @@
 import type React from "react"
 
 import { useState, useEffect } from "react"
-import Image from "next/image"
-import Link from "next/link"
 import { ChevronLeft, ChevronRight } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import type { Article } from "@/lib/types"
+import { ArticleType } from "@prisma/client"
 
 interface ArticleCarouselProps {
-  articles: Partial<Article>[]
+  articles: Partial<ArticleType>[]
   issueInfo?: string
 }
 
@@ -57,10 +55,9 @@ export function ArticleCarousel({ articles, issueInfo }: ArticleCarouselProps) {
   }
 
   return (
-    <div className="relative w-full h-full overflow-hidden bg-white">
+    <div className="relative w-full overflow-hidden">
       <div
         className="relative w-full"
-        style={{ minHeight: "400px" }}
         onMouseEnter={() => setIsHovering(true)}
         onMouseLeave={() => setIsHovering(false)}
         onTouchStart={handleTouchStart}
@@ -70,61 +67,51 @@ export function ArticleCarousel({ articles, issueInfo }: ArticleCarouselProps) {
         {articles.map((article, index) => (
           <div
             key={article.slug}
-            className={` inset-0 w-full h-full transition-opacity duration-1000 ${
-              index === currentSlide ? "opacity-100 z-10" : "opacity-0 z-0"
+            className={`w-full transition-opacity duration-1000 ${
+              index === currentSlide ? "opacity-100 block" : "opacity-0 hidden"
             }`}
           >
             {/* Clean white background */}
             {/* <div className="absolute inset-0 bg-white" /> */}
             
             {/* Content Container */}
-            <div className="absolute inset-0 z-20 flex py-5">
-              <div className="container mx-auto px-4 max-w-4xl">
-                <div className="text-center space-y-4">
+            <div className="relative z-20 py-10 md:py-16">
+              <div className="container mx-auto px-4 max-w-4xl xl:max-w-6xl">
+                <div className="text-center space-y-6">
                   
                   {/* Article Type Label */}
-                  <div className="mb-6">
-                    <span className="text-xs font-semibold tracking-[0.3em] text-gray-800 uppercase">
+                  <div>
+                    <span className="text-sm font-semibold text-red-800">
                       ARTICLE
                     </span>
                   </div>
 
                   {/* Article Title */}
-                  <div className="space-y-3 mb-6">
-                    <h1 className="text-2xl md:text-3xl lg:text-4xl font-serif text-red-700 leading-tight max-w-4xl mx-auto px-4">
-                      {article.title}
+                  <div>
+                    <h1 className="text-2xl md:text-3xl lg:text-4xl text-stone-800 leading-tight max-w-4xl mx-auto px-4">
+                      {article.title?.toUpperCase()}
                     </h1>
                   </div>
 
-                  {/* Author */}
-                  <div className="mb-6">
-                    <h2 className="text-base md:text-lg text-gray-800 font-normal">
-                      {article.author}
-                    </h2>
-                  </div>
-
                   {/* Article Description/Excerpt */}
-                  <div className="max-w-3xl mx-auto mb-8">
-                    <p className="text-gray-700 text-sm md:text-base leading-relaxed px-6 font-light">
-                      {article.excerpt}
-                    </p>
-                  </div>
+                  {article.abstract && (
+                    <div className="">
+                      <h2 className="text-stone-800 font-medium text-base md:text-lg leading-relaxed px-6">
+                        {article.abstract}
+                        {article.abstract}
+                      </h2>
+                    </div>
+                  )}
 
-                  {/* Article Metadata */}
-                  <div className="space-y-3 pt-2">
-                    <div className="text-xs text-gray-600 tracking-wide">
-                      <span className="font-medium">{article.date}</span>
+                  {/* Author */}
+                  {article.author && (
+                    <div>
+                      <span className="text-sm text-stone-600">
+                        {article.author.toUpperCase()}
+                      </span>
                     </div>
-                    
-                    {/* Categories/Tags */}
-                    <div className="flex flex-wrap justify-center gap-1 text-xs text-gray-600 uppercase tracking-wider">
-                      <span>DATA COLONIALISM</span>
-                      <span>•</span>
-                      <span>ECONOMIC INDEPENDENCE</span>
-                      <span>•</span>
-                      <span>GLOBAL TRADE</span>
-                    </div>
-                  </div>
+                  )}
+
                 </div>
               </div>
             </div>
@@ -136,7 +123,7 @@ export function ArticleCarousel({ articles, issueInfo }: ArticleCarouselProps) {
       <Button
         variant="ghost"
         size="icon"
-        className="absolute left-4 md:left-8 top-1/2 -translate-y-1/2 z-30 w-12 h-12 rounded-full text-gray-400 hover:text-red-700 hover:bg-red-50 transition-all duration-300"
+        className="absolute left-4 md:left-8 top-1/2 -translate-y-1/2 z-30 w-12 h-12 rounded-full text-stone-400 hover:text-stone-100 hover:bg-red-800 transition-all duration-300"
         onClick={prevSlide}
         aria-label="Previous article"
       >
@@ -146,7 +133,7 @@ export function ArticleCarousel({ articles, issueInfo }: ArticleCarouselProps) {
       <Button
         variant="ghost"
         size="icon"
-        className="absolute right-4 md:right-8 top-1/2 -translate-y-1/2 z-30 w-12 h-12 rounded-full text-gray-400 hover:text-red-700 hover:bg-red-50 transition-all duration-300"
+        className="absolute right-4 md:right-8 top-1/2 -translate-y-1/2 z-30 w-12 h-12 rounded-full text-stone-400 hover:text-stone-100 hover:bg-red-800 transition-all duration-300"
         onClick={nextSlide}
         aria-label="Next article"
       >
@@ -154,7 +141,7 @@ export function ArticleCarousel({ articles, issueInfo }: ArticleCarouselProps) {
       </Button>
 
       {/* Pagination Dots */}
-      <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-30 flex space-x-3">
+      {/* <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-30 flex space-x-3">
         {articles.map((_, index) => (
           <button
             key={index}
@@ -167,7 +154,7 @@ export function ArticleCarousel({ articles, issueInfo }: ArticleCarouselProps) {
             aria-label={`Go to article ${index + 1}`}
           />
         ))}
-      </div>
+      </div> */}
 
       {/* Progress Bar */}
       {/* <div className="absolute bottom-0 left-0 w-full px-10 h-0.5 z-30">

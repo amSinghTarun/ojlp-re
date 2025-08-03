@@ -1,4 +1,4 @@
-// app/admin/journal-articles/[slug]/edit/page.tsx - WITH SIMPLE PERMISSION CHECKS
+// app/admin/journal-articles/[slug]/edit/page.tsx - Fixed field mapping
 import { DashboardHeader } from "@/components/admin/dashboard-header"
 import { JournalArticleForm } from "@/components/admin/journal-article-form"
 import { getJournalArticle } from "@/lib/actions/journal-article-actions"
@@ -82,7 +82,7 @@ export default async function EditJournalArticlePage({ params }: EditJournalArti
     resourceId: article.id,
     resourceOwner: article.Authors?.some(author => author.userId === currentUser.id) 
       ? currentUser.id 
-      : article.Author?.userId,
+      : undefined,
     userId: currentUser.id
   }
 
@@ -105,25 +105,24 @@ export default async function EditJournalArticlePage({ params }: EditJournalArti
     )
   }
 
-  // Transform the article data to match the updated form interface with multiple authors and contentLink
+  // Transform the article data to match the updated form interface with correct field mapping
   const formArticle = {
     id: article.id,
     slug: article.slug,
     title: article.title,
-    excerpt: article.excerpt,
+    abstract: article.abstract, // Use abstract instead of excerpt
     content: article.content,
     contentLink: article.contentLink,
-    date: article.date,
+    publishedAt: article.publishedAt, // Use publishedAt instead of date
     readTime: article.readTime,
     image: article.image,
-    images: article.images,
     issueId: article.journalIssue?.id || null,
-    doi: article.doi,
-    keywords: article.keywords,
-    draft: article.draft,
-    Authors: article.Authors,
+    keywords: article.keywords || [],
+    archived: article.archived, // Use archived instead of draft (inverted logic)
+    featured: article.featured || false,
+    carousel: article.carousel || false,
+    Authors: article.Authors || [],
     journalIssue: article.journalIssue,
-    categories: article.categories,
   }
 
   // Get primary author for display (first author)
@@ -144,11 +143,14 @@ export default async function EditJournalArticlePage({ params }: EditJournalArti
           <div className="space-y-2">
             <div className="flex items-center gap-2 flex-wrap">
               <h3 className="font-semibold">{article.title}</h3>
-              <Badge variant={article.draft ? "secondary" : "default"}>
-                {article.draft ? "Draft" : "Published"}
+              <Badge variant={article.archived ? "secondary" : "default"}>
+                {article.archived ? "Archived" : "Published"}
               </Badge>
-              {article.doi && (
-                <Badge variant="outline">DOI: {article.doi}</Badge>
+              {article.featured && (
+                <Badge variant="destructive">Featured</Badge>
+              )}
+              {article.carousel && (
+                <Badge variant="outline">Carousel</Badge>
               )}
               {article.contentLink && (
                 <Badge variant="outline" className="flex items-center gap-1">
@@ -182,7 +184,7 @@ export default async function EditJournalArticlePage({ params }: EditJournalArti
               
               <div className="flex items-center gap-1">
                 <Calendar className="h-4 w-4" />
-                <span>{new Date(article.date).toLocaleDateString()}</span>
+                <span>{new Date(article.publishedAt).toLocaleDateString()}</span>
               </div>
               
               <div className="flex items-center gap-1">
@@ -195,6 +197,16 @@ export default async function EditJournalArticlePage({ params }: EditJournalArti
                 <span>{article.views || 0} views</span>
               </div>
             </div>
+
+            {/* Abstract Display */}
+            {article.abstract && (
+              <div className="space-y-1">
+                <p className="text-sm font-medium">Abstract:</p>
+                <p className="text-sm text-muted-foreground line-clamp-3">
+                  {article.abstract}
+                </p>
+              </div>
+            )}
 
             {/* Content Link Display */}
             {article.contentLink && (
@@ -230,6 +242,20 @@ export default async function EditJournalArticlePage({ params }: EditJournalArti
                 </div>
               </div>
             )}
+
+            {/* Keywords Display */}
+            {article.keywords && article.keywords.length > 0 && (
+              <div className="space-y-1">
+                <p className="text-sm font-medium">Keywords:</p>
+                <div className="flex flex-wrap gap-1">
+                  {article.keywords.map((keyword) => (
+                    <Badge key={keyword} variant="secondary" className="text-xs">
+                      {keyword}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            )}
             
             {article.journalIssue && (
               <div className="text-sm flex items-center gap-1">
@@ -238,6 +264,9 @@ export default async function EditJournalArticlePage({ params }: EditJournalArti
                 <span className="ml-1 font-medium">
                   Volume {article.journalIssue.volume}, Issue {article.journalIssue.issue} ({article.journalIssue.year})
                 </span>
+                {article.journalIssue.theme && (
+                  <span className="text-muted-foreground">- {article.journalIssue.theme}</span>
+                )}
               </div>
             )}
           </div>
@@ -267,6 +296,16 @@ export default async function EditJournalArticlePage({ params }: EditJournalArti
           <ExternalLink className="h-4 w-4" />
           <AlertDescription>
             <strong>Missing Content Link:</strong> This journal article requires a link to the full content (PDF, DOI, or academic platform). Please add the content link in the form below.
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {/* Missing Abstract Alert */}
+      {!article.abstract && (
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>
+            <strong>Missing Abstract:</strong> This journal article is missing an abstract. Please add an abstract in the form below.
           </AlertDescription>
         </Alert>
       )}

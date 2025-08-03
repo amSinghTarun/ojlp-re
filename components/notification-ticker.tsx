@@ -11,13 +11,12 @@ interface Notification {
   id: string
   title: string
   content: string
-  date: string
+  createdAt: string
   type: string
   priority: string
-  read: boolean
-  link?: string | null
+  linkDisplay?: string | null
+  linkUrl?: string | null
   expiresAt?: string | null
-  image?: string | null
 }
 
 export function NotificationTicker() {
@@ -33,10 +32,12 @@ export function NotificationTicker() {
         setIsLoading(true)
         setError(null)
         const fetchedNotifications = await getHighPriorityNotifications()
-        setNotifications(fetchedNotifications)
+        console.log("Fetched notifications for ticker:", fetchedNotifications)
+        setNotifications(fetchedNotifications || [])
       } catch (err) {
         console.error("Failed to fetch notifications:", err)
         setError("Failed to load notifications")
+        setNotifications([]) // Ensure we have an empty array on error
       } finally {
         setIsLoading(false)
       }
@@ -66,11 +67,11 @@ export function NotificationTicker() {
   // Show loading state
   if (isLoading) {
     return (
-      <div className="relative overflow-hidden px-5 py-10">
-        <div className="py-4 bg-red-900 container px-4 rounded-lg relative">
+      <div className="relative overflow-hidden px-5 pb-10">
+        <div className="py-4 bg-red-800 container px-4 rounded-lg relative">
           <div className="flex items-center justify-center gap-2 text-white">
-            {/* <Loader2 className="h-4 w-4 animate-spin" /> */}
-            <span className="text-sm">Notifications</span>
+            <Loader2 className="h-4 w-4 animate-spin" />
+            <span className="text-sm">NOTIFICATIONS...</span>
           </div>
         </div>
       </div>
@@ -80,8 +81,8 @@ export function NotificationTicker() {
   // Show error state
   if (error) {
     return (
-      <div className="relative overflow-hidden px-5 py-10">
-        <div className="py-4 bg-orange-600 container px-4 rounded-lg relative">
+      <div className="relative overflow-hidden px-5 pb-10">
+        <div className="py-4 bg-red-800 container px-4 rounded-lg relative">
           <div className="flex items-center justify-center gap-2 text-white">
             <span className="text-sm">⚠️ {error}</span>
           </div>
@@ -90,26 +91,32 @@ export function NotificationTicker() {
     )
   }
 
-  // Don't render if no notifications
-  if (!hasNotifications) return null
+  // Don't render if no notifications - but always show the component area
+  if (!hasNotifications) {
+    return (
+      <div className="relative overflow-hidden px-5 pb-10">
+        <div className="py-4 bg-red-800 container px-4 rounded-lg relative">
+          <div className="flex items-center justify-center gap-2 text-white">
+            <span className="text-sm">NOTIFICATIONS</span>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   const notification = notifications[currentIndex]
 
   return (
-    <div className="relative overflow-hidden px-5 py-10">
-      <div className="py-4 bg-red-900 container px-4 rounded-lg relative">
-        <div className="flex items-center justify-between gap-4">
+    <div className="relative overflow-hidden px-5 pb-10">
+      <div className="py-4 bg-red-800 container px-4 rounded-sm relative">
+        <div className="flex items-center gap-4">
+          
           <div className="flex items-center text-sm flex-1 overflow-hidden">
-            <div className="bg-white/20 p-2 text-white font-bold rounded-full mr-4 flex-shrink-0">
-              IN FOCUS
-            </div>
             <div className="flex flex-col overflow-hidden">
-              <div className="flex flex-row items-center flex-wrap">
-                <Link href={notification.link || "/notifications"} className="hover:underline">
-                  <span className="font-bold text-white mr-1">{notification.title}</span>
-                </Link>
-                <span className="font-bold text-white">•</span>
-                <span className="ml-1 text-white/70"> {notification.date}</span>
+              <div className="flex flex-row items-center  flex-wrap">
+                <span className="font-bold text-stone-100 mr-1">{notification.title.toUpperCase()}</span>
+                <span className="font-bold text-stone-100">•</span>
+                <span className="ml-1 text-stone-100"> {notification.createdAt}</span>
               </div>
               <div key={`notification-${currentIndex}`} className="overflow-hidden whitespace-nowrap hidden sm:block">
                 <span className="text-white/80 inline-block animate-marquee">
@@ -118,6 +125,7 @@ export function NotificationTicker() {
               </div>
             </div>
           </div>
+
           {/* <div className="flex-shrink-0 hidden sm:block">
             <Button
               asChild
@@ -125,8 +133,8 @@ export function NotificationTicker() {
               size="sm"
               className="px-3 h-8 text-xs border-white/30 bg-white/10 text-white hover:bg-white/20 hover:text-white"
             >
-              <Link href={notification.link || "/notifications"}>
-                View Details
+              <Link href={notification.linkUrl || "/notifications"}>
+                {notification.linkDisplay || "View Details"}
                 <ChevronRight className="ml-1 h-3 w-3" />
               </Link>
             </Button>

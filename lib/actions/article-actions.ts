@@ -32,20 +32,6 @@ async function getCurrentUserWithPermissions(): Promise<UserWithPermissions | nu
   }
 }
 
-// Helper function to find or create authors
-async function findOrCreateAuthors(authorIds: string[]) {
-  const authors = []
-  for (const authorId of authorIds) {
-    const author = await prisma.author.findUnique({
-      where: { id: authorId }
-    })
-    if (author) {
-      authors.push(author)
-    }
-  }
-  return authors
-}
-
 // Helper function to generate slug from title
 function generateSlug(title: string): string {
   return title
@@ -63,18 +49,34 @@ function calculateReadTime(content: string): number {
   return Math.ceil(words / wordsPerMinute)
 }
 
+// Helper function to find or create authors
+async function findOrCreateAuthors(authorIds: string[]) {
+  const authors = []
+  for (const authorId of authorIds) {
+    const author = await prisma.author.findUnique({
+      where: { id: authorId }
+    })
+    if (author) {
+      authors.push(author)
+    }
+  }
+  return authors
+}
+
 export async function createArticle(data: {
   title: string
   content: string
-  excerpt?: string
+  abstract?: string
   type: "blog" | "journal"
   image?: string
   authorIds: string[]
   categoryIds?: string[]
   featured?: boolean
-  doi?: string
+  carousel?: boolean
   keywords?: string[]
   journalIssueId?: string
+  readTime?: number
+  contentLink?: string
 }) {
   try {
     // Check authentication and permissions
@@ -104,16 +106,6 @@ export async function createArticle(data: {
       return { success: false, error: "An article with this title already exists" }
     }
 
-    // Check for duplicate DOI if provided
-    if (data.doi) {
-      const existingDOI = await prisma.article.findUnique({
-        where: { doi: data.doi }
-      })
-      if (existingDOI) {
-        return { success: false, error: "An article with this DOI already exists" }
-      }
-    }
-
     // Find authors
     const authors = await findOrCreateAuthors(data.authorIds)
     if (authors.length === 0) {
@@ -121,7 +113,7 @@ export async function createArticle(data: {
     }
 
     // Calculate read time
-    const readTime = calculateReadTime(data.content)
+    const readTime = data.readTime || calculateReadTime(data.content)
 
     // Create the article with authors in a transaction
     const article = await prisma.$transaction(async (tx) => {
@@ -130,16 +122,18 @@ export async function createArticle(data: {
         data: {
           title: data.title,
           slug,
-          excerpt: data.excerpt || data.content.substring(0, 200) + "...",
+          abstract: data.abstract || data.content.substring(0, 200) + "...",
           content: data.content,
           type: data.type,
           image: data.image || null,
           readTime,
-          date: new Date(),
+          publishedAt: new Date(),
           keywords: data.keywords || [],
-          doi: data.doi || null,
           issueId: data.journalIssueId || null,
-          draft: false,
+          featured: data.featured || false,
+          carousel: data.carousel || false,
+          contentLink: data.contentLink || null,
+          archived: false, // Default to not archived
         }
       })
 
@@ -163,6 +157,7 @@ export async function createArticle(data: {
     revalidatePath("/")
     revalidatePath("/blogs")
     revalidatePath("/journals")
+    revalidatePath("/featured")
     revalidatePath(`/${data.type === "blog" ? "blogs" : "journals"}/${article.slug}`)
     revalidatePath("/admin/posts")
     revalidatePath("/admin/journal-articles")
@@ -179,15 +174,18 @@ export async function updateArticle(
   data: {
     title?: string
     content?: string
-    excerpt?: string
+    abstract?: string
     image?: string
     authorIds?: string[]
     categoryIds?: string[]
     featured?: boolean
-    doi?: string
+    carousel?: boolean
     keywords?: string[]
     journalIssueId?: string | null
     type?: "blog" | "journal"
+    readTime?: number
+    contentLink?: string
+    archived?: boolean
   },
 ) {
   try {
@@ -215,10 +213,7 @@ export async function updateArticle(
     }
 
     // Check if user has permission to update articles
-    const isOwner = existingArticle.authors.some(aa => aa.author.userId === currentUser.id)
-    
-    const permissionCheck = checkPermission(currentUser, 'article.UPDATE', 
-    )
+    const permissionCheck = checkPermission(currentUser, 'article.UPDATE')
 
     if (!permissionCheck.allowed) {
       return { 
@@ -243,20 +238,10 @@ export async function updateArticle(
       }
     }
 
-    // Check for duplicate DOI (excluding current article)
-    if (data.doi && data.doi !== existingArticle.doi) {
-      const duplicateDOI = await prisma.article.findUnique({
-        where: { doi: data.doi }
-      })
-      if (duplicateDOI) {
-        return { success: false, error: "An article with this DOI already exists" }
-      }
-    }
-
     // Calculate new read time if content is updated
     let readTime = existingArticle.readTime
     if (data.content) {
-      readTime = calculateReadTime(data.content)
+      readTime = data.readTime || calculateReadTime(data.content)
     }
 
     // Handle authors if provided
@@ -276,13 +261,15 @@ export async function updateArticle(
         data: {
           ...(data.title && { title: data.title, slug: newSlug }),
           ...(data.content && { content: data.content, readTime }),
-          ...(data.excerpt !== undefined && { excerpt: data.excerpt }),
+          ...(data.abstract !== undefined && { abstract: data.abstract }),
           ...(data.image !== undefined && { image: data.image }),
           ...(data.type && { type: data.type }),
           ...(data.featured !== undefined && { featured: data.featured }),
-          ...(data.doi !== undefined && { doi: data.doi }),
+          ...(data.carousel !== undefined && { carousel: data.carousel }),
           ...(data.keywords !== undefined && { keywords: data.keywords }),
           ...(data.journalIssueId !== undefined && { issueId: data.journalIssueId }),
+          ...(data.contentLink !== undefined && { contentLink: data.contentLink }),
+          ...(data.archived !== undefined && { archived: data.archived }),
         }
       })
 
@@ -314,6 +301,7 @@ export async function updateArticle(
     revalidatePath("/")
     revalidatePath("/blogs")
     revalidatePath("/journals")
+    revalidatePath("/featured")
     revalidatePath(`/${data.type === "blog" ? "blogs" : "journals"}/${updatedArticle.slug}`)
     revalidatePath("/admin/posts")
     revalidatePath("/admin/journal-articles")
@@ -330,16 +318,8 @@ export async function deleteArticle(slug: string) {
     // Check authentication and permissions
     const currentUser = await getCurrentUserWithPermissions()
     
-    if (!currentUser)
+    if (!currentUser) {
       return { success: false, error: "Authentication required" }
-
-    const permissionCheck = checkPermission(currentUser, 'article.DELETE')
-
-    if (!permissionCheck.allowed) {
-      return { 
-        success: false, 
-        error: permissionCheck.reason || "You don't have permission to delete this article" 
-      }
     }
 
     // Get the existing article to check ownership if needed
@@ -359,7 +339,14 @@ export async function deleteArticle(slug: string) {
     }
 
     // Check if user has permission to delete articles
-    const isOwner = existingArticle.authors.some(aa => aa.author.userId === currentUser.id)
+    const permissionCheck = checkPermission(currentUser, 'article.DELETE')
+
+    if (!permissionCheck.allowed) {
+      return { 
+        success: false, 
+        error: permissionCheck.reason || "You don't have permission to delete this article" 
+      }
+    }
 
     // Delete the article (author relationships will be deleted automatically due to CASCADE)
     await prisma.article.delete({
@@ -372,6 +359,7 @@ export async function deleteArticle(slug: string) {
     revalidatePath("/")
     revalidatePath("/blogs")
     revalidatePath("/journals")
+    revalidatePath("/featured")
     revalidatePath("/admin/posts")
     revalidatePath("/admin/journal-articles")
 
@@ -379,5 +367,156 @@ export async function deleteArticle(slug: string) {
   } catch (error) {
     console.error("Error deleting article:", error)
     return { success: false, error: "Failed to delete article" }
+  }
+}
+
+// Additional action functions for better article management
+
+export async function toggleArticleFeature(slug: string) {
+  try {
+    const currentUser = await getCurrentUserWithPermissions()
+    if (!currentUser) {
+      return { success: false, error: "Authentication required" }
+    }
+
+    const permissionCheck = checkPermission(currentUser, 'article.UPDATE')
+    if (!permissionCheck.allowed) {
+      return { success: false, error: "You don't have permission to update articles" }
+    }
+
+    const article = await prisma.article.findUnique({
+      where: { slug }
+    })
+
+    if (!article) {
+      return { success: false, error: "Article not found" }
+    }
+
+    const updatedArticle = await prisma.article.update({
+      where: { slug },
+      data: {
+        featured: !article.featured
+      }
+    })
+
+    revalidatePath("/")
+    revalidatePath("/featured")
+    revalidatePath("/admin/posts")
+    revalidatePath("/admin/journal-articles")
+
+    return { success: true, article: updatedArticle }
+  } catch (error) {
+    console.error("Error toggling article feature:", error)
+    return { success: false, error: "Failed to toggle article feature" }
+  }
+}
+
+export async function toggleArticleCarousel(slug: string) {
+  try {
+    const currentUser = await getCurrentUserWithPermissions()
+    if (!currentUser) {
+      return { success: false, error: "Authentication required" }
+    }
+
+    const permissionCheck = checkPermission(currentUser, 'article.UPDATE')
+    if (!permissionCheck.allowed) {
+      return { success: false, error: "You don't have permission to update articles" }
+    }
+
+    const article = await prisma.article.findUnique({
+      where: { slug }
+    })
+
+    if (!article) {
+      return { success: false, error: "Article not found" }
+    }
+
+    const updatedArticle = await prisma.article.update({
+      where: { slug },
+      data: {
+        carousel: !article.carousel
+      }
+    })
+
+    revalidatePath("/")
+    revalidatePath("/admin/posts")
+    revalidatePath("/admin/journal-articles")
+
+    return { success: true, article: updatedArticle }
+  } catch (error) {
+    console.error("Error toggling article carousel:", error)
+    return { success: false, error: "Failed to toggle article carousel" }
+  }
+}
+
+export async function toggleArticleArchive(slug: string) {
+  try {
+    const currentUser = await getCurrentUserWithPermissions()
+    if (!currentUser) {
+      return { success: false, error: "Authentication required" }
+    }
+
+    const permissionCheck = checkPermission(currentUser, 'article.UPDATE')
+    if (!permissionCheck.allowed) {
+      return { success: false, error: "You don't have permission to update articles" }
+    }
+
+    const article = await prisma.article.findUnique({
+      where: { slug }
+    })
+
+    if (!article) {
+      return { success: false, error: "Article not found" }
+    }
+
+    const updatedArticle = await prisma.article.update({
+      where: { slug },
+      data: {
+        archived: !article.archived
+      }
+    })
+
+    revalidatePath("/")
+    revalidatePath("/blogs")
+    revalidatePath("/journals")
+    revalidatePath("/admin/posts")
+    revalidatePath("/admin/journal-articles")
+
+    return { success: true, article: updatedArticle }
+  } catch (error) {
+    console.error("Error toggling article archive:", error)
+    return { success: false, error: "Failed to toggle article archive" }
+  }
+}
+
+export async function incrementArticleViews(slug: string) {
+  try {
+    const updatedArticle = await prisma.article.update({
+      where: { slug },
+      data: {
+        views: { increment: 1 }
+      }
+    })
+
+    return { success: true, article: updatedArticle }
+  } catch (error) {
+    console.error("Error incrementing article views:", error)
+    return { success: false, error: "Failed to increment article views" }
+  }
+}
+
+export async function incrementArticleDownloads(slug: string) {
+  try {
+    const updatedArticle = await prisma.article.update({
+      where: { slug },
+      data: {
+        downloadCount: { increment: 1 }
+      }
+    })
+
+    return { success: true, article: updatedArticle }
+  } catch (error) {
+    console.error("Error incrementing article downloads:", error)
+    return { success: false, error: "Failed to increment article downloads" }
   }
 }

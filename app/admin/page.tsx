@@ -17,7 +17,7 @@ export default function AdminDashboard() {
     <div className="space-y-6">
       <DashboardHeader heading="Dashboard" text="Overview of your blog content and performance." />
       <LogoutButton />
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      {/* <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Posts</CardTitle>
@@ -56,9 +56,9 @@ export default function AdminDashboard() {
             <p className="text-xs text-muted-foreground">42% of total content</p>
           </CardContent>
         </Card>
-      </div>
+      </div> */}
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
+      {/* <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
         <Card className="col-span-4">
           <CardHeader>
             <CardTitle>Overview</CardTitle>
@@ -77,7 +77,7 @@ export default function AdminDashboard() {
             <RecentPosts />
           </CardContent>
         </Card>
-      </div>
+      </div> */}
     </div>
   )
 }

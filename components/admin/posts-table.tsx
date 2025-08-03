@@ -14,7 +14,7 @@ import {
   getSortedRowModel,
   useReactTable,
 } from "@tanstack/react-table"
-import { ArrowUpDown, ChevronDown, MoreHorizontal, Pencil, Trash } from "lucide-react"
+import { ArrowUpDown, ChevronDown, MoreHorizontal, Pencil, Trash, Star, Image as ImageIcon } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -48,11 +48,14 @@ export type Post = {
   id: string
   title: string
   slug: string
-  excerpt?: string
+  abstract?: string
   content: string
   image?: string
   type: "blog" | "journal"
   featured: boolean
+  carousel: boolean
+  archived: boolean
+  publishedAt: Date
   createdAt: Date
   updatedAt: Date
   authors: Array<{
@@ -62,7 +65,9 @@ export type Post = {
       email: string
     }
   }>
-  views?: number // This would need to be tracked separately
+  views?: number
+  readTime?: number
+  keywords?: string[]
 }
 
 export function PostsTable() {
@@ -73,7 +78,7 @@ export function PostsTable() {
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({})
   const [rowSelection, setRowSelection] = useState({})
-  const [open, setOpen] = useState(false) // Moved useState to top level
+  const [open, setOpen] = useState(false)
 
   useEffect(() => {
     const fetchPosts = async () => {
@@ -81,13 +86,7 @@ export function PostsTable() {
       try {
         const result = await getPosts()
         if (result.success) {
-          // Transform the data to match the Post type
-          const formattedPosts = result.data.map((post: any) => ({
-            ...post,
-            // Add a random view count for demo purposes
-            views: Math.floor(Math.random() * 1000) + 100,
-          }))
-          setPosts(formattedPosts)
+          setPosts(result.data)
         } else {
           setError(result.error as string)
           toast({
@@ -169,25 +168,76 @@ export function PostsTable() {
         )
       },
       cell: ({ row }) => (
-        <div className="flex items-center gap-2">
-          <span className="max-w-[500px] truncate font-medium">{row.getValue("title")}</span>
-          {row.original.type === "journal" && <Badge>Journal</Badge>}
-          {!row.original.featured && <Badge variant="outline">Draft</Badge>}
+        <div className="flex flex-col gap-2">
+          <div className="flex items-center gap-2">
+            <span className="max-w-[400px] truncate font-medium">{row.getValue("title")}</span>
+          </div>
+          <div className="flex items-center gap-1 flex-wrap">
+            {/* Type Badge */}
+            <Badge variant={row.original.type === "journal" ? "default" : "secondary"} className="text-xs">
+              {row.original.type === "journal" ? "Journal" : "Blog"}
+            </Badge>
+            
+            {/* Status Badges */}
+            {row.original.archived && (
+              <Badge variant="outline" className="text-xs">
+                Archived
+              </Badge>
+            )}
+            {!row.original.archived && (
+              <Badge variant="default" className="text-xs">
+                Published
+              </Badge>
+            )}
+            
+            {/* Special Flags */}
+            {row.original.featured && (
+              <Badge variant="destructive" className="text-xs flex items-center gap-1">
+                <Star className="h-3 w-3" />
+                Featured
+              </Badge>
+            )}
+            {row.original.carousel && (
+              <Badge variant="outline" className="text-xs flex items-center gap-1">
+                <ImageIcon className="h-3 w-3" />
+                Carousel
+              </Badge>
+            )}
+          </div>
         </div>
       ),
     },
     {
       accessorKey: "author",
-      header: "Author",
+      header: "Authors",
       cell: ({ row }) => {
         const authors = row.original.authors || []
-        return <div>{authors.map((a) => a.author.name).join(", ")}</div>
+        return (
+          <div className="max-w-[200px]">
+            {authors.length > 0 ? (
+              <div className="text-sm">
+                {authors.map((a, i) => (
+                  <div key={a.author.id}>
+                    {a.author.name}
+                    {i < authors.length - 1 && ", "}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <span className="text-muted-foreground text-sm">No authors</span>
+            )}
+          </div>
+        )
       },
     },
     {
-      accessorKey: "createdAt",
-      header: "Date",
-      cell: ({ row }) => <div>{new Date(row.original.createdAt).toLocaleDateString()}</div>,
+      accessorKey: "publishedAt",
+      header: "Published",
+      cell: ({ row }) => (
+        <div className="text-sm">
+          {new Date(row.original.publishedAt).toLocaleDateString()}
+        </div>
+      ),
     },
     {
       accessorKey: "views",
@@ -199,7 +249,16 @@ export function PostsTable() {
           </Button>
         )
       },
-      cell: ({ row }) => <div className="text-right">{row.getValue("views")}</div>,
+      cell: ({ row }) => <div className="text-right">{row.original.views || 0}</div>,
+    },
+    {
+      accessorKey: "readTime",
+      header: "Read Time",
+      cell: ({ row }) => (
+        <div className="text-sm text-muted-foreground">
+          {row.original.readTime ? `${row.original.readTime} min` : "—"}
+        </div>
+      ),
     },
     {
       id: "actions",
@@ -337,6 +396,27 @@ export function PostsTable() {
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
+      
+      {/* Stats Summary */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+        <div className="bg-muted/50 p-3 rounded-lg">
+          <div className="text-2xl font-bold">{posts.length}</div>
+          <div className="text-sm text-muted-foreground">Total Posts</div>
+        </div>
+        <div className="bg-muted/50 p-3 rounded-lg">
+          <div className="text-2xl font-bold">{posts.filter(p => p.featured).length}</div>
+          <div className="text-sm text-muted-foreground">Featured</div>
+        </div>
+        <div className="bg-muted/50 p-3 rounded-lg">
+          <div className="text-2xl font-bold">{posts.filter(p => p.carousel).length}</div>
+          <div className="text-sm text-muted-foreground">Carousel</div>
+        </div>
+        <div className="bg-muted/50 p-3 rounded-lg">
+          <div className="text-2xl font-bold">{posts.filter(p => !p.archived).length}</div>
+          <div className="text-sm text-muted-foreground">Published</div>
+        </div>
+      </div>
+
       <div className="rounded-md border">
         <Table>
           <TableHeader>

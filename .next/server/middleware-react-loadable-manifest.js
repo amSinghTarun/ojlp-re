@@ -1,1 +1,1 @@
-self.__REACT_LOADABLE_MANIFEST="{\"components/admin/user-form.tsx -> @/lib/actions/user-actions\":{\"id\":\"components/admin/user-form.tsx -> @/lib/actions/user-actions\",\"files\":[\"static/chunks/_app-pages-browser_lib_actions_user-actions_ts.js\"]}}"
+self.__REACT_LOADABLE_MANIFEST="{}"

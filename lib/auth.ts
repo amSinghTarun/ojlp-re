@@ -100,7 +100,7 @@ export async function authenticateUser(email: string, password: string): Promise
   }
 }
 
-// Login function (for compatibility with existing code)
+// Login function (for compatibility with existing code) - UPDATED for new schema
 export async function login(email: string, password: string) {
   try {
     console.log("LOGIN", email, password)
@@ -116,7 +116,8 @@ export async function login(email: string, password: string) {
         id: user.id,
         name: user.name,
         email: user.email,
-        image: user.image || `https://avatar.vercel.sh/${user.name.toLowerCase().replace(" ", "-")}.png`,
+        // REMOVED: image field is no longer in schema, generate avatar
+        image: `https://avatar.vercel.sh/${user.name.toLowerCase().replace(" ", "-")}.png`,
         role: user.role,
         permissions: user.permissions,
       },
@@ -132,7 +133,7 @@ export async function logout() {
   return { success: true }
 }
 
-// Get all users from database (for admin purposes)
+// Get all users from database (for admin purposes) - UPDATED for new schema
 export async function getUsers(): Promise<AuthUser[]> {
   try {
     const users = await prisma.user.findMany({
@@ -146,7 +147,9 @@ export async function getUsers(): Promise<AuthUser[]> {
 
     return users.map(user => ({
       ...user,
-      image: user.image || `https://avatar.vercel.sh/${user.name.toLowerCase().replace(" ", "-")}.png`,
+      // REMOVED: image field handling since it's not in schema
+      // Generate avatar URL for all users
+      image: `https://avatar.vercel.sh/${user.name.toLowerCase().replace(" ", "-")}.png`,
     })) as AuthUser[]
   } catch (error) {
     console.error("Error getting users:", error)
@@ -154,13 +157,13 @@ export async function getUsers(): Promise<AuthUser[]> {
   }
 }
 
-// Create a new user in database
+// Create a new user in database - UPDATED for new schema
 export async function createUser(userData: {
   name: string
   email: string
   password: string
   roleId: string
-  image?: string
+  // REMOVED: image field is no longer in schema
   permissions?: string[] // Optional direct permissions
 }): Promise<{ success: boolean; user?: AuthUser; message?: string }> {
   try {
@@ -193,7 +196,7 @@ export async function createUser(userData: {
         email: userData.email,
         password: hashedPassword,
         roleId: userData.roleId,
-        image: userData.image || null,
+        // REMOVED: image field is no longer in schema
         permissions: userData.permissions || [], // Set permissions array
       },
       include: {
@@ -205,7 +208,8 @@ export async function createUser(userData: {
       success: true,
       user: {
         ...newUser,
-        image: newUser.image || `https://avatar.vercel.sh/${newUser.name.toLowerCase().replace(" ", "-")}.png`,
+        // Generate avatar URL since image field is removed
+        image: `https://avatar.vercel.sh/${newUser.name.toLowerCase().replace(" ", "-")}.png`,
       } as AuthUser,
     }
   } catch (error) {
@@ -214,7 +218,7 @@ export async function createUser(userData: {
   }
 }
 
-// Update an existing user in database
+// Update an existing user in database - UPDATED for new schema
 export async function updateUser(
   userId: string,
   userData: {
@@ -222,7 +226,7 @@ export async function updateUser(
     email?: string
     password?: string
     roleId?: string
-    image?: string
+    // REMOVED: image field is no longer in schema
     permissions?: string[] // Update permissions array
   },
 ): Promise<{ success: boolean; user?: AuthUser; message?: string }> {
@@ -267,7 +271,7 @@ export async function updateUser(
     if (userData.name !== undefined) updateData.name = userData.name
     if (userData.email !== undefined) updateData.email = userData.email
     if (userData.roleId !== undefined) updateData.roleId = userData.roleId
-    if (userData.image !== undefined) updateData.image = userData.image
+    // REMOVED: image field handling since it's not in schema
     if (userData.permissions !== undefined) updateData.permissions = userData.permissions
 
     // Hash password if provided
@@ -289,7 +293,8 @@ export async function updateUser(
       success: true,
       user: {
         ...updatedUser,
-        image: updatedUser.image || `https://avatar.vercel.sh/${updatedUser.name.toLowerCase().replace(" ", "-")}.png`,
+        // Generate avatar URL since image field is removed
+        image: `https://avatar.vercel.sh/${updatedUser.name.toLowerCase().replace(" ", "-")}.png`,
       } as AuthUser,
     }
   } catch (error) {
@@ -377,7 +382,11 @@ export async function updateUserPermissions(
 
     return {
       success: true,
-      user: updatedUser as AuthUser,
+      user: {
+        ...updatedUser,
+        // Generate avatar URL since image field is removed
+        image: `https://avatar.vercel.sh/${updatedUser.name.toLowerCase().replace(" ", "-")}.png`,
+      } as AuthUser,
     }
   } catch (error) {
     console.error("Error updating user permissions:", error)
@@ -404,7 +413,6 @@ export function getUserPermissions(user: AuthUser): string[] {
       "SYSTEM.SETTINGS",
       "article.ALL",
       "author.ALL",
-      "category.ALL",
       "media.ALL",
       "journalissue.ALL",
       "callforpapers.ALL",

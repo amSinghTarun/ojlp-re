@@ -43,7 +43,7 @@ export default function RootLayout({
         <link rel="apple-touch-icon" href="/logo.png" />
       </head>
       <body
-        className={`${libreBaskerville.variable} ${ebGaramond.variable} bg-[#fffdf3] flex flex-col min-h-screen antialiased`}
+        className={`${libreBaskerville.variable} ${ebGaramond.variable} bg-amber-100/10 flex flex-col min-h-screen antialiased`}
       >
         <Navigation />
         <main className="flex-1">{children}</main>

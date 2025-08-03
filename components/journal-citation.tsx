@@ -4,9 +4,49 @@ import { useState } from "react"
 import { Check, Quote } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import type { Article } from "@/lib/types"
 
 type CitationStyle = "APA" | "MLA" | "Chicago" | "Harvard" | "Bluebook" | "OSCOLA"
+
+// Define proper interfaces based on the existing code structure
+interface Author {
+  id: string
+  name: string
+  slug: string
+}
+
+interface AuthorArticle {
+  author: Author
+}
+
+interface JournalIssue {
+  volume: number
+  issue: number
+  year: number
+}
+
+interface Article {
+  id: string
+  title: string
+  slug: string
+  date?: Date | string // Handle both types
+  publishedAt?: Date | string // Alternative date field
+  doi?: string
+  volume?: number
+  issue?: number
+  year?: number
+  authors?: AuthorArticle[] // New structure with junction table
+  author?: string // Legacy field for backward compatibility
+  keywords?: string[]
+  content?: string
+  abstract?: string
+  image?: string
+  readTime?: number
+  archived?: boolean
+  views?: number
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  JournalIssue?: JournalIssue
+}
 
 interface JournalCitationProps {
   article: Article
@@ -19,16 +59,20 @@ export function JournalCitation({ article }: JournalCitationProps) {
   const getDateParts = () => {
     let dateObj: Date
 
-    // Handle different date formats
-    if (article.date instanceof Date) {
-      dateObj = article.date
-    } else if (typeof article.date === 'string') {
-      dateObj = new Date(article.date)
+    // Try different date fields in order of preference
+    if (article.publishedAt) {
+      dateObj = article.publishedAt instanceof Date ? article.publishedAt : new Date(article.publishedAt)
+    } else if (article.date) {
+      dateObj = article.date instanceof Date ? article.date : new Date(article.date)
     } else {
       dateObj = new Date() // Fallback to current date
     }
 
-    // Format the date properly
+    // Validate the date
+    if (isNaN(dateObj.getTime())) {
+      dateObj = new Date() // Fallback if date is invalid
+    }
+
     const month = dateObj.toLocaleDateString('en-US', { month: 'long' })
     const day = dateObj.getDate().toString()
     const year = dateObj.getFullYear().toString()
@@ -38,16 +82,19 @@ export function JournalCitation({ article }: JournalCitationProps) {
 
   const { month, day, year } = getDateParts()
 
-  // Get primary author's last name for certain citation styles
+  // Get primary author's information for certain citation styles
   const getPrimaryAuthor = () => {
+    // Use the new authors array structure first
     if (article.authors && article.authors.length > 0) {
-      const authorParts = article.authors[0].name.split(" ")
+      const authorParts = article.authors[0].author.name.split(" ")
       return {
         lastName: authorParts[authorParts.length - 1],
         firstName: authorParts[0],
         firstNameInitial: authorParts[0].charAt(0),
       }
-    } else if (article.author) {
+    } 
+    // Fallback to legacy author field
+    else if (article.author) {
       const authorParts = article.author.split(" ")
       return {
         lastName: authorParts[authorParts.length - 1],
@@ -62,148 +109,158 @@ export function JournalCitation({ article }: JournalCitationProps) {
 
   // Format multiple authors for different citation styles
   const formatAuthors = (style: CitationStyle): string => {
-    if (!article.authors || article.authors.length === 0) {
-      return article.author || "Unknown Author"
+    // Get authors array - prioritize new structure
+    let authorsData: { name: string }[] = []
+    
+    if (article.authors && article.authors.length > 0) {
+      authorsData = article.authors.map(authorArticle => ({ name: authorArticle.author.name }))
+    } else if (article.author) {
+      authorsData = [{ name: article.author }]
     }
 
-    const authors = article.authors
+    if (authorsData.length === 0) {
+      return "Unknown Author"
+    }
 
     switch (style) {
       case "APA":
-        if (authors.length === 1) {
-          const parts = authors[0].name.split(" ")
+        if (authorsData.length === 1) {
+          const parts = authorsData[0].name.split(" ")
           const lastName = parts[parts.length - 1]
           const firstInitial = parts[0].charAt(0)
           return `${lastName}, ${firstInitial}.`
-        } else if (authors.length === 2) {
-          const author1Parts = authors[0].name.split(" ")
+        } else if (authorsData.length === 2) {
+          const author1Parts = authorsData[0].name.split(" ")
           const author1LastName = author1Parts[author1Parts.length - 1]
           const author1FirstInitial = author1Parts[0].charAt(0)
 
-          const author2Parts = authors[1].name.split(" ")
+          const author2Parts = authorsData[1].name.split(" ")
           const author2LastName = author2Parts[author2Parts.length - 1]
           const author2FirstInitial = author2Parts[0].charAt(0)
 
           return `${author1LastName}, ${author1FirstInitial}., & ${author2LastName}, ${author2FirstInitial}.`
         } else {
-          const firstAuthorParts = authors[0].name.split(" ")
+          const firstAuthorParts = authorsData[0].name.split(" ")
           const firstAuthorLastName = firstAuthorParts[firstAuthorParts.length - 1]
           const firstAuthorFirstInitial = firstAuthorParts[0].charAt(0)
           return `${firstAuthorLastName}, ${firstAuthorFirstInitial}., et al.`
         }
 
       case "MLA":
-        if (authors.length === 1) {
-          const parts = authors[0].name.split(" ")
+        if (authorsData.length === 1) {
+          const parts = authorsData[0].name.split(" ")
           const lastName = parts[parts.length - 1]
           const firstName = parts[0]
           return `${lastName}, ${firstName}`
-        } else if (authors.length === 2) {
-          const author1Parts = authors[0].name.split(" ")
+        } else if (authorsData.length === 2) {
+          const author1Parts = authorsData[0].name.split(" ")
           const author1LastName = author1Parts[author1Parts.length - 1]
           const author1FirstName = author1Parts[0]
 
-          const author2Parts = authors[1].name.split(" ")
+          const author2Parts = authorsData[1].name.split(" ")
           const author2LastName = author2Parts[author2Parts.length - 1]
           const author2FirstName = author2Parts[0]
 
           return `${author1LastName}, ${author1FirstName}, and ${author2FirstName} ${author2LastName}`
         } else {
-          const firstAuthorParts = authors[0].name.split(" ")
+          const firstAuthorParts = authorsData[0].name.split(" ")
           const firstAuthorLastName = firstAuthorParts[firstAuthorParts.length - 1]
           const firstAuthorFirstName = firstAuthorParts[0]
           return `${firstAuthorLastName}, ${firstAuthorFirstName}, et al.`
         }
 
       case "Chicago":
-        if (authors.length === 1) {
-          return authors[0].name
-        } else if (authors.length === 2) {
-          return `${authors[0].name} and ${authors[1].name}`
-        } else if (authors.length === 3) {
-          return `${authors[0].name}, ${authors[1].name}, and ${authors[2].name}`
+        if (authorsData.length === 1) {
+          return authorsData[0].name
+        } else if (authorsData.length === 2) {
+          return `${authorsData[0].name} and ${authorsData[1].name}`
+        } else if (authorsData.length === 3) {
+          return `${authorsData[0].name}, ${authorsData[1].name}, and ${authorsData[2].name}`
         } else {
-          return `${authors[0].name} et al.`
+          return `${authorsData[0].name} et al.`
         }
 
       case "Harvard":
-        if (authors.length === 1) {
-          const parts = authors[0].name.split(" ")
+        if (authorsData.length === 1) {
+          const parts = authorsData[0].name.split(" ")
           const lastName = parts[parts.length - 1]
           const firstInitial = parts[0].charAt(0)
           return `${lastName}, ${firstInitial}.`
-        } else if (authors.length === 2) {
-          const author1Parts = authors[0].name.split(" ")
+        } else if (authorsData.length === 2) {
+          const author1Parts = authorsData[0].name.split(" ")
           const author1LastName = author1Parts[author1Parts.length - 1]
           const author1FirstInitial = author1Parts[0].charAt(0)
 
-          const author2Parts = authors[1].name.split(" ")
+          const author2Parts = authorsData[1].name.split(" ")
           const author2LastName = author2Parts[author2Parts.length - 1]
           const author2FirstInitial = author2Parts[0].charAt(0)
 
           return `${author1LastName}, ${author1FirstInitial}. and ${author2LastName}, ${author2FirstInitial}.`
         } else {
-          const firstAuthorParts = authors[0].name.split(" ")
+          const firstAuthorParts = authorsData[0].name.split(" ")
           const firstAuthorLastName = firstAuthorParts[firstAuthorParts.length - 1]
           const firstAuthorFirstInitial = firstAuthorParts[0].charAt(0)
           return `${firstAuthorLastName}, ${firstAuthorFirstInitial}. et al.`
         }
 
       case "Bluebook":
-        if (authors.length === 1) {
-          return authors[0].name
-        } else if (authors.length === 2) {
-          return `${authors[0].name} & ${authors[1].name}`
+        if (authorsData.length === 1) {
+          return authorsData[0].name
+        } else if (authorsData.length === 2) {
+          return `${authorsData[0].name} & ${authorsData[1].name}`
         } else {
-          return `${authors[0].name} et al.`
+          return `${authorsData[0].name} et al.`
         }
 
       case "OSCOLA":
-        if (authors.length === 1) {
-          const parts = authors[0].name.split(" ")
+        if (authorsData.length === 1) {
+          const parts = authorsData[0].name.split(" ")
           const firstName = parts[0]
           const lastName = parts[parts.length - 1]
           return `${firstName} ${lastName}`
-        } else if (authors.length === 2) {
-          const author1Parts = authors[0].name.split(" ")
+        } else if (authorsData.length === 2) {
+          const author1Parts = authorsData[0].name.split(" ")
           const author1FirstName = author1Parts[0]
           const author1LastName = author1Parts[author1Parts.length - 1]
 
-          const author2Parts = authors[1].name.split(" ")
+          const author2Parts = authorsData[1].name.split(" ")
           const author2FirstName = author2Parts[0]
           const author2LastName = author2Parts[author2Parts.length - 1]
 
           return `${author1FirstName} ${author1LastName} and ${author2FirstName} ${author2LastName}`
-        } else if (authors.length === 3) {
-          const author1Parts = authors[0].name.split(" ")
+        } else if (authorsData.length === 3) {
+          const author1Parts = authorsData[0].name.split(" ")
           const author1FirstName = author1Parts[0]
           const author1LastName = author1Parts[author1Parts.length - 1]
 
-          const author2Parts = authors[1].name.split(" ")
+          const author2Parts = authorsData[1].name.split(" ")
           const author2FirstName = author2Parts[0]
           const author2LastName = author2Parts[author2Parts.length - 1]
 
-          const author3Parts = authors[2].name.split(" ")
+          const author3Parts = authorsData[2].name.split(" ")
           const author3FirstName = author3Parts[0]
           const author3LastName = author3Parts[author3Parts.length - 1]
 
           return `${author1FirstName} ${author1LastName}, ${author2FirstName} ${author2LastName} and ${author3FirstName} ${author3LastName}`
         } else {
-          const firstAuthorParts = authors[0].name.split(" ")
+          const firstAuthorParts = authorsData[0].name.split(" ")
           const firstAuthorFirstName = firstAuthorParts[0]
           const firstAuthorLastName = firstAuthorParts[firstAuthorParts.length - 1]
           return `${firstAuthorFirstName} ${firstAuthorLastName} and others`
         }
 
       default:
-        return authors.map((a) => a.name).join(", ")
+        return authorsData.map((a) => a.name).join(", ")
     }
   }
 
   // Generate citations in different formats
   const generateCitation = (style: CitationStyle): string => {
-    const doiText = article.doi ? `https://doi.org/${article.doi}` : `https://legalinsight.com/journals/${article.slug}`
     const formattedAuthors = formatAuthors(style)
+    
+    // Get volume and issue info
+    const volume = article.JournalIssue?.volume || article.volume || 1
+    const issue = article.JournalIssue?.issue || article.issue || 1
 
     switch (style) {
       case "APA":
@@ -222,7 +279,7 @@ export function JournalCitation({ article }: JournalCitationProps) {
         return `${formattedAuthors}, ${article.title}, LegalInsight J. (${month}. ${day}, ${year}), ${article.doi ? `https://doi.org/${article.doi}` : `https://legalinsight.com/journals/${article.slug}`}.`
 
       case "OSCOLA":
-        return `${formattedAuthors}, '${article.title}' [${year}] LegalInsight Journal ${article.volume || 1}(${article.issue || 1}) ${article.doi ? `<${article.doi}>` : `<https://legalinsight.com/journals/${article.slug}>`} accessed ${new Date().toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })}`
+        return `${formattedAuthors}, '${article.title}' [${year}] LegalInsight Journal ${volume}(${issue}) ${article.doi ? `<${article.doi}>` : `<https://legalinsight.com/journals/${article.slug}>`} accessed ${new Date().toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })}`
 
       default:
         return `${formattedAuthors}. (${year}). ${article.title}. LegalInsight Journal.`
@@ -240,35 +297,44 @@ export function JournalCitation({ article }: JournalCitationProps) {
     }
   }
 
+  const citationStyles: CitationStyle[] = ["APA", "MLA", "Chicago", "Harvard", "Bluebook", "OSCOLA"]
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="outline" size="sm" className="flex items-center gap-1">
-          <Quote className="h-4 w-4" />
-          <span className="hidden md:inline-block">Cite</span>
+        <Button size="lg" className=" bg-red-800 rounded-sm flex items-center ">
+          <div className=" text-base text-stone-100">Cite</div>
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-[350px] max-w-[90vw] max-h-[80vh] overflow-y-auto">
-        <div className="px-2 py-1.5 text-sm font-semibold">Citation Formats</div>
-        {(["APA", "MLA", "Chicago", "Harvard", "Bluebook", "OSCOLA"] as CitationStyle[]).map((style) => (
+      <DropdownMenuContent 
+        align="end" 
+        className="w-[350px] max-w-[90vw] max-h-[280px] overflow-y-auto"
+        sideOffset={5}
+      >
+        <div className="px-2 py-1.5 text-sm font-semibold text-stone-700 border-b">
+          Citation Formats
+        </div>
+        {citationStyles.map((style) => (
           <DropdownMenuItem
             key={style}
-            className="flex flex-col items-start p-3 cursor-pointer"
+            className="flex flex-col items-start p-3 cursor-pointer hover:bg-stone-50 focus:bg-stone-50"
             onClick={(e) => {
               e.preventDefault()
               handleCopy(style)
             }}
           >
-            <div className="flex items-center w-full">
-              <span className="font-medium">{style}</span>
+            <div className="flex items-center w-full mb-1">
+              <span className="font-medium text-stone-800">{style}</span>
               {copiedStyle === style && (
-                <span className="ml-auto text-xs text-green-500 flex items-center">
+                <span className="ml-auto text-xs text-green-600 flex items-center">
                   <Check className="h-3.5 w-3.5 mr-1" />
                   Copied
                 </span>
               )}
             </div>
-            <div className="mt-1 text-xs text-muted-foreground break-all pr-4">{generateCitation(style)}</div>
+            <div className="text-xs text-stone-600 break-words leading-relaxed pr-2">
+              {generateCitation(style)}
+            </div>
           </DropdownMenuItem>
         ))}
       </DropdownMenuContent>

@@ -1,12 +1,10 @@
 import Link from "next/link"
-import Image from "next/image"
-import { Calendar, BookOpen, ArrowRight, Clock, Users, FileText } from "lucide-react"
+import { BookOpen, Clock, Download } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { DecorativeHeading } from "@/components/decorative-heading"
+import { Card, CardContent, CardDescription, CardFooter, CardHeader } from "@/components/ui/card"
 import { getActiveCallsForPapers } from "@/lib/actions/call-for-papers-actions"
 import { format } from "date-fns"
+import { DownloadButton } from "@/components/download-button"
 
 export const revalidate = 3600 // Revalidate every hour
 
@@ -39,121 +37,109 @@ export default async function CallForPapersPage() {
 
   return (
     <div className="flex min-h-screen flex-col">
-      <main className="flex-1">
-        <div className="container px-4 py-12 md:px-6">
-          <div className="mb-8">
-            <DecorativeHeading level={1}>Call For Papers</DecorativeHeading>
-            <p className="text-muted-foreground text-center max-w-2xl mx-auto">
+      <main className="flex-1 px-2">
+        <div className="max-w-5xl mx-auto text-center mt-4">
+          {/* Header */}
+          <div className="mb-8 space-y-3 pt-10 relative">
+            <h1 className="text-4xl md:text-5xl text-center text-stone-800">Call For Papers</h1>
+            <p className="text-stone-600 text-xs md:text-sm font-normal justify-center align-middle content-center text-center max-w-4xl mx-auto">
               Submit your research for upcoming journal issues. Join our community of legal scholars and contribute to the advancement of legal knowledge.
             </p>
           </div>
 
           {callsForPapers.length > 0 ? (
-            <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-2">
+            <div className="grid gap-8 grid-cols-1">
               {callsForPapers.map((cfp) => {
                 const deadlineStatus = getDeadlineStatus(cfp.deadline)
                 
                 return (
-                  <Card key={cfp.id} className="overflow-hidden hover:shadow-lg transition-shadow">
-                    <div className="relative h-48 w-full">
-                      <Image
-                        src={cfp.image || "/placeholder.svg?height=600&width=800&query=legal journal"}
-                        alt={cfp.title}
-                        fill
-                        className="object-cover"
-                        sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                      />
-                      <div className="absolute inset-0 bg-gradient-to-t from-background/80 to-transparent" />
-                      <div className="absolute top-4 right-4 space-y-2">
-                        <Badge className="bg-primary text-primary-foreground">
-                          Vol. {cfp.volume}, Issue {cfp.issue} ({cfp.year})
-                        </Badge>
-                        <Badge variant={deadlineStatus.variant} className="block">
-                          {deadlineStatus.label}
-                        </Badge>
+                  <Card key={cfp.id} className="overflow-hidden relative border border-stone-200/60 m-0 p-0">
+                    <CardHeader className="p-4">
+                      <div className="flex justify-between items-start">
+                        <div className="flex-1">
+                          <h1 className="line-clamp-2 text-stone-800 text-2xl sm:text-3xl">{cfp.title}</h1>
+                          {cfp.thematicFocus && (
+                            <CardDescription className="font-medium text-xs sm:text-sm text-red-800">
+                              {cfp.thematicFocus}
+                            </CardDescription>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                    <CardHeader>
-                      <CardTitle className="line-clamp-2">{cfp.title}</CardTitle>
-                      <CardDescription className="font-medium text-primary">
-                        {cfp.thematicFocus}
-                      </CardDescription>
                     </CardHeader>
-                    <CardContent className="space-y-4">
-                      <p className="text-sm text-muted-foreground line-clamp-3">
+                    
+                    <CardContent className="space-y-4 px-4">
+                      <div className="text-sm text-stone-800">
                         {cfp.description}
-                      </p>
+                      </div>
 
                       <div className="grid grid-cols-1 gap-3">
-                        <div className="flex items-start gap-2">
-                          <Calendar className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
-                          <div>
-                            <p className="text-xs font-medium text-foreground">Submission Deadline</p>
-                            <p className="text-sm font-semibold">
-                              {format(new Date(cfp.deadline), "MMMM d, yyyy")}
-                            </p>
-                          </div>
+                        {/* Submission Deadline */}
+                        <div className="flex items-start flex-col text-xs sm:text-sm">
+                          <span className="text-stone-500">Submission Deadline</span>
+                          <span className="font-semibold">
+                            {format(new Date(cfp.deadline), "MMMM d, yyyy")}
+                          </span>
                         </div>
 
+                        {/* Volume, Issue, Year */}
+                        <div className="flex items-start flex-col text-xs sm:text-sm">
+                          <span className="text-stone-500">Journal Issue</span>
+                          <span className="font-semibold">
+                            Volume {cfp.volume}, Issue {cfp.issue} ({cfp.year})
+                          </span>
+                        </div>
+
+                        {/* Topics */}
                         {cfp.topics && cfp.topics.length > 0 && (
-                          <div className="flex items-start gap-2">
-                            <FileText className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
-                            <div>
-                              <p className="text-xs font-medium text-foreground">Topics</p>
-                              <div className="flex flex-wrap gap-1 mt-1">
-                                {cfp.topics.slice(0, 3).map((topic, index) => (
-                                  <Badge key={index} variant="outline" className="text-xs">
-                                    {topic}
-                                  </Badge>
-                                ))}
-                                {cfp.topics.length > 3 && (
-                                  <Badge variant="outline" className="text-xs">
-                                    +{cfp.topics.length - 3} more
-                                  </Badge>
-                                )}
-                              </div>
-                            </div>
+                          <div className="flex items-start flex-col text-xs sm:text-sm">
+                            <span className="text-stone-500">Topics</span>
+                            <span className="font-semibold">
+                              {cfp.topics.slice(0, 3).map((topic, index) => (
+                                <span key={index}>
+                                  {topic}
+                                  {index < Math.min(3, cfp.topics.length) - 1 && (
+                                    <span className="mx-1 text-stone-500">•</span>
+                                  )}
+                                </span>
+                              ))}
+                              {cfp.topics.length > 3 && (
+                                <span>
+                                  <span className="mx-1 text-stone-400">•</span>
+                                  +{cfp.topics.length - 3} more
+                                </span>
+                              )}
+                            </span>
                           </div>
                         )}
 
+                        {/* Submission Fee */}
                         {cfp.fee && (
-                          <div className="flex items-start gap-2">
-                            <Users className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
-                            <div>
-                              <p className="text-xs font-medium text-foreground">Submission Fee</p>
-                              <p className="text-sm">{cfp.fee}</p>
-                            </div>
-                          </div>
-                        )}
-
-                        {cfp.guidelines && (
-                          <div className="flex items-start gap-2">
-                            <FileText className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
-                            <div>
-                              <p className="text-xs font-medium text-foreground">Guidelines</p>
-                              <p className="text-xs text-muted-foreground line-clamp-2">
-                                {cfp.guidelines}
-                              </p>
-                            </div>
+                          <div className="flex items-start flex-col text-xs sm:text-sm">
+                            <span className="text-stone-500">Submission Fee</span>
+                            <span className="font-semibold">{cfp.fee}</span>
                           </div>
                         )}
                       </div>
-
-                      {cfp.eligibility && (
-                        <div className="pt-2 border-t">
-                          <p className="text-xs font-medium text-foreground mb-1">Eligibility</p>
-                          <p className="text-xs text-muted-foreground line-clamp-2">
-                            {cfp.eligibility}
-                          </p>
-                        </div>
-                      )}
                     </CardContent>
-                    <CardFooter>
-                      <Button asChild className="w-full">
-                        <Link href="/submit">
-                          Submit Now <ArrowRight className="ml-2 h-4 w-4" />
+                    
+                    <CardFooter className="flex gap-3 p-4 items-stretch">
+                      {/* Submit Now Button */}
+                      <Button asChild size="lg" className="flex-1 rounded-sm h-auto p-2 ">
+                        <Link href="/submit" className="text-stone-100 font-semibold flex items-center justify-center">
+                          <span className="hidden sm:inline text-base">Submit Now</span>
+                          <span className="sm:hidden text-base">Submit</span>
                         </Link>
                       </Button>
+                      
+                      {/* Download Button - only show if contentLink exists */}
+                      {cfp.contentLink && (
+                        <DownloadButton
+                          contentLink={cfp.contentLink}
+                          filename={`${cfp.title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.pdf`}
+                          title={cfp.title}
+                          className="shrink-0"
+                        />
+                      )}
                     </CardFooter>
                   </Card>
                 )

@@ -31,7 +31,7 @@ async function getCurrentUserWithPermissions(): Promise<UserWithPermissions | nu
   }
 }
 
-// Updated schema based on actual Prisma model
+// Updated schema - removed publisher as it will be auto-set from user email
 const callForPapersSchema = z.object({
   id: z.string().optional(),
   title: z.string()
@@ -54,10 +54,7 @@ const callForPapersSchema = z.object({
     .min(1, "Volume must be at least 1")
     .max(999, "Volume must be less than 999")
     .int("Volume must be a whole number"),
-  issue: z.coerce.number()
-    .min(1, "Issue must be at least 1")
-    .max(99, "Issue must be less than 99")
-    .int("Issue must be a whole number"),
+  issue: z.coerce.string(),
   year: z.coerce.number()
     .min(1900, "Year must be 1900 or later")
     .max(2100, "Year must be 2100 or earlier")
@@ -65,10 +62,7 @@ const callForPapersSchema = z.object({
   fee: z.string().optional().nullable(),
   topics: z.array(z.string()).default([]),
   contentLink: z.string().optional().nullable(),
-  publisher: z.string()
-    .min(1, "Publisher is required")
-    .min(2, "Publisher must be at least 2 characters")
-    .max(100, "Publisher must be less than 100 characters"),
+  // publisher is removed from schema as it will be auto-set
 })
 
 export type CallForPapersFormData = z.infer<typeof callForPapersSchema>
@@ -228,7 +222,7 @@ export async function createCallForPapers(data: CallForPapersFormData) {
     const result = await prisma.$transaction(async (tx) => {
       console.log("🔄 Starting database transaction...")
       
-      // Create the call for papers with properly mapped fields
+      // Create the call for papers with properly mapped fields and auto-set publisher
       const call = await tx.callForPapers.create({
         data: {
           title: validatedData.title,
@@ -241,42 +235,43 @@ export async function createCallForPapers(data: CallForPapersFormData) {
           fee: validatedData.fee || null,
           topics: validatedData.topics,
           contentLink: validatedData.contentLink || null,
-          publisher: validatedData.publisher,
+          publisher: currentUser.email, // Auto-set from current user's email
         },
       })
 
-      console.log(`✅ Call for papers created with ID: ${call.id}`)
+      console.log(`✅ Call for papers created with ID: ${call.id}, Publisher: ${call.publisher}`)
 
       // Create notification with the created call for papers data
-      const notificationContent = `${call.description}
+//       const notificationContent = `${call.description}
 
-📅 Submission Deadline: ${format(call.deadline, "MMMM d, yyyy")}
-📖 Volume ${call.volume}, Issue ${call.issue} (${call.year})
-📰 Publisher: ${call.publisher}
-${call.topics && call.topics.length > 0 
-  ? `🏷️ Topics: ${call.topics.slice(0, 3).join(", ")}${call.topics.length > 3 ? " and more" : ""}`
-  : ""
-}
-${call.fee ? `💰 Submission fee: ${call.fee}` : "🆓 No submission fee required"}
-${call.contentLink ? `🔗 More details: ${call.contentLink}` : ""}
+// 📅 Submission Deadline: ${format(call.deadline, "MMMM d, yyyy")}
+// 📖 Volume ${call.volume}, Issue ${call.issue} (${call.year})
+// 📰 Publisher: ${call.publisher}
+// ${call.topics && call.topics.length > 0 
+//   ? `🏷️ Topics: ${call.topics.slice(0, 3).join(", ")}${call.topics.length > 3 ? " and more" : ""}`
+//   : ""
+// }
+// ${call.fee ? `💰 Submission fee: ${call.fee}` : "🆓 No submission fee required"}
+// ${call.contentLink ? `🔗 More details: ${call.contentLink}` : ""}
 
-Don't miss this opportunity to contribute to our journal!`
+// Don't miss this opportunity to contribute to our journal!`
 
-      const notification = await tx.notification.create({
-        data: {
-          title: call.title,
-          content: notificationContent,
-          type: NotificationType.call_for_papers,
-          priority: Priority.high,
-          linkDisplay: "View Call for Papers",
-          linkUrl: call.contentLink || `/call-for-papers/${call.id}`,
-          expiresAt: call.deadline,
-        },
-      })
+      // const notification = await tx.notification.create({
+      //   data: {
+      //     title: call.title,
+      //     content: notificationContent,
+      //     type: NotificationType.call_for_papers,
+      //     priority: Priority.high,
+      //     linkDisplay: "View Call for Papers",
+      //     linkUrl: call.contentLink || `/call-for-papers/${call.id}`,
+      //     expiresAt: call.deadline,
+      //   },
+      // })
 
-      console.log(`✅ Notification created with ID: ${notification.id}`)
+      // console.log(`✅ Notification created with ID: ${notification.id}`)
 
-      return { call, notification }
+      // return { call, notification }
+      return { call }
     }, {
       timeout: 10000, // 10 second timeout
     })
@@ -404,7 +399,8 @@ export async function updateCallForPapers(id: string, data: CallForPapersFormDat
         fee: validatedData.fee || null,
         topics: validatedData.topics,
         contentLink: validatedData.contentLink || null,
-        publisher: validatedData.publisher,
+        // Note: publisher is intentionally NOT updated to preserve original creator
+        // If you want to allow updating publisher, add: publisher: currentUser.email,
       },
     })
 

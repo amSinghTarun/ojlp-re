@@ -16,23 +16,25 @@ export default async function NotificationsPage() {
 
   // Group notifications by type using database enum values
   const callForPapers = notifications.filter((n) => n.type === NotificationType.call_for_papers)
-  const studentCompetitions = notifications.filter((n) => n.type === NotificationType.student_competition)
-  const editorialVacancies = notifications.filter((n) => n.type === NotificationType.editorial_vacancy)
-  const specialIssues = notifications.filter((n) => n.type === NotificationType.special_issue)
+  // const studentCompetitions = notifications.filter((n) => n.type === NotificationType.student_competition)
+  const vacancies = notifications.filter((n) => n.type === NotificationType.vacancy)
+  // const specialIssues = notifications.filter((n) => n.type === NotificationType.special_issue)
   const events = notifications.filter((n) => n.type === NotificationType.event)
-  const announcements = notifications.filter((n) => n.type === NotificationType.announcement)
-  const publications = notifications.filter((n) => n.type === NotificationType.publication)
+  // const announcements = notifications.filter((n) => n.type === NotificationType.announcement)
+  // const publications = notifications.filter((n) => n.type === NotificationType.publication)
+  const general = notifications.filter((n) => n.type === NotificationType.general)
   
   // Other notifications (catch-all for any new types)
   const otherNotifications = notifications.filter(
     (n) => ![
       NotificationType.call_for_papers,
-      NotificationType.student_competition,
-      NotificationType.editorial_vacancy,
-      NotificationType.special_issue,
+      // NotificationType.student_competition,
+      NotificationType.vacancy,
+      // NotificationType.special_issue,
       NotificationType.event,
-      NotificationType.announcement,
-      NotificationType.publication
+      // NotificationType.announcement,
+      // NotificationType.publication,
+      NotificationType.general
     ].includes(n.type)
   )
 
@@ -46,14 +48,11 @@ export default async function NotificationsPage() {
     return (
       <ScrollReveal>
         <div className="space-y-4">
-          {title && (
-            <>
-              <h3 className="text-lg font-semibold text-foreground">{title}</h3>
-              <div className="border-t border-border"></div>
-            </>
-          )}
+          <div className="border-t border-stone-300"></div>
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {sectionNotifications.map((notification, index) => (
+            {sectionNotifications.map((notification, index) => {
+
+              return (
               <NotificationCard
                 key={notification.id}
                 notification={{
@@ -62,19 +61,23 @@ export default async function NotificationsPage() {
                   content: notification.content,
                   type: notification.type,
                   priority: notification.priority,
-                  link: notification.link || "",
-                  image: notification.image || "",
-                  date: new Date(notification.date || notification.createdAt).toLocaleDateString("en-US", {
+                  linkDisplay: notification.linkDisplay || "",
+                  linkUrl: notification.linkUrl || "",
+                  date: new Date(notification.createdAt).toLocaleDateString("en-US", {
                     year: "numeric",
                     month: "long",
                     day: "numeric",
                   }),
-                  read: notification.read,
+                  expiresAt: notification.expiresAt ? new Date(notification.expiresAt).toLocaleDateString("en-US", {
+                    year: "numeric",
+                    month: "long",
+                    day: "numeric",
+                  }) : null,
                 }}
                 index={index}
-                unread={!notification.read}
+                unread={false} // Since we don't have user-specific read status
               />
-            ))}
+            )})}
           </div>
         </div>
       </ScrollReveal>
@@ -90,24 +93,25 @@ export default async function NotificationsPage() {
 
   return (
     <div className="flex min-h-screen flex-col">
-      <main className="flex-1">
-        <div className="container px-4 py-12 md:px-6">
-          <div className="mb-8 animate-slide-up">
-            <DecorativeHeading level={1}>Notifications</DecorativeHeading>
-            <p className="text-muted-foreground text-center max-w-2xl mx-auto">
+      <main className="flex-1 px-2">
+        <div className="max-w-5xl mx-auto text-center mt-4 mb-16">
+        <div className="mb-8 animate-slide-up justify-center pt-10 space-y-3">
+            <h1 className="text-4xl sm:text-5xl text-center">Notifications</h1>
+            <p className="text-stone-600 text-sm font-normal justify-center align-middle content-center text-center max-w-4xl mx-auto">
               Stay updated with the latest events, calls for papers, and announcements.
             </p>
           </div>
 
           <Tabs defaultValue="all" className="space-y-8">
-            <TabsList className="grid w-full grid-cols-6 lg:grid-cols-7">
-              <TabsTrigger value="all">All</TabsTrigger>
-              <TabsTrigger value="cfp">Call for Papers</TabsTrigger>
-              <TabsTrigger value="competitions">Competitions</TabsTrigger>
-              <TabsTrigger value="vacancies">Vacancies</TabsTrigger>
-              <TabsTrigger value="special">Special Issues</TabsTrigger>
-              <TabsTrigger value="events">Events</TabsTrigger>
-              <TabsTrigger value="announcements" className="hidden lg:block">Announcements</TabsTrigger>
+            <TabsList className="grid bg-transparent w-full grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-5 gap-1 data-[state=active]:bg-red-800">
+              <TabsTrigger value="all" className="data-[state=active]:bg-red-800 data-[state=active]:text-white text-xs sm:text-sm">All</TabsTrigger>
+              <TabsTrigger value="cfp" className="data-[state=active]:bg-red-800 data-[state=active]:text-white text-xs sm:text-sm">CFP</TabsTrigger>
+              <TabsTrigger value="competitions" className="data-[state=active]:bg-red-800 data-[state=active]:text-white text-xs sm:text-sm">Events</TabsTrigger>
+              <TabsTrigger value="vacancies" className="data-[state=active]:bg-red-800 data-[state=active]:text-white text-xs sm:text-sm hidden sm:block">Vacancies</TabsTrigger>
+              {/* <TabsTrigger value="special" className="data-[state=active]:bg-red-800 data-[state=active]:text-white text-xs sm:text-sm hidden md:block">Special</TabsTrigger> */}
+              {/* <TabsTrigger value="events" className="data-[state=active]:bg-red-800 data-[state=active]:text-white text-xs sm:text-sm hidden md:block">Events</TabsTrigger> */}
+              {/* <TabsTrigger value="announcements" className="hidden lg:block data-[state=active]:bg-red-800 data-[state=active]:text-white text-xs sm:text-sm">Announcements</TabsTrigger> */}
+              <TabsTrigger value="general" className="hidden lg:block data-[state=active]:bg-red-800 data-[state=active]:text-white text-xs sm:text-sm">General</TabsTrigger>
             </TabsList>
 
             {/* All Notifications Tab */}
@@ -115,27 +119,30 @@ export default async function NotificationsPage() {
               {notifications.length === 0 ? (
                 renderEmptyState("No notifications available at this time.")
               ) : (
-                <div className="space-y-12">
+                <div className="space-y-4">
                   {/* Call for Papers */}
                   {renderNotificationSection(callForPapers, "Call for Papers")}
                   
                   {/* Student Competitions */}
-                  {renderNotificationSection(studentCompetitions, "Student Competitions")}
+                  {/* {renderNotificationSection(studentCompetitions, "Student Competitions")} */}
                   
                   {/* Editorial Vacancies */}
-                  {renderNotificationSection(editorialVacancies, "Editorial Vacancies")}
+                  {renderNotificationSection(vacancies, "Vacancies")}
                   
                   {/* Special Issues */}
-                  {renderNotificationSection(specialIssues, "Special Issues")}
+                  {/* {renderNotificationSection(specialIssues, "Special Issues")} */}
                   
                   {/* Events */}
                   {renderNotificationSection(events, "Events")}
                   
                   {/* Announcements */}
-                  {renderNotificationSection(announcements, "Announcements")}
+                  {/* {renderNotificationSection(announcements, "Announcements")} */}
                   
                   {/* Publications */}
-                  {renderNotificationSection(publications, "Publications")}
+                  {/* {renderNotificationSection(publications, "Publications")} */}
+                  
+                  {/* General */}
+                  {renderNotificationSection(general, "General")}
                   
                   {/* Other notifications */}
                   {renderNotificationSection(otherNotifications, "Other Notifications")}
@@ -157,17 +164,26 @@ export default async function NotificationsPage() {
                           content: notification.content,
                           type: notification.type,
                           priority: notification.priority,
-                          link: notification.link || "",
-                          image: notification.image || "",
-                          date: new Date(notification.date || notification.createdAt).toLocaleDateString("en-US", {
+                          linkDisplay: notification.linkDisplay || "",
+                          linkUrl: notification.linkUrl || "",
+                          date: new Date(notification.createdAt).toLocaleDateString("en-US", {
                             year: "numeric",
                             month: "long",
                             day: "numeric",
                           }),
-                          read: notification.read,
+                          expiresAt: notification.expiresAt ? new Date(notification.expiresAt).toLocaleDateString("en-US", {
+                            year: "numeric",
+                            month: "long",
+                            day: "numeric",
+                          }) : null,
+                          createdAt: new Date(notification.createdAt).toLocaleDateString("en-US", {
+                            year: "numeric",
+                            month: "long",
+                            day: "numeric",
+                          }),
                         }}
                         index={index}
-                        unread={!notification.read}
+                        unread={false}
                       />
                     </ScrollReveal>
                   ))}
@@ -177,7 +193,7 @@ export default async function NotificationsPage() {
               )}
             </TabsContent>
 
-            {/* Student Competitions Tab */}
+            {/* Student Competitions Tab
             <TabsContent value="competitions" className="space-y-4">
               <div className="border-t border-border my-4"></div>
               {studentCompetitions.length > 0 ? (
@@ -191,17 +207,21 @@ export default async function NotificationsPage() {
                           content: notification.content,
                           type: notification.type,
                           priority: notification.priority,
-                          link: notification.link || "",
-                          image: notification.image || "",
-                          date: new Date(notification.date || notification.createdAt).toLocaleDateString("en-US", {
+                          linkDisplay: notification.linkDisplay || "",
+                          linkUrl: notification.linkUrl || "",
+                          date: new Date(notification.createdAt).toLocaleDateString("en-US", {
                             year: "numeric",
                             month: "long",
                             day: "numeric",
                           }),
-                          read: notification.read,
+                          expiresAt: notification.expiresAt ? new Date(notification.expiresAt).toLocaleDateString("en-US", {
+                            year: "numeric",
+                            month: "long",
+                            day: "numeric",
+                          }) : null,
                         }}
                         index={index}
-                        unread={!notification.read}
+                        unread={false}
                       />
                     </ScrollReveal>
                   ))}
@@ -209,14 +229,14 @@ export default async function NotificationsPage() {
               ) : (
                 renderEmptyState("No student competitions at this time.")
               )}
-            </TabsContent>
+            </TabsContent> */}
 
             {/* Editorial Vacancies Tab */}
             <TabsContent value="vacancies" className="space-y-4">
               <div className="border-t border-border my-4"></div>
-              {editorialVacancies.length > 0 ? (
+              {vacancies.length > 0 ? (
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                  {editorialVacancies.map((notification, index) => (
+                  {vacancies.map((notification, index) => (
                     <ScrollReveal key={notification.id} delay={index * 100}>
                       <NotificationCard
                         notification={{
@@ -225,17 +245,21 @@ export default async function NotificationsPage() {
                           content: notification.content,
                           type: notification.type,
                           priority: notification.priority,
-                          link: notification.link || "",
-                          image: notification.image || "",
-                          date: new Date(notification.date || notification.createdAt).toLocaleDateString("en-US", {
+                          linkDisplay: notification.linkDisplay || "",
+                          linkUrl: notification.linkUrl || "",
+                          date: new Date(notification.createdAt).toLocaleDateString("en-US", {
                             year: "numeric",
                             month: "long",
                             day: "numeric",
                           }),
-                          read: notification.read,
+                          expiresAt: notification.expiresAt ? new Date(notification.expiresAt).toLocaleDateString("en-US", {
+                            year: "numeric",
+                            month: "long",
+                            day: "numeric",
+                          }) : null,
                         }}
                         index={index}
-                        unread={!notification.read}
+                        unread={false}
                       />
                     </ScrollReveal>
                   ))}
@@ -245,7 +269,7 @@ export default async function NotificationsPage() {
               )}
             </TabsContent>
 
-            {/* Special Issues Tab */}
+            {/* Special Issues Tab
             <TabsContent value="special" className="space-y-4">
               <div className="border-t border-border my-4"></div>
               {specialIssues.length > 0 ? (
@@ -259,17 +283,21 @@ export default async function NotificationsPage() {
                           content: notification.content,
                           type: notification.type,
                           priority: notification.priority,
-                          link: notification.link || "",
-                          image: notification.image || "",
-                          date: new Date(notification.date || notification.createdAt).toLocaleDateString("en-US", {
+                          linkDisplay: notification.linkDisplay || "",
+                          linkUrl: notification.linkUrl || "",
+                          date: new Date(notification.createdAt).toLocaleDateString("en-US", {
                             year: "numeric",
                             month: "long",
                             day: "numeric",
                           }),
-                          read: notification.read,
+                          expiresAt: notification.expiresAt ? new Date(notification.expiresAt).toLocaleDateString("en-US", {
+                            year: "numeric",
+                            month: "long",
+                            day: "numeric",
+                          }) : null,
                         }}
                         index={index}
-                        unread={!notification.read}
+                        unread={false}
                       />
                     </ScrollReveal>
                   ))}
@@ -277,7 +305,7 @@ export default async function NotificationsPage() {
               ) : (
                 renderEmptyState("No special issues at this time.")
               )}
-            </TabsContent>
+            </TabsContent> */}
 
             {/* Events Tab */}
             <TabsContent value="events" className="space-y-4">
@@ -293,17 +321,21 @@ export default async function NotificationsPage() {
                           content: notification.content,
                           type: notification.type,
                           priority: notification.priority,
-                          link: notification.link || "",
-                          image: notification.image || "",
-                          date: new Date(notification.date || notification.createdAt).toLocaleDateString("en-US", {
+                          linkDisplay: notification.linkDisplay || "",
+                          linkUrl: notification.linkUrl || "",
+                          date: new Date(notification.createdAt).toLocaleDateString("en-US", {
                             year: "numeric",
                             month: "long",
                             day: "numeric",
                           }),
-                          read: notification.read,
+                          expiresAt: notification.expiresAt ? new Date(notification.expiresAt).toLocaleDateString("en-US", {
+                            year: "numeric",
+                            month: "long",
+                            day: "numeric",
+                          }) : null,
                         }}
                         index={index}
-                        unread={!notification.read}
+                        unread={false}
                       />
                     </ScrollReveal>
                   ))}
@@ -313,7 +345,7 @@ export default async function NotificationsPage() {
               )}
             </TabsContent>
 
-            {/* Announcements Tab */}
+            {/* Announcements Tab
             <TabsContent value="announcements" className="space-y-4">
               <div className="border-t border-border my-4"></div>
               {announcements.length > 0 ? (
@@ -327,23 +359,65 @@ export default async function NotificationsPage() {
                           content: notification.content,
                           type: notification.type,
                           priority: notification.priority,
-                          link: notification.link || "",
-                          image: notification.image || "",
-                          date: new Date(notification.date || notification.createdAt).toLocaleDateString("en-US", {
+                          linkDisplay: notification.linkDisplay || "",
+                          linkUrl: notification.linkUrl || "",
+                          date: new Date(notification.createdAt).toLocaleDateString("en-US", {
                             year: "numeric",
                             month: "long",
                             day: "numeric",
                           }),
-                          read: notification.read,
+                          expiresAt: notification.expiresAt ? new Date(notification.expiresAt).toLocaleDateString("en-US", {
+                            year: "numeric",
+                            month: "long",
+                            day: "numeric",
+                          }) : null,
                         }}
                         index={index}
-                        unread={!notification.read}
+                        unread={false}
                       />
                     </ScrollReveal>
                   ))}
                 </div>
               ) : (
                 renderEmptyState("No announcements at this time.")
+              )}
+            </TabsContent> */}
+
+            {/* General Tab */}
+            <TabsContent value="general" className="space-y-4">
+              <div className="border-t border-border my-4"></div>
+              {general.length > 0 ? (
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                  {general.map((notification, index) => (
+                    <ScrollReveal key={notification.id} delay={index * 100}>
+                      <NotificationCard
+                        notification={{
+                          id: notification.id,
+                          title: notification.title,
+                          content: notification.content,
+                          type: notification.type,
+                          priority: notification.priority,
+                          linkDisplay: notification.linkDisplay || "",
+                          linkUrl: notification.linkUrl || "",
+                          date: new Date(notification.createdAt).toLocaleDateString("en-US", {
+                            year: "numeric",
+                            month: "long",
+                            day: "numeric",
+                          }),
+                          expiresAt: notification.expiresAt ? new Date(notification.expiresAt).toLocaleDateString("en-US", {
+                            year: "numeric",
+                            month: "long",
+                            day: "numeric",
+                          }) : null,
+                        }}
+                        index={index}
+                        unread={false}
+                      />
+                    </ScrollReveal>
+                  ))}
+                </div>
+              ) : (
+                renderEmptyState("No general notifications at this time.")
               )}
             </TabsContent>
           </Tabs>

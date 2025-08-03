@@ -42,7 +42,7 @@ export default async function NewPostPage() {
   }
 
   // Check if user has permission to create posts
-  const postCreateCheck = checkPermission(currentUser, 'post.CREATE')
+  const postCreateCheck = checkPermission(currentUser, 'article.CREATE')
   
   if (!postCreateCheck.allowed) {
     return (
@@ -54,7 +54,7 @@ export default async function NewPostPage() {
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
           <AlertDescription>
-            {PERMISSION_ERRORS.INSUFFICIENT_PERMISSIONS} - You need 'post.CREATE' permission to create new posts.
+            {PERMISSION_ERRORS.INSUFFICIENT_PERMISSIONS} - You need 'article.CREATE' permission to create new posts.
           </AlertDescription>
         </Alert>
       </div>

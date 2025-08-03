@@ -1,4 +1,3 @@
-// components/admin/journal-article-form.tsx - Updated for actual schema
 "use client"
 
 import { useState, useEffect } from "react"
@@ -27,7 +26,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { CalendarIcon, Loader2, Plus, X, FileText, AlertTriangle, Mail, BookOpen, UserPlus, Users, ExternalLink } from "lucide-react"
+import { CalendarIcon, Loader2, Plus, X, FileText, AlertTriangle, Mail, BookOpen, UserPlus, Users, ExternalLink, Link as LinkIcon } from "lucide-react"
 import { Calendar } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { cn } from "@/lib/utils"
@@ -39,7 +38,6 @@ import {
   updateJournalArticle, 
   getJournalIssuesForDropdown 
 } from "@/lib/actions/journal-article-actions"
-import { MediaSelector } from "@/components/admin/media-selector"
 import { format } from "date-fns"
 
 // Author schema for individual authors
@@ -53,7 +51,7 @@ const authorSchema = z.object({
     .email("Please enter a valid email address"),
 })
 
-// Updated schema to match actual Article model
+// Updated schema for journal articles (no content/image, focus on metadata)
 const formSchema = z.object({
   title: z.string()
     .min(1, "Title is required")
@@ -64,28 +62,23 @@ const formSchema = z.object({
     .min(3, "Slug must be at least 3 characters")
     .max(100, "Slug must be less than 100 characters")
     .regex(/^[a-z0-9-]+$/, "Slug must contain only lowercase letters, numbers, and hyphens"),
-  abstract: z.string() // Changed from 'excerpt'
+  abstract: z.string()
     .min(1, "Abstract is required")
-    .min(20, "Abstract must be at least 20 characters")
-    .max(500, "Abstract must be less than 500 characters"),
-  content: z.string()
-    .min(1, "Content is required")
-    .min(100, "Content must be at least 100 characters"),
+    .min(20, "Abstract must be at least 20 characters"),
   contentLink: z.string()
     .min(1, "Content link is required for journal articles")
     .url("Please enter a valid URL"),
-  publishedAt: z.date({ required_error: "Publication date is required" }), // Changed from 'date'
+  publishedAt: z.date({ required_error: "Publication date is required" }),
   readTime: z.coerce.number()
     .min(1, "Read time must be at least 1 minute")
     .max(180, "Read time must be less than 180 minutes")
     .int("Read time must be a whole number"),
-  image: z.string().optional(),
   authors: z.array(authorSchema)
     .min(1, "At least one author is required")
     .max(10, "Maximum 10 authors allowed"),
   issueId: z.string().optional(),
   keywords: z.array(z.string()).default([]),
-  archived: z.boolean().default(false), // Changed from 'draft' with inverted logic
+  archived: z.boolean().default(false),
   featured: z.boolean().default(false),
   carousel: z.boolean().default(false),
 })
@@ -98,17 +91,12 @@ interface JournalArticleFormProps {
     id: string
     slug: string
     title: string
-    excerpt?: string // For backward compatibility
     abstract?: string
-    content: string
     contentLink?: string
-    date?: Date | string // For backward compatibility
     publishedAt?: Date | string
     readTime: number
-    image: string
     issueId?: string | null
     keywords: string[]
-    draft?: boolean // For backward compatibility
     archived?: boolean
     featured?: boolean
     carousel?: boolean
@@ -157,27 +145,17 @@ export function JournalArticleForm({ article }: JournalArticleFormProps) {
     defaultValues: {
       title: article?.title || "",
       slug: article?.slug || "",
-      abstract: article?.abstract || article?.excerpt || "", // Handle both old and new field names
-      content: article?.content || "",
+      abstract: article?.abstract || "",
       contentLink: article?.contentLink || "",
-      publishedAt: article?.publishedAt 
-        ? new Date(article.publishedAt) 
-        : article?.date 
-          ? new Date(article.date) 
-          : new Date(), // Handle both old and new field names
+      publishedAt: article?.publishedAt ? new Date(article.publishedAt) : new Date(),
       readTime: article?.readTime || 5,
-      image: article?.image || "",
       authors: article?.Authors?.map(author => ({
         name: author.name,
         email: author.email,
       })) || [{ name: "", email: "" }],
       issueId: article?.journalIssue?.id || article?.issueId || "",
       keywords: article?.keywords || [],
-      archived: article?.archived !== undefined 
-        ? article.archived 
-        : article?.draft !== undefined 
-          ? article.draft // Keep same logic (draft=true means archived=true)
-          : false,
+      archived: article?.archived || false,
       featured: article?.featured || false,
       carousel: article?.carousel || false,
     },
@@ -231,14 +209,14 @@ export function JournalArticleForm({ article }: JournalArticleFormProps) {
       return
     }
 
-    if (authors.length >= 10) {
-      toast({
-        title: "Too many authors",
-        description: "You can add a maximum of 10 authors.",
-        variant: "destructive",
-      })
-      return
-    }
+    // if (authors.length >= 10) {
+    //   toast({
+    //     title: "Too many authors",
+    //     description: "You can add a maximum of 10 authors.",
+    //     variant: "destructive",
+    //   })
+    //   return
+    // }
 
     form.setValue("authors", [...authors, trimmedAuthor])
     setNewAuthor({ name: "", email: "" })
@@ -413,9 +391,9 @@ export function JournalArticleForm({ article }: JournalArticleFormProps) {
       {/* Information Alert */}
       {!article && (
         <Alert>
-          <FileText className="h-4 w-4" />
+          <LinkIcon className="h-4 w-4" />
           <AlertDescription>
-            <strong>New Journal Article:</strong> Add authors and provide a link to the full article content. This could be a PDF, DOI link, or link to an academic platform.
+            <strong>Journal Article:</strong> This form creates a reference to an external journal article. Provide the link to where the full article can be accessed (DOI, PDF, academic platform, etc.).
           </AlertDescription>
         </Alert>
       )}
@@ -430,13 +408,13 @@ export function JournalArticleForm({ article }: JournalArticleFormProps) {
         </Alert>
       )}
 
-      <Card className="mx-auto max-w-6xl">
+      <Card className="mx-auto max-w-4xl">
         <CardHeader>
-          <CardTitle>{article ? "Edit Journal Article" : "Create Journal Article"}</CardTitle>
+          <CardTitle>{article ? "Edit Journal Article" : "Create Journal Article Reference"}</CardTitle>
           <CardDescription>
             {article
-              ? "Update the content and metadata for your journal article."
-              : "Create a new journal article. You can save it as archived or publish it immediately."}
+              ? "Update the metadata for your journal article reference."
+              : "Create a new journal article reference. This will link to the external publication."}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -445,7 +423,7 @@ export function JournalArticleForm({ article }: JournalArticleFormProps) {
               
               {/* Basic Information */}
               <div className="space-y-6">
-                <h3 className="text-lg font-semibold">Basic Information</h3>
+                <h3 className="text-lg font-semibold">Article Information</h3>
                 <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
                   <FormField
                     control={form.control}
@@ -461,7 +439,7 @@ export function JournalArticleForm({ article }: JournalArticleFormProps) {
                           />
                         </FormControl>
                         <FormDescription>
-                          The main title of your journal article (5-200 characters)
+                          The main title of the journal article (5-200 characters)
                         </FormDescription>
                         <FormMessage />
                       </FormItem>
@@ -482,7 +460,24 @@ export function JournalArticleForm({ article }: JournalArticleFormProps) {
                           />
                         </FormControl>
                         <FormDescription>
-                          URL-friendly version of the title (lowercase, hyphens only)
+                          URL-friendly version of the title
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="readTime"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Read Time (minutes) *</FormLabel>
+                        <FormControl>
+                          <Input type="number" min="1" max="180" {...field} />
+                        </FormControl>
+                        <FormDescription>
+                          Estimated reading time in minutes (1-180)
                         </FormDescription>
                         <FormMessage />
                       </FormItem>
@@ -499,14 +494,14 @@ export function JournalArticleForm({ article }: JournalArticleFormProps) {
                           <div className="relative">
                             <ExternalLink className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                             <Input 
-                              placeholder="https://doi.org/10.1000/journal.article or https://example.com/article.pdf" 
+                              placeholder="https://arxiv.org/abs/paper-id or https://example.com/article.pdf" 
                               {...field} 
                               className="pl-10"
                             />
                           </div>
                         </FormControl>
                         <FormDescription>
-                          Link to the full article content (PDF, DOI, arxiv, PubMed, etc.). This is required for journal articles.
+                          Link to the full article content (PDF, arxiv, PubMed, institutional repository, etc.). This is required for journal articles.
                         </FormDescription>
                         <FormMessage />
                         {contentLink && (
@@ -602,24 +597,28 @@ export function JournalArticleForm({ article }: JournalArticleFormProps) {
                       </FormItem>
                     )}
                   />
-
-                  <FormField
-                    control={form.control}
-                    name="readTime"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Read Time (minutes) *</FormLabel>
-                        <FormControl>
-                          <Input type="number" min="1" max="180" {...field} />
-                        </FormControl>
-                        <FormDescription>
-                          Estimated reading time in minutes (1-180)
-                        </FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
                 </div>
+
+                <FormField
+                  control={form.control}
+                  name="abstract"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Abstract *</FormLabel>
+                      <FormControl>
+                        <Textarea
+                          placeholder="Enter a brief summary of the article"
+                          className="min-h-[100px]"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormDescription>
+                        Brief summary or introduction (20-500 characters)
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
               </div>
 
               {/* Authors Section */}
@@ -723,87 +722,6 @@ export function JournalArticleForm({ article }: JournalArticleFormProps) {
                 </p>
               </div>
 
-              {/* Content */}
-              <div className="space-y-6">
-                <h3 className="text-lg font-semibold">Content</h3>
-                
-                <FormField
-                  control={form.control}
-                  name="abstract"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Abstract *</FormLabel>
-                      <FormControl>
-                        <Textarea
-                          placeholder="Enter a brief summary of the article"
-                          className="min-h-[100px]"
-                          {...field}
-                          maxLength={500}
-                        />
-                      </FormControl>
-                      <FormDescription>
-                        Brief summary or introduction (20-500 characters)
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="content"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Content *</FormLabel>
-                      <FormControl>
-                        <Textarea
-                          placeholder="Enter the full article content..."
-                          className="min-h-[300px]"
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormDescription>
-                        The full content of your article (minimum 100 characters)
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-
-              {/* Media */}
-              <div className="space-y-6">
-                <h3 className="text-lg font-semibold">Media</h3>
-
-                <FormField
-                  control={form.control}
-                  name="image"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Featured Image</FormLabel>
-                      <FormControl>
-                        <div className="space-y-4">
-                          {field.value && (
-                            <div className="relative w-32 h-24 overflow-hidden rounded">
-                              <img
-                                src={field.value}
-                                alt="Featured image preview"
-                                className="object-cover w-full h-full"
-                              />
-                            </div>
-                          )}
-                          <MediaSelector onSelect={(url) => field.onChange(url)} />
-                        </div>
-                      </FormControl>
-                      <FormDescription>
-                        Optional featured image for the article
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-
               {/* Metadata & Settings */}
               <div className="space-y-6">
                 <h3 className="text-lg font-semibold">Metadata & Settings</h3>
@@ -889,7 +807,6 @@ export function JournalArticleForm({ article }: JournalArticleFormProps) {
                         value={newKeyword}
                         onChange={(e) => setNewKeyword(e.target.value)}
                         onKeyPress={(e) => e.key === "Enter" && (e.preventDefault(), addKeyword())}
-                        maxLength={50}
                       />
                       <Button type="button" onClick={addKeyword} size="sm" disabled={keywords.length >= 10}>
                         <Plus className="h-4 w-4" />
@@ -935,7 +852,7 @@ export function JournalArticleForm({ article }: JournalArticleFormProps) {
                     </>
                   ) : (
                     <>
-                      <FileText className="mr-2 h-4 w-4" />
+                      <LinkIcon className="mr-2 h-4 w-4" />
                       {article ? "Update Article" : "Create Article"}
                     </>
                   )}

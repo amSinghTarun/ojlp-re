@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache"
 import { getCurrentUser } from "@/lib/auth"
 import { checkPermission } from "@/lib/permissions/checker"
 import { UserWithPermissions } from "@/lib/permissions/types"
-import prisma from "@/lib/prisma"
+import { prisma } from "@/lib/prisma"
 import { z } from "zod"
 import { BoardMemberType } from "@prisma/client"
 
@@ -46,31 +46,19 @@ const memberSchema = z.object({
   orcid: z.string().optional(),
 })
 
+// PUBLIC: Get editorial board members - no authentication required for viewing
 export async function getEditorialBoard() {
   try {
-    // Check authentication and permissions
-    const currentUser = await getCurrentUserWithPermissions()
-    
-    if (!currentUser) {
-      return { success: false, error: "Authentication required" }
-    }
-
-    // Check if user has permission to read editorial board members
-    const permissionCheck = checkPermission(currentUser, 'editorialboard.READ')
-    if (!permissionCheck.allowed) {
-      return { 
-        success: false, 
-        error: permissionCheck.reason || "You don't have permission to view editorial board members" 
-      }
-    }
-
     const members = await prisma.editorialBoardMember.findMany({
+      where: {
+        archived: false
+      },
       orderBy: {
         order: "asc",
       },
     })
     
-    console.log(`✅ User ${currentUser.email} fetched ${members.length} editorial board members`)
+    console.log(`✅ Fetched ${members.length} editorial board members`)
     
     return { success: true, data: members }
   } catch (error) {
@@ -79,33 +67,21 @@ export async function getEditorialBoard() {
   }
 }
 
+// PUBLIC: Get specific editorial board member - no authentication required
 export async function getEditorialBoardMember(id: string) {
   try {
-    // Check authentication and permissions
-    const currentUser = await getCurrentUserWithPermissions()
-    
-    if (!currentUser) {
-      return { success: false, error: "Authentication required" }
-    }
-
-    // Check if user has permission to read editorial board members
-    const permissionCheck = checkPermission(currentUser, 'editorialboard.READ')
-    if (!permissionCheck.allowed) {
-      return { 
-        success: false, 
-        error: permissionCheck.reason || "You don't have permission to view editorial board member details" 
-      }
-    }
-
     const member = await prisma.editorialBoardMember.findUnique({
-      where: { id }
+      where: { 
+        id,
+        archived: false
+      }
     })
     
     if (!member) {
       return { success: false, error: "Member not found" }
     }
 
-    console.log(`✅ User ${currentUser.email} viewed editorial board member: ${member.name}`)
+    console.log(`✅ Fetched editorial board member: ${member.name}`)
     
     return { success: true, data: member }
   } catch (error) {
@@ -114,6 +90,7 @@ export async function getEditorialBoardMember(id: string) {
   }
 }
 
+// ADMIN: Create board member - requires authentication and permissions
 export async function createBoardMember(data: z.infer<typeof memberSchema>) {
   try {
     // Check authentication and permissions
@@ -216,6 +193,7 @@ export async function createBoardMember(data: z.infer<typeof memberSchema>) {
   }
 }
 
+// ADMIN: Update board member - requires authentication and permissions
 export async function updateBoardMember(id: string, data: Partial<z.infer<typeof memberSchema>>) {
   try {
     // Check authentication and permissions
@@ -235,9 +213,7 @@ export async function updateBoardMember(id: string, data: Partial<z.infer<typeof
     }
 
     // Check if user has permission to update editorial board members
-    const permissionCheck = checkPermission(currentUser, 'editorialboard.UPDATE', {
-      resourceId: existingMember.id
-    })
+    const permissionCheck = checkPermission(currentUser, 'editorialboard.UPDATE')
 
     if (!permissionCheck.allowed) {
       return { 
@@ -308,6 +284,7 @@ export async function updateBoardMember(id: string, data: Partial<z.infer<typeof
   }
 }
 
+// ADMIN: Delete board member - requires authentication and permissions
 export async function deleteBoardMember(id: string) {
   try {
     // Check authentication and permissions
@@ -327,9 +304,7 @@ export async function deleteBoardMember(id: string) {
     }
 
     // Check if user has permission to delete editorial board members
-    const permissionCheck = checkPermission(currentUser, 'editorialboard.DELETE', {
-      resourceId: existingMember.id
-    })
+    const permissionCheck = checkPermission(currentUser, 'editorialboard.DELETE')
 
     if (!permissionCheck.allowed) {
       return { 
@@ -356,6 +331,7 @@ export async function deleteBoardMember(id: string) {
   }
 }
 
+// ADMIN: Reorder board members - requires authentication and permissions
 export async function reorderBoardMembers(orderedIds: string[]) {
   try {
     // Check authentication and permissions
@@ -414,7 +390,7 @@ export async function reorderBoardMembers(orderedIds: string[]) {
   }
 }
 
-// NEW: Function to get editorial board members with permission context
+// ADMIN: Function to get editorial board members with permission context
 export async function getEditorialBoardWithPermissions() {
   try {
     const currentUser = await getCurrentUserWithPermissions()
@@ -444,12 +420,8 @@ export async function getEditorialBoardWithPermissions() {
     // Add permission context to each member
     const membersWithPermissions = members.map(member => ({
       ...member,
-      canEdit: checkPermission(currentUser, 'editorialboard.UPDATE', {
-        resourceId: member.id
-      }).allowed,
-      canDelete: checkPermission(currentUser, 'editorialboard.DELETE', {
-        resourceId: member.id
-      }).allowed,
+      canEdit: checkPermission(currentUser, 'editorialboard.UPDATE').allowed,
+      canDelete: checkPermission(currentUser, 'editorialboard.DELETE').allowed,
     }))
 
     return { 
@@ -461,85 +433,5 @@ export async function getEditorialBoardWithPermissions() {
   } catch (error) {
     console.error("Failed to fetch editorial board with permissions:", error)
     return { success: false, error: "Failed to fetch editorial board members" }
-  }
-}
-
-// NEW: Function to check editorial board permissions
-export async function checkEditorialBoardPermissions(memberId?: string) {
-  try {
-    const currentUser = await getCurrentUserWithPermissions()
-    
-    if (!currentUser) {
-      return { 
-        success: false, 
-        error: "Authentication required",
-        permissions: { canRead: false, canCreate: false, canUpdate: false, canDelete: false, canReorder: false }
-      }
-    }
-
-    let permissions = {
-      canRead: checkPermission(currentUser, 'editorialboard.READ').allowed,
-      canCreate: checkPermission(currentUser, 'editorialboard.CREATE').allowed,
-      canUpdate: false,
-      canDelete: false,
-      canReorder: checkPermission(currentUser, 'editorialboard.UPDATE').allowed,
-    }
-
-    // If specific member ID is provided, check update/delete permissions
-    if (memberId) {
-      const member = await prisma.editorialBoardMember.findUnique({
-        where: { id: memberId }
-      })
-
-      if (member) {
-        permissions.canUpdate = checkPermission(currentUser, 'editorialboard.UPDATE', {
-          resourceId: member.id
-        }).allowed
-
-        permissions.canDelete = checkPermission(currentUser, 'editorialboard.DELETE', {
-          resourceId: member.id
-        }).allowed
-      }
-    }
-
-    return { success: true, permissions }
-  } catch (error) {
-    console.error("Failed to check editorial board permissions:", error)
-    return { 
-      success: false, 
-      error: "Failed to check permissions",
-      permissions: { canRead: false, canCreate: false, canUpdate: false, canDelete: false, canReorder: false }
-    }
-  }
-}
-
-// NEW: Function to get board member types that user can create
-export async function getAvailableBoardMemberTypes() {
-  try {
-    const currentUser = await getCurrentUserWithPermissions()
-    
-    if (!currentUser) {
-      return { success: false, error: "Authentication required" }
-    }
-
-    // Check if user has permission to create editorial board members
-    const permissionCheck = checkPermission(currentUser, 'editorialboard.CREATE')
-    if (!permissionCheck.allowed) {
-      return { 
-        success: false, 
-        error: "You don't have permission to create board members" 
-      }
-    }
-
-    // Return all available board member types
-    const memberTypes = Object.values(BoardMemberType).map(type => ({
-      value: type,
-      label: type.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
-    }))
-
-    return { success: true, data: memberTypes }
-  } catch (error) {
-    console.error("Failed to get available board member types:", error)
-    return { success: false, error: "Failed to get available member types" }
   }
 }

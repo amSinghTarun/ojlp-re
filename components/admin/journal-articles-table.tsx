@@ -1,8 +1,7 @@
-// components/admin/journal-articles-table.tsx - Improved and simplified
+// components/admin/journal-articles-table.tsx - Updated for journal articles without content/image
 "use client"
 
 import { useState } from "react"
-import Image from "next/image"
 import Link from "next/link"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -37,11 +36,12 @@ import {
   BookOpen,
   Archive,
   Star,
-  ImageIcon,
   Search,
   Filter,
   X,
   ExternalLink,
+  Link as LinkIcon,
+  Globe,
 } from "lucide-react"
 import { deleteJournalArticle } from "@/lib/actions/journal-article-actions"
 import { toast } from "@/components/ui/use-toast"
@@ -58,25 +58,20 @@ import {
 } from "@/components/ui/alert-dialog"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 
-// Simplified interface
+// Updated interface for journal articles (no content/image)
 interface JournalArticle {
   id: string
   slug: string
   title: string
   abstract?: string
-  excerpt?: string
-  content: string
+  contentLink?: string
   publishedAt?: string
-  date?: string
   readTime: number
-  image: string
   archived: boolean
-  draft?: boolean
   featured: boolean
   carousel: boolean
   views: number
   keywords: string[]
-  contentLink?: string
   Authors?: Array<{
     id: string
     name: string
@@ -109,7 +104,7 @@ interface JournalArticlesTableProps {
   canCreate?: boolean
 }
 
-type FilterType = 'all' | 'featured' | 'carousel' | 'archived' | 'published'
+type FilterType = 'all' | 'featured' | 'carousel' | 'archived' | 'published' | 'with-links' | 'no-links'
 type SortField = 'title' | 'publishedAt' | 'views' | 'readTime'
 type SortOrder = 'asc' | 'desc'
 
@@ -127,7 +122,7 @@ export function JournalArticlesTable({ articles, currentUser, canCreate }: Journ
       setData(currentData => currentData.filter(article => article.slug !== slug))
       toast({
         title: "✅ Article Deleted",
-        description: "The journal article has been deleted successfully.",
+        description: "The journal article reference has been deleted successfully.",
       })
     } else {
       toast({
@@ -144,7 +139,10 @@ export function JournalArticlesTable({ articles, currentUser, canCreate }: Journ
       // Search filter
       const matchesSearch = searchTerm === "" || 
         article.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (article.abstract || article.excerpt || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (article.abstract || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+        article.keywords.some(keyword => 
+          keyword.toLowerCase().includes(searchTerm.toLowerCase())
+        ) ||
         article.Authors?.some(author => 
           author.name.toLowerCase().includes(searchTerm.toLowerCase())
         )
@@ -159,10 +157,16 @@ export function JournalArticlesTable({ articles, currentUser, canCreate }: Journ
           matchesFilter = article.carousel
           break
         case 'archived':
-          matchesFilter = article.archived || article.draft || false
+          matchesFilter = article.archived
           break
         case 'published':
-          matchesFilter = !(article.archived || article.draft || false)
+          matchesFilter = !article.archived
+          break
+        case 'with-links':
+          matchesFilter = !!article.contentLink
+          break
+        case 'no-links':
+          matchesFilter = !article.contentLink
           break
         default:
           matchesFilter = true
@@ -179,8 +183,8 @@ export function JournalArticlesTable({ articles, currentUser, canCreate }: Journ
           bValue = b.title.toLowerCase()
           break
         case 'publishedAt':
-          aValue = new Date(a.publishedAt || a.date || 0).getTime()
-          bValue = new Date(b.publishedAt || b.date || 0).getTime()
+          aValue = new Date(a.publishedAt || 0).getTime()
+          bValue = new Date(b.publishedAt || 0).getTime()
           break
         case 'views':
           aValue = a.views || 0
@@ -221,10 +225,9 @@ export function JournalArticlesTable({ articles, currentUser, canCreate }: Journ
     const badges = []
     
     // Status badge
-    const isArchived = article.archived !== undefined ? article.archived : article.draft || false
     badges.push(
-      <Badge key="status" variant={isArchived ? "secondary" : "default"} className="text-xs">
-        {isArchived ? "Archived" : "Published"}
+      <Badge key="status" variant={article.archived ? "secondary" : "default"} className="text-xs">
+        {article.archived ? "Archived" : "Published"}
       </Badge>
     )
 
@@ -242,7 +245,7 @@ export function JournalArticlesTable({ articles, currentUser, canCreate }: Journ
     if (article.carousel) {
       badges.push(
         <Badge key="carousel" variant="outline" className="text-xs text-blue-600 border-blue-300">
-          <ImageIcon className="h-3 w-3 mr-1" />
+          <Globe className="h-3 w-3 mr-1" />
           Carousel
         </Badge>
       )
@@ -253,7 +256,7 @@ export function JournalArticlesTable({ articles, currentUser, canCreate }: Journ
       badges.push(
         <Badge key="link" variant="outline" className="text-xs text-green-600 border-green-300">
           <ExternalLink className="h-3 w-3 mr-1" />
-          Link
+          External
         </Badge>
       )
     }
@@ -270,24 +273,36 @@ export function JournalArticlesTable({ articles, currentUser, canCreate }: Journ
     })
   }
 
+  const getDomainFromUrl = (url?: string) => {
+    if (!url) return null
+    try {
+      const domain = new URL(url).hostname
+      return domain.replace('www.', '')
+    } catch {
+      return null
+    }
+  }
+
   const filterCounts = {
     all: data.length,
     featured: data.filter(a => a.featured).length,
     carousel: data.filter(a => a.carousel).length,
-    archived: data.filter(a => a.archived || a.draft || false).length,
-    published: data.filter(a => !(a.archived || a.draft || false)).length,
+    archived: data.filter(a => a.archived).length,
+    published: data.filter(a => !a.archived).length,
+    'with-links': data.filter(a => !!a.contentLink).length,
+    'no-links': data.filter(a => !a.contentLink).length,
   }
 
   if (data.length === 0) {
     return (
       <Card>
         <CardContent className="flex flex-col items-center justify-center py-12">
-          <FileText className="h-12 w-12 text-muted-foreground mb-4" />
+          <LinkIcon className="h-12 w-12 text-muted-foreground mb-4" />
           <h3 className="text-lg font-semibold mb-2">No journal articles found</h3>
           <p className="text-muted-foreground mb-4 text-center">
             {canCreate 
-              ? "Get started by creating your first journal article."
-              : "No journal articles have been created yet."
+              ? "Get started by creating your first journal article reference."
+              : "No journal article references have been created yet."
             }
           </p>
           {canCreate && (
@@ -307,14 +322,14 @@ export function JournalArticlesTable({ articles, currentUser, canCreate }: Journ
       {/* Enhanced Filters and Search */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">Filter & Search Articles</CardTitle>
+          <CardTitle className="text-lg">Filter & Search Journal Articles</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           {/* Search */}
           <div className="relative">
             <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Search articles, authors, or content..."
+              placeholder="Search articles, authors, keywords, or abstracts..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-10"
@@ -342,11 +357,15 @@ export function JournalArticlesTable({ articles, currentUser, canCreate }: Journ
                 className="flex items-center gap-2"
               >
                 {filterType === 'featured' && <Star className="h-3 w-3" />}
-                {filterType === 'carousel' && <ImageIcon className="h-3 w-3" />}
+                {filterType === 'carousel' && <Globe className="h-3 w-3" />}
                 {filterType === 'archived' && <Archive className="h-3 w-3" />}
                 {filterType === 'published' && <Eye className="h-3 w-3" />}
+                {filterType === 'with-links' && <ExternalLink className="h-3 w-3" />}
+                {filterType === 'no-links' && <LinkIcon className="h-3 w-3" />}
                 {filterType === 'all' && <Filter className="h-3 w-3" />}
-                {filterType.charAt(0).toUpperCase() + filterType.slice(1)}
+                {filterType === 'with-links' ? 'With Links' : 
+                 filterType === 'no-links' ? 'No Links' :
+                 filterType.charAt(0).toUpperCase() + filterType.slice(1)}
                 <Badge variant="secondary" className="text-xs">
                   {count}
                 </Badge>
@@ -356,20 +375,19 @@ export function JournalArticlesTable({ articles, currentUser, canCreate }: Journ
 
           {/* Results Summary */}
           <div className="text-sm text-muted-foreground">
-            Showing {filteredAndSortedData.length} of {data.length} articles
+            Showing {filteredAndSortedData.length} of {data.length} journal articles
             {searchTerm && ` matching "${searchTerm}"`}
-            {filter !== 'all' && ` filtered by ${filter}`}
+            {filter !== 'all' && ` filtered by ${filter.replace('-', ' ')}`}
           </div>
         </CardContent>
       </Card>
 
-      {/* Simplified Table */}
+      {/* Updated Table (no image column) */}
       <Card>
         <CardContent className="p-0">
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="w-16">Image</TableHead>
                 <TableHead>
                   <Button variant="ghost" onClick={() => handleSort('title')} className="h-auto p-0 font-semibold">
                     Article Details
@@ -377,6 +395,7 @@ export function JournalArticlesTable({ articles, currentUser, canCreate }: Journ
                   </Button>
                 </TableHead>
                 <TableHead>Authors</TableHead>
+                <TableHead>External Link</TableHead>
                 <TableHead>Issue</TableHead>
                 <TableHead>
                   <Button variant="ghost" onClick={() => handleSort('publishedAt')} className="h-auto p-0 font-semibold">
@@ -397,30 +416,34 @@ export function JournalArticlesTable({ articles, currentUser, canCreate }: Journ
               {filteredAndSortedData.map((article) => {
                 const authors = article.Authors || (article.Author ? [article.Author] : [])
                 const issue = article.journalIssue || article.JournalIssue
-                const dateValue = article.publishedAt || article.date
+                const dateValue = article.publishedAt
+                const domain = getDomainFromUrl(article.contentLink)
 
                 return (
                   <TableRow key={article.id}>
-                    {/* Image */}
-                    <TableCell>
-                      <div className="h-12 w-16 relative overflow-hidden rounded">
-                        <Image
-                          src={article.image || "/placeholder.svg"}
-                          alt={article.title}
-                          fill
-                          className="object-cover"
-                          sizes="64px"
-                        />
-                      </div>
-                    </TableCell>
-
-                    {/* Article Details */}
-                    <TableCell className="max-w-[300px]">
-                      <div className="space-y-1">
-                        <div className="font-medium truncate">{article.title}</div>
-                        <div className="text-sm text-muted-foreground truncate">
-                          {article.abstract || article.excerpt}
-                        </div>
+                    {/* Article Details (no image) */}
+                    <TableCell className="max-w-[350px]">
+                      <div className="space-y-2">
+                        <div className="font-medium line-clamp-2">{article.title}</div>
+                        {article.abstract && (
+                          <div className="text-sm text-muted-foreground line-clamp-2">
+                            {article.abstract}
+                          </div>
+                        )}
+                        {article.keywords.length > 0 && (
+                          <div className="flex flex-wrap gap-1">
+                            {article.keywords.slice(0, 3).map((keyword, index) => (
+                              <Badge key={index} variant="outline" className="text-xs">
+                                {keyword}
+                              </Badge>
+                            ))}
+                            {article.keywords.length > 3 && (
+                              <Badge variant="outline" className="text-xs">
+                                +{article.keywords.length - 3} more
+                              </Badge>
+                            )}
+                          </div>
+                        )}
                         <div className="flex flex-wrap gap-1">
                           {getStatusBadges(article)}
                         </div>
@@ -431,16 +454,16 @@ export function JournalArticlesTable({ articles, currentUser, canCreate }: Journ
                     <TableCell>
                       <div className="flex items-center gap-2">
                         {authors.length === 1 ? (
-                          <User className="h-4 w-4 text-muted-foreground" />
+                          <User className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                         ) : authors.length > 1 ? (
-                          <Users className="h-4 w-4 text-muted-foreground" />
+                          <Users className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                         ) : null}
-                        <div>
-                          <div className="font-medium text-sm">
+                        <div className="min-w-0">
+                          <div className="font-medium text-sm truncate">
                             {getAuthorDisplay(article)}
                           </div>
                           {authors.length > 0 && (
-                            <div className="text-xs text-muted-foreground">
+                            <div className="text-xs text-muted-foreground truncate">
                               {authors[0].email}
                             </div>
                           )}
@@ -448,11 +471,40 @@ export function JournalArticlesTable({ articles, currentUser, canCreate }: Journ
                       </div>
                     </TableCell>
 
+                    {/* External Link */}
+                    <TableCell>
+                      {article.contentLink ? (
+                        <div className="flex items-center gap-2">
+                          <ExternalLink className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                          <div className="min-w-0">
+                            <a 
+                              href={article.contentLink} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="text-sm text-blue-600 hover:underline truncate block"
+                            >
+                              {domain || 'External Link'}
+                            </a>
+                            <div className="text-xs text-muted-foreground">
+                              Click to view full article
+                            </div>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-2">
+                          <LinkIcon className="h-4 w-4 text-muted-foreground" />
+                          <div className="text-sm text-muted-foreground">
+                            No external link
+                          </div>
+                        </div>
+                      )}
+                    </TableCell>
+
                     {/* Issue */}
                     <TableCell>
                       {issue ? (
                         <div className="flex items-center gap-2">
-                          <BookOpen className="h-4 w-4 text-muted-foreground" />
+                          <BookOpen className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                           <div>
                             <Badge variant="outline" className="text-xs">
                               Vol. {issue.volume}, No. {issue.issue}
@@ -470,7 +522,7 @@ export function JournalArticlesTable({ articles, currentUser, canCreate }: Journ
                     {/* Date */}
                     <TableCell>
                       <div className="flex items-center gap-2">
-                        <Calendar className="h-4 w-4 text-muted-foreground" />
+                        <Calendar className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                         <div className="text-sm">
                           {formatDate(dateValue)}
                         </div>
@@ -506,20 +558,20 @@ export function JournalArticlesTable({ articles, currentUser, canCreate }: Journ
                           <DropdownMenuItem asChild>
                             <Link href={`/admin/journal-articles/${article.slug}/edit`}>
                               <Pencil className="mr-2 h-4 w-4" />
-                              Edit Article
+                              Edit Reference
                             </Link>
                           </DropdownMenuItem>
                           <DropdownMenuItem asChild>
                             <Link href={`/journals/${article.slug}`}>
                               <Eye className="mr-2 h-4 w-4" />
-                              View Article
+                              View Details
                             </Link>
                           </DropdownMenuItem>
                           {article.contentLink && (
                             <DropdownMenuItem asChild>
                               <a href={article.contentLink} target="_blank" rel="noopener noreferrer">
-                                <FileText className="mr-2 h-4 w-4" />
-                                Full Content
+                                <ExternalLink className="mr-2 h-4 w-4" />
+                                Full Article
                               </a>
                             </DropdownMenuItem>
                           )}
@@ -531,14 +583,14 @@ export function JournalArticlesTable({ articles, currentUser, canCreate }: Journ
                                 onSelect={(e) => e.preventDefault()}
                               >
                                 <Trash2 className="mr-2 h-4 w-4" />
-                                Delete Article
+                                Delete Reference
                               </DropdownMenuItem>
                             </AlertDialogTrigger>
                             <AlertDialogContent>
                               <AlertDialogHeader>
                                 <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
                                 <AlertDialogDescription>
-                                  This action cannot be undone. This will permanently delete the article
+                                  This action cannot be undone. This will permanently delete the journal article reference
                                   &quot;{article.title}&quot; and remove all its data from our servers.
                                 </AlertDialogDescription>
                               </AlertDialogHeader>
@@ -548,7 +600,7 @@ export function JournalArticlesTable({ articles, currentUser, canCreate }: Journ
                                   onClick={() => handleDelete(article.slug)}
                                   className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                                 >
-                                  Delete Article
+                                  Delete Reference
                                 </AlertDialogAction>
                               </AlertDialogFooter>
                             </AlertDialogContent>
@@ -566,7 +618,7 @@ export function JournalArticlesTable({ articles, currentUser, canCreate }: Journ
 
       {/* Pagination Info */}
       <div className="text-sm text-muted-foreground text-center">
-        Displaying {filteredAndSortedData.length} article{filteredAndSortedData.length !== 1 ? 's' : ''}
+        Displaying {filteredAndSortedData.length} journal article{filteredAndSortedData.length !== 1 ? ' references' : ' reference'}
       </div>
     </div>
   )

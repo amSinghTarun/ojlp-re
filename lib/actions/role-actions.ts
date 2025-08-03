@@ -171,7 +171,7 @@ export async function getPermissions() {
     console.log(`✅ User ${currentUser.email} fetched permissions:`, {
       tableCount: Object.keys(result.data.grouped).length,
       tables: Object.keys(result.data.grouped),
-      totalPermissions: result.data.total
+      totalPermissions: result.data.all.length
     })
 
     // Return the grouped permissions for compatibility

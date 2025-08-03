@@ -118,14 +118,10 @@ model CallForPapers {
   description   String
   deadline      DateTime // no visibility after deadline
   volume        Int
-  issue         Int
+  issue         String
   year          Int
-  // guidelines    String
   fee           String?
-  // image         String?
   topics        String[]
-  // eligibility   String?
-  // contact       String?
   contentLink   String?
   publisher     String
   createdAt     DateTime @default(now())
@@ -216,12 +212,12 @@ enum BoardMemberType {
 
 enum NotificationType {
   call_for_papers
-  student_competition
-  editorial_vacancy
-  special_issue
+  // student_competition
+  vacancy
+  // special_issue
   event
-  announcement
-  publication
+  // announcement
+  // publication
   general
 }
 

@@ -1,7 +1,8 @@
 {
   "/admin-protected-login/page": "app/admin-protected-login/page.js",
-  "/admin/users/new/page": "app/admin/users/new/page.js",
-  "/admin/editorial-board/[id]/edit/page": "app/admin/editorial-board/[id]/edit/page.js",
+  "/about/page": "app/about/page.js",
   "/admin/page": "app/admin/page.js",
-  "/admin/roles/page": "app/admin/roles/page.js"
+  "/admin/authors/page": "app/admin/authors/page.js",
+  "/admin/authors/[slug]/edit/page": "app/admin/authors/[slug]/edit/page.js",
+  "/admin/journals/page": "app/admin/journals/page.js"
 }

@@ -1,4 +1,4 @@
-// lib/actions/journal-article-actions.ts - Updated for actual schema
+// lib/actions/journal-article-actions.ts - Updated for journal articles without content/image
 "use server"
 
 import { revalidatePath } from "next/cache"
@@ -36,20 +36,18 @@ const authorSchema = z.object({
   email: z.string().email(),
 })
 
-// Updated form schema to match actual Article model
+// Updated form schema for journal articles (no content/image fields)
 const journalArticleSchema = z.object({
   title: z.string().min(5).max(200),
   slug: z.string().min(3).max(100),
-  abstract: z.string().min(20).max(500), // Changed from 'excerpt'
-  content: z.string().min(100),
-  publishedAt: z.date(), // Changed from 'date'
+  abstract: z.string().min(20),
+  contentLink: z.string().url("Please enter a valid URL"),
+  publishedAt: z.date(),
   readTime: z.number().int().min(1).max(180),
-  image: z.string().optional(),
   authors: z.array(authorSchema).min(1).max(10),
   issueId: z.string().optional(),
   keywords: z.array(z.string()).default([]),
-  archived: z.boolean().default(false), // Changed from 'draft' (inverted logic)
-  contentLink: z.string().optional(),
+  archived: z.boolean().default(false),
   featured: z.boolean().default(false),
   carousel: z.boolean().default(false),
 })
@@ -154,10 +152,6 @@ export async function getJournalArticle(slug: string) {
     const transformedArticle = {
       ...article,
       Authors: article.authors.map(aa => aa.author),
-      // Map schema fields to form fields
-      excerpt: article.abstract, // For backward compatibility
-      date: article.publishedAt,
-      draft: article.archived, // Inverted logic
       journalIssue: article.JournalIssue
     }
 
@@ -216,10 +210,6 @@ export async function getJournalArticles() {
       ...article,
       Authors: article.authors.map(aa => aa.author),
       Author: article.authors.length > 0 ? article.authors[0].author : null,
-      // Map schema fields to form fields
-      excerpt: article.abstract,
-      date: article.publishedAt,
-      draft: article.archived, // Inverted logic
       journalIssue: article.JournalIssue
     }))
 
@@ -232,11 +222,11 @@ export async function getJournalArticles() {
 }
 
 /**
- * Create a new journal article with multiple authors
+ * Create a new journal article with multiple authors (no content/image)
  */
 export async function createJournalArticle(data: JournalArticleFormData) {
   try {
-    console.log("🚀 Creating journal article with multiple authors...")
+    console.log("🚀 Creating journal article reference with multiple authors...")
     
     // Check authentication and permissions
     const currentUser = await getCurrentUserWithPermissions()
@@ -279,23 +269,25 @@ export async function createJournalArticle(data: JournalArticleFormData) {
 
     // Create the article with authors in a transaction
     const result = await prisma.$transaction(async (tx) => {
-      // Create the article
+      // Create the article (without content and image fields)
       const article = await tx.article.create({
         data: {
           title: validatedData.title,
           slug: validatedData.slug,
           abstract: validatedData.abstract,
-          content: validatedData.content,
+          content: null, // Journal articles don't store content locally
           contentLink: validatedData.contentLink,
           publishedAt: validatedData.publishedAt,
           readTime: validatedData.readTime,
-          image: validatedData.image || null,
+          image: null, // Journal articles don't store images locally
           type: 'journal',
           issueId: validatedData.issueId || null,
           keywords: validatedData.keywords,
           archived: validatedData.archived,
           featured: validatedData.featured,
           carousel: validatedData.carousel,
+          views: 0,
+          downloadCount: 0,
         }
       })
 
@@ -313,8 +305,9 @@ export async function createJournalArticle(data: JournalArticleFormData) {
       return article
     })
 
-    console.log(`✅ User ${currentUser.email} created journal article: ${result.title}`)
+    console.log(`✅ User ${currentUser.email} created journal article reference: ${result.title}`)
     console.log(`👥 With ${authors.length} author(s): ${authors.map(a => a.name).join(", ")}`)
+    console.log(`🔗 External link: ${result.contentLink}`)
 
     // Revalidate relevant pages
     revalidatePath("/admin/journal-articles")
@@ -323,16 +316,16 @@ export async function createJournalArticle(data: JournalArticleFormData) {
     return { success: true, data: result }
 
   } catch (error) {
-    console.error("💥 Error creating article:", error)
+    console.error("💥 Error creating journal article:", error)
     return { 
       success: false, 
-      error: error instanceof Error ? error.message : "Failed to create article" 
+      error: error instanceof Error ? error.message : "Failed to create journal article" 
     }
   }
 }
 
 /**
- * Update an existing journal article with multiple authors
+ * Update an existing journal article with multiple authors (no content/image)
  */
 export async function updateJournalArticle(slug: string, data: JournalArticleFormData) {
   try {
@@ -396,18 +389,18 @@ export async function updateJournalArticle(slug: string, data: JournalArticleFor
 
     // Update the article and its authors in a transaction
     const result = await prisma.$transaction(async (tx) => {
-      // Update the article
+      // Update the article (without content and image fields)
       const updatedArticle = await tx.article.update({
         where: { id: existingArticle.id },
         data: {
           title: validatedData.title,
           slug: validatedData.slug,
           abstract: validatedData.abstract,
-          content: validatedData.content,
+          // content: Not updated for journal articles
           contentLink: validatedData.contentLink,
           publishedAt: validatedData.publishedAt,
           readTime: validatedData.readTime,
-          image: validatedData.image || null,
+          // image: Not updated for journal articles
           issueId: validatedData.issueId || null,
           keywords: validatedData.keywords,
           archived: validatedData.archived,
@@ -437,6 +430,7 @@ export async function updateJournalArticle(slug: string, data: JournalArticleFor
 
     console.log(`✅ User ${currentUser.email} updated journal article: ${result.title}`)
     console.log(`👥 With ${authors.length} author(s): ${authors.map(a => a.name).join(", ")}`)
+    console.log(`🔗 External link: ${result.contentLink}`)
 
     // Revalidate relevant pages
     revalidatePath("/admin/journal-articles")
@@ -446,10 +440,10 @@ export async function updateJournalArticle(slug: string, data: JournalArticleFor
     return { success: true, data: result }
 
   } catch (error) {
-    console.error("💥 Error updating article:", error)
+    console.error("💥 Error updating journal article:", error)
     return { 
       success: false, 
-      error: error instanceof Error ? error.message : "Failed to update article" 
+      error: error instanceof Error ? error.message : "Failed to update journal article" 
     }
   }
 }
@@ -503,10 +497,10 @@ export async function deleteJournalArticle(slug: string) {
     
     return { success: true }
   } catch (error) {
-    console.error("💥 Error deleting article:", error)
+    console.error("💥 Error deleting journal article:", error)
     return { 
       success: false, 
-      error: error instanceof Error ? error.message : "Failed to delete article" 
+      error: error instanceof Error ? error.message : "Failed to delete journal article" 
     }
   }
 }

@@ -4,7 +4,7 @@ import { getCurrentUser } from "@/lib/auth"
 import { checkPermission } from "@/lib/permissions/checker"
 import { UserWithPermissions } from "@/lib/permissions/types"
 import { revalidatePath } from "next/cache"
-import prisma from "@/lib/prisma"
+import { prisma } from "@/lib/prisma"
 import { NotificationType } from "@prisma/client"
 
 // Helper function to get current user with permissions
@@ -28,6 +28,117 @@ async function getCurrentUserWithPermissions(): Promise<UserWithPermissions | nu
     return null
   }
 }
+
+// PUBLIC: Get all notifications - no authentication required for public viewing
+export async function getAllNotifications() {
+  try {
+    const notifications = await prisma.notification.findMany({
+      where: {
+        OR: [
+          { expiresAt: null },
+          { expiresAt: { gte: new Date() } }
+        ]
+      },
+      orderBy: {
+        createdAt: 'desc'
+      }
+    })
+
+    console.log(`✅ Fetched ${notifications.length} public notifications`)
+
+    // Transform the data to match the expected format
+    return { 
+      success: true, 
+      data: notifications.map(notification => ({
+        id: notification.id,
+        title: notification.title,
+        content: notification.content,
+        type: notification.type,
+        priority: notification.priority,
+        linkDisplay: notification.linkDisplay,
+        linkUrl: notification.linkUrl,
+        expiresAt: notification.expiresAt?.toISOString(),
+        createdAt: notification.createdAt.toISOString(),
+        updatedAt: notification.updatedAt.toISOString(),
+      })) 
+    }
+  } catch (error) {
+    console.error("Failed to fetch public notifications:", error)
+    return { success: false, error: "Failed to fetch notifications" }
+  }
+}
+
+// PUBLIC: Get notification by ID - no authentication required for public viewing
+export async function getPublicNotificationById(id: string) {
+  try {
+    if (!id || typeof id !== 'string') {
+      return { success: false, error: "Invalid notification ID provided" }
+    }
+
+    const notification = await prisma.notification.findUnique({
+      where: { 
+        id,
+        OR: [
+          { expiresAt: null },
+          { expiresAt: { gte: new Date() } }
+        ]
+      },
+    })
+
+    if (!notification) {
+      return { success: false, error: "Notification not found or expired" }
+    }
+
+    console.log(`✅ Fetched public notification: ${notification.title}`)
+
+    return { success: true, data: notification }
+  } catch (error) {
+    console.error("Failed to fetch public notification:", error)
+    return { success: false, error: "Failed to fetch notification" }
+  }
+}
+
+// PUBLIC: Get high priority notifications - no authentication required
+export async function getHighPriorityNotifications() {
+  try {
+    const notifications = await prisma.notification.findMany({
+      where: {
+        OR: [
+          { expiresAt: null },
+          { expiresAt: { gte: new Date() } }
+        ]
+      },
+      take: 5,
+      orderBy: {
+        createdAt: 'desc'
+      }
+    })
+
+    console.log(`✅ Fetched ${notifications.length} high priority public notifications`)
+
+    // Transform the data to match the expected format
+    return notifications.map(notification => ({
+      id: notification.id,
+      title: notification.title,
+      content: notification.content,
+      createdAt: notification.createdAt.toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      }),
+      type: notification.type,
+      priority: notification.priority,
+      linkDisplay: notification.linkDisplay,
+      linkUrl: notification.linkUrl,
+      expiresAt: notification.expiresAt?.toISOString(),
+    }))
+  } catch (error) {
+    console.error("Failed to fetch high priority public notifications:", error)
+    return []
+  }
+}
+
+// ADMIN FUNCTIONS - Require authentication and permissions
 
 export async function updateExistingNotification(
   notificationId: string,
@@ -63,9 +174,7 @@ export async function updateExistingNotification(
     }
 
     // Check if user has permission to update notifications
-    const permissionCheck = checkPermission(currentUser, 'notification.UPDATE', {
-      resourceId: existingNotification.id
-    })
+    const permissionCheck = checkPermission(currentUser, 'notification.UPDATE')
 
     if (!permissionCheck.allowed) {
       return { 
@@ -117,9 +226,7 @@ export async function deleteExistingNotification(notificationId: string) {
     }
 
     // Check if user has permission to delete notifications
-    const permissionCheck = checkPermission(currentUser, 'notification.DELETE', {
-      resourceId: existingNotification.id
-    })
+    const permissionCheck = checkPermission(currentUser, 'notification.DELETE')
 
     if (!permissionCheck.allowed) {
       return { 
@@ -141,113 +248,6 @@ export async function deleteExistingNotification(notificationId: string) {
   } catch (error) {
     console.error("Failed to delete notification:", error)
     return { success: false, error: "Failed to delete notification" }
-  }
-}
-
-export async function getHighPriorityNotifications() {
-  try {
-    // Check authentication and permissions
-    const currentUser = await getCurrentUserWithPermissions()
-    
-    if (!currentUser) {
-      return []
-    }
-
-    // Check if user has permission to read notifications
-    const permissionCheck = checkPermission(currentUser, 'notification.READ')
-    if (!permissionCheck.allowed) {
-      console.warn(`User ${currentUser.email} attempted to read high priority notifications without permission`)
-      return []
-    }
-
-    const notifications = await prisma.notification.findMany({
-      where: {
-        priority: "high",
-        OR: [
-          { expiresAt: null },
-          { expiresAt: { gte: new Date() } }
-        ]
-      },
-      orderBy: {
-        createdAt: 'desc'
-      }
-    })
-
-    console.log(`✅ User ${currentUser.email} fetched ${notifications.length} high priority notifications`)
-
-    // Transform the data to match the expected format
-    return notifications.map(notification => ({
-      id: notification.id,
-      title: notification.title,
-      content: notification.content,
-      createdAt: notification.createdAt.toLocaleDateString("en-US", {
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-      }),
-      type: notification.type,
-      priority: notification.priority,
-      linkDisplay: notification.linkDisplay,
-      linkUrl: notification.linkUrl,
-      expiresAt: notification.expiresAt?.toISOString(),
-    }))
-  } catch (error) {
-    console.error("Failed to fetch notifications:", error)
-    return []
-  }
-}
-
-export async function getAllNotifications() {
-  try {
-    // Check authentication and permissions
-    const currentUser = await getCurrentUserWithPermissions()
-    
-    if (!currentUser) {
-      return { success: false, error: "Authentication required" }
-    }
-
-    // Check if user has permission to read notifications
-    const permissionCheck = checkPermission(currentUser, 'notification.READ')
-    if (!permissionCheck.allowed) {
-      return { 
-        success: false, 
-        error: permissionCheck.reason || "You don't have permission to view notifications" 
-      }
-    }
-
-    const notifications = await prisma.notification.findMany({
-      where: {
-        OR: [
-          { expiresAt: null },
-          { expiresAt: { gte: new Date() } }
-        ]
-      },
-      orderBy: {
-        createdAt: 'desc'
-      }
-    })
-
-    console.log(`✅ User ${currentUser.email} fetched ${notifications.length} notifications`)
-
-    // Transform the data to match the expected format
-    return { 
-      success: true, 
-      data: notifications.map(notification => ({
-        id: notification.id,
-        title: notification.title,
-        content: notification.content,
-        type: notification.type,
-        priority: notification.priority,
-        linkDisplay: notification.linkDisplay,
-        linkUrl: notification.linkUrl,
-        expiresAt: notification.expiresAt?.toISOString(),
-        createdAt: notification.createdAt.toISOString(),
-        updatedAt: notification.updatedAt.toISOString(),
-      })) 
-    }
-  } catch (error) {
-    console.error("Failed to fetch all notifications:", error)
-    return { success: false, error: "Failed to fetch notifications" }
   }
 }
 
@@ -381,9 +381,7 @@ export async function updateNotification(
     }
 
     // Check if user has permission to update notifications
-    const permissionCheck = checkPermission(currentUser, 'notification.UPDATE', {
-      resourceId: existingNotification.id
-    })
+    const permissionCheck = checkPermission(currentUser, 'notification.UPDATE')
 
     if (!permissionCheck.allowed) {
       return { 
@@ -417,7 +415,7 @@ export async function updateNotification(
   }
 }
 
-// NEW: Function to get notifications with permission context
+// ADMIN: Function to get notifications with permission context
 export async function getNotificationsWithPermissions() {
   try {
     const currentUser = await getCurrentUserWithPermissions()
@@ -450,12 +448,8 @@ export async function getNotificationsWithPermissions() {
     // Add permission context to each notification
     const notificationsWithPermissions = notifications.map(notification => ({
       ...notification,
-      canEdit: checkPermission(currentUser, 'notification.UPDATE', {
-        resourceId: notification.id
-      }).allowed,
-      canDelete: checkPermission(currentUser, 'notification.DELETE', {
-        resourceId: notification.id
-      }).allowed,
+      canEdit: checkPermission(currentUser, 'notification.UPDATE').allowed,
+      canDelete: checkPermission(currentUser, 'notification.DELETE').allowed,
     }))
 
     return { 
@@ -469,7 +463,7 @@ export async function getNotificationsWithPermissions() {
   }
 }
 
-// NEW: Function to check notification permissions
+// ADMIN: Function to check notification permissions
 export async function checkNotificationPermissions(notificationId?: string) {
   try {
     const currentUser = await getCurrentUserWithPermissions()
@@ -496,13 +490,8 @@ export async function checkNotificationPermissions(notificationId?: string) {
       })
 
       if (notification) {
-        permissions.canUpdate = checkPermission(currentUser, 'notification.UPDATE', {
-          resourceId: notification.id
-        }).allowed
-
-        permissions.canDelete = checkPermission(currentUser, 'notification.DELETE', {
-          resourceId: notification.id
-        }).allowed
+        permissions.canUpdate = checkPermission(currentUser, 'notification.UPDATE').allowed
+        permissions.canDelete = checkPermission(currentUser, 'notification.DELETE').allowed
       }
     }
 
@@ -517,7 +506,7 @@ export async function checkNotificationPermissions(notificationId?: string) {
   }
 }
 
-// NEW: Function to get notification types that user can create
+// ADMIN: Function to get notification types that user can create
 export async function getAvailableNotificationTypes() {
   try {
     const currentUser = await getCurrentUserWithPermissions()
