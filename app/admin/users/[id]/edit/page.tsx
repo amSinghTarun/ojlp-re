@@ -1,11 +1,13 @@
-
 // app/admin/users/[id]/edit/page.tsx - Updated for simplified schema
+import React from "react"
 import type { Metadata } from "next"
 import { redirect, notFound } from "next/navigation"
 import { getCurrentUser } from "@/lib/auth"
 import { UserForm } from "@/components/admin/user-form"
 import { getUser, getRoles } from "@/lib/actions/user-actions"
 import { Role, User } from "@prisma/client"
+
+export const dynamic = 'force-dynamic'
 
 interface EditUserPageProps {
   params: {

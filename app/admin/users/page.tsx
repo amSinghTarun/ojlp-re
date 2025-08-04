@@ -1,4 +1,5 @@
 // app/admin/users/page.tsx - Updated for simplified schema
+import React from "react"
 import type { Metadata } from "next"
 import { getCurrentUser } from "@/lib/auth"
 import { UsersTable } from "@/components/admin/users-table"
@@ -7,6 +8,8 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { AlertTriangle, Users, Shield, Database } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+
+export const dynamic = 'force-dynamic'
 
 export const metadata: Metadata = {
   title: "User Management",

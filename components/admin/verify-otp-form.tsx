@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button"
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
 import { toast } from "@/components/ui/use-toast"
-import { verifyOtp, sendResetPasswordEmail } from "@/lib/actions/auth-actions"
+// import { verifyOtp, sendResetPasswordEmail } from "@/lib/actions/auth-actions"
 
 const formSchema = z.object({
   otp: z.string().min(6, {
@@ -73,33 +73,33 @@ export function VerifyOtpForm() {
 
     setIsLoading(true)
 
-    try {
-      const result = await verifyOtp(email, values.otp)
+    // try {
+    //   const result = await verifyOtp(email, values.otp)
 
-      if (result.success) {
-        toast({
-          title: "OTP verified",
-          description: "You can now set a new password.",
-        })
-        // Store verification token in session storage for the next step
-        sessionStorage.setItem("verificationToken", result.token)
-        router.push("/admin/new-password")
-      } else {
-        toast({
-          title: "Verification failed",
-          description: result.message || "Invalid or expired OTP. Please try again.",
-          variant: "destructive",
-        })
-      }
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "An unexpected error occurred. Please try again.",
-        variant: "destructive",
-      })
-    } finally {
-      setIsLoading(false)
-    }
+    //   if (result.success) {
+    //     toast({
+    //       title: "OTP verified",
+    //       description: "You can now set a new password.",
+    //     })
+    //     // Store verification token in session storage for the next step
+    //     sessionStorage.setItem("verificationToken", result.token)
+    //     router.push("/admin/new-password")
+    //   } else {
+    //     toast({
+    //       title: "Verification failed",
+    //       description: result.message || "Invalid or expired OTP. Please try again.",
+    //       variant: "destructive",
+    //     })
+    //   }
+    // } catch (error) {
+    //   toast({
+    //     title: "Error",
+    //     description: "An unexpected error occurred. Please try again.",
+    //     variant: "destructive",
+    //   })
+    // } finally {
+    //   setIsLoading(false)
+    // }
   }
 
   async function handleResendOtp() {
@@ -107,30 +107,30 @@ export function VerifyOtpForm() {
 
     setResendDisabled(true)
 
-    try {
-      const result = await sendResetPasswordEmail(email)
+    // try {
+    //   const result = await sendResetPasswordEmail(email)
 
-      if (result.success) {
-        toast({
-          title: "OTP resent",
-          description: "A new verification code has been sent to your email.",
-        })
-      } else {
-        toast({
-          title: "Error",
-          description: result.message || "Failed to resend OTP. Please try again.",
-          variant: "destructive",
-        })
-        setResendDisabled(false)
-      }
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "An unexpected error occurred. Please try again.",
-        variant: "destructive",
-      })
-      setResendDisabled(false)
-    }
+    //   if (result.success) {
+    //     toast({
+    //       title: "OTP resent",
+    //       description: "A new verification code has been sent to your email.",
+    //     })
+    //   } else {
+    //     toast({
+    //       title: "Error",
+    //       description: result.message || "Failed to resend OTP. Please try again.",
+    //       variant: "destructive",
+    //     })
+    //     setResendDisabled(false)
+    //   }
+    // } catch (error) {
+    //   toast({
+    //     title: "Error",
+    //     description: "An unexpected error occurred. Please try again.",
+    //     variant: "destructive",
+    //   })
+    //   setResendDisabled(false)
+    // }
   }
 
   return (

@@ -1,4 +1,5 @@
 // app/admin/authors/[slug]/edit/page.tsx - Updated for actual schema
+import React from "react"
 import type { Metadata } from "next"
 import { redirect, notFound } from "next/navigation"
 import { getCurrentUser } from "@/lib/auth"
@@ -11,6 +12,8 @@ import { AlertTriangle, ArrowLeft } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import { prisma } from "@/lib/prisma"
+
+export const dynamic = 'force-dynamic'
 
 interface EditAuthorPageProps {
   params: {

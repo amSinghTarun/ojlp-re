@@ -1,3 +1,4 @@
+import React from "react"
 import type { Metadata } from "next"
 import { redirect } from "next/navigation"
 import { getCurrentUser } from "@/lib/auth"
@@ -10,6 +11,8 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import Link from "next/link"
 import prisma from "@/lib/prisma"
+
+export const dynamic = 'force-dynamic'
 
 export const metadata: Metadata = {
   title: "Add Editorial Board Member",

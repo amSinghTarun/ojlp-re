@@ -1,5 +1,8 @@
+import React from "react"
 import { VerifyOtpForm } from "@/components/admin/verify-otp-form"
 import { Scale } from "lucide-react"
+
+export const dynamic = 'force-dynamic'
 
 export default function VerifyOtpPage() {
   return (

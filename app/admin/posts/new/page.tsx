@@ -1,4 +1,5 @@
 // app/admin/posts/new/page.tsx - WITH SIMPLE PERMISSION CHECKS
+import React from "react"
 import { DashboardHeader } from "@/components/admin/dashboard-header"
 import { PostForm } from "@/components/admin/post-form"
 import { getCurrentUser } from "@/lib/auth"
@@ -11,6 +12,8 @@ import { redirect } from "next/navigation"
 import { prisma } from "@/lib/prisma"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { AlertCircle } from "lucide-react"
+
+export const dynamic = 'force-dynamic'
 
 // Get current user with permissions helper
 async function getCurrentUserWithPermissions(): Promise<UserWithPermissions | null> {

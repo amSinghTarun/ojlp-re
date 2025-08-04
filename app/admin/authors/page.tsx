@@ -1,4 +1,5 @@
 // app/admin/authors/page.tsx - Updated for actual schema
+import React from "react"
 import Link from "next/link"
 import { Plus, Users, FileText, Eye, Pencil, ExternalLink, ArrowLeft } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -20,6 +21,9 @@ import { checkPermission } from "@/lib/permissions/checker"
 import { UserWithPermissions } from "@/lib/permissions/types"
 import { redirect } from "next/navigation"
 import { prisma } from "@/lib/prisma"
+
+export const dynamic = 'force-dynamic'
+
 
 // Get current user with permissions helper
 async function getCurrentUserWithPermissions(): Promise<UserWithPermissions | null> {

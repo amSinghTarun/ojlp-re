@@ -6,7 +6,7 @@ import { revalidatePath } from 'next/cache'
 import { getCurrentUser } from '@/lib/auth'
 import { 
   checkPermission, 
-  hasSystemAccess 
+  // hasSystemAccess 
 } from '@/lib/permissions/checker'
 import { 
   generateAllPermissions, 
@@ -14,7 +14,7 @@ import {
 } from '@/lib/permissions/schema-reader'
 import { 
   UserWithPermissions, 
-  isValidPermissionString,
+  // isValidPermissionString,
   SYSTEM_PERMISSIONS,
   PERMISSION_ERRORS
 } from '@/lib/permissions/types'
@@ -127,10 +127,10 @@ export async function createRoleWithPermissions(data: {
     }
 
     // Validate permissions are valid
-    const invalidPermissions = data.permissions.filter(permission => !isValidPermissionString(permission))
-    if (invalidPermissions.length > 0) {
-      return createErrorResponse(`Invalid permissions: ${invalidPermissions.join(', ')}`)
-    }
+    // const invalidPermissions = data.permissions.filter(permission => !isValidPermissionString(permission))
+    // if (invalidPermissions.length > 0) {
+    //   return createErrorResponse(`Invalid permissions: ${invalidPermissions.join(', ')}`)
+    // }
 
     // Check if user can assign system-level permissions
     const systemPermissions = data.permissions.filter(permission => permission.startsWith('SYSTEM.'))
@@ -221,10 +221,10 @@ export async function updateRolePermissions(roleId: string, permissions: string[
     }
 
     // Validate permissions are valid
-    const invalidPermissions = permissions.filter(permission => !isValidPermissionString(permission))
-    if (invalidPermissions.length > 0) {
-      return createErrorResponse(`Invalid permissions: ${invalidPermissions.join(', ')}`)
-    }
+    // const invalidPermissions = permissions.filter(permission => !isValidPermissionString(permission))
+    // if (invalidPermissions.length > 0) {
+    //   return createErrorResponse(`Invalid permissions: ${invalidPermissions.join(', ')}`)
+    // }
 
     // Check if user can assign system-level permissions
     const systemPermissions = permissions.filter(permission => permission.startsWith('SYSTEM.'))

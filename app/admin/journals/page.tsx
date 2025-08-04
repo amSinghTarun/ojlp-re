@@ -1,4 +1,5 @@
 // app/admin/journals/page.tsx - Updated for actual schema
+import React from "react"
 import Link from "next/link"
 import { Plus, BookOpen } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -15,6 +16,8 @@ import { redirect } from "next/navigation"
 import { prisma } from "@/lib/prisma"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { AlertCircle } from "lucide-react"
+
+export const dynamic = 'force-dynamic'
 
 // Get current user with permissions helper
 async function getCurrentUserWithPermissions(): Promise<UserWithPermissions | null> {

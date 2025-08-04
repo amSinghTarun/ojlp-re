@@ -1,4 +1,5 @@
 // app/admin/journal-articles/[slug]/edit/page.tsx - Fixed field mapping
+import React from "react"
 import { DashboardHeader } from "@/components/admin/dashboard-header"
 import { JournalArticleForm } from "@/components/admin/journal-article-form"
 import { getJournalArticle } from "@/lib/actions/journal-article-actions"
@@ -14,6 +15,8 @@ import { prisma } from "@/lib/prisma"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { AlertCircle, FileText, Eye, Calendar, Users, BookOpen, ExternalLink } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
+
+export const dynamic = 'force-dynamic'
 
 interface EditJournalArticlePageProps {
   params: {

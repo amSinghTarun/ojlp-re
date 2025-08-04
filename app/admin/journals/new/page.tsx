@@ -1,4 +1,5 @@
 // app/admin/journals/new/page.tsx - Updated for actual schema
+import React from "react"
 import { DashboardHeader } from "@/components/admin/dashboard-header"
 import { JournalIssueForm } from "@/components/admin/journal-issue-form"
 import { getCurrentUser } from "@/lib/auth"
@@ -11,6 +12,8 @@ import { redirect } from "next/navigation"
 import { prisma } from "@/lib/prisma"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { AlertCircle } from "lucide-react"
+
+export const dynamic = 'force-dynamic'
 
 // Get current user with permissions helper
 async function getCurrentUserWithPermissions(): Promise<UserWithPermissions | null> {

@@ -1,5 +1,5 @@
-
 // app/admin/roles/[id]/edit/page.tsx - Updated for simplified schema
+import React from "react"
 import type { Metadata } from "next"
 import { redirect, notFound } from "next/navigation"
 import { getCurrentUser } from "@/lib/auth"
@@ -13,6 +13,8 @@ import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import { prisma } from "@/lib/prisma"
 import { Role } from "@prisma/client"
+
+export const dynamic = 'force-dynamic'
 
 interface EditRolePageProps {
   params: {

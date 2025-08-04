@@ -1,5 +1,6 @@
 import { LoginForm } from "@/components/admin/login-form"
 import { Scale } from "lucide-react"
+import { Suspense } from "react";
 
 export default function LoginPage() {
   return (
@@ -15,7 +16,9 @@ export default function LoginPage() {
           <h2 className="text-2xl font-bold">Admin Login</h2>
           <p className="text-sm text-muted-foreground">Enter your credentials to access the admin panel</p>
         </div>
-        <LoginForm />
+        <Suspense fallback={null}> 
+          <LoginForm />
+        </Suspense>
       </div>
     </div>
   )

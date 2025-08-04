@@ -1,5 +1,8 @@
+import React from "react"
 import { NewPasswordForm } from "@/components/admin/new-password-form"
 import { Scale } from "lucide-react"
+
+export const dynamic = 'force-dynamic'
 
 export default function NewPasswordPage() {
   return (

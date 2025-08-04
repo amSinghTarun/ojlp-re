@@ -1,4 +1,5 @@
 // app/admin/posts/[slug]/edit/page.tsx - WITH SIMPLE PERMISSION CHECKS
+import React from "react"
 import { Suspense } from "react"
 import { notFound, redirect } from "next/navigation"
 import { DashboardHeader } from "@/components/admin/dashboard-header"
@@ -15,6 +16,8 @@ import { prisma } from "@/lib/prisma"
 import { Loader2, AlertTriangle } from "lucide-react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { AlertCircle } from "lucide-react"
+
+export const dynamic = 'force-dynamic'
 
 interface EditPostPageProps {
   params: {

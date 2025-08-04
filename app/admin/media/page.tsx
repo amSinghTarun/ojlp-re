@@ -1,4 +1,5 @@
 // app/admin/media/page.tsx - WITH SIMPLE PERMISSION CHECKS
+import React from "react"
 import { DashboardHeader } from "@/components/admin/dashboard-header"
 import { MediaLibrary } from "@/components/admin/media-library"
 import { getCurrentUser } from "@/lib/auth"
@@ -12,6 +13,8 @@ import { prisma } from "@/lib/prisma"
 import { Button } from "@/components/ui/button"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { AlertCircle, Upload } from "lucide-react"
+
+export const dynamic = 'force-dynamic'
 
 // Get current user with permissions helper
 async function getCurrentUserWithPermissions(): Promise<UserWithPermissions | null> {
@@ -79,7 +82,7 @@ export default async function MediaPage() {
         </Alert>
       )}
       
-      <MediaLibrary canUpload={canUploadMedia} />
+      <MediaLibrary />
     </div>
   )
 }

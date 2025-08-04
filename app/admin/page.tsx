@@ -1,6 +1,4 @@
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Overview } from "@/components/admin/overview"
-import { RecentPosts } from "@/components/admin/recent-posts"
+import React from "react"
 import { DashboardHeader } from "@/components/admin/dashboard-header"
 import { articles } from "@/lib/data"
 import { LogoutButton } from "@/components/admin/logout-button"

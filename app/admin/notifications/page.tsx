@@ -1,4 +1,5 @@
 // app/admin/notifications/page.tsx
+import React from "react"
 import { DashboardHeader } from "@/components/admin/dashboard-header"
 import { NotificationsTable } from "@/components/admin/notifications-table"
 import { getCurrentUser } from "@/lib/auth"
@@ -12,6 +13,8 @@ import { AlertTriangle, PlusCircle, Eye, ArrowLeft, Bell, BarChart3, Clock, Exte
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { getNotificationStats } from "@/lib/controllers/notifications"
 import Link from "next/link"
+
+export const dynamic = 'force-dynamic'
 
 // Get current user with permissions helper
 async function getCurrentUserWithPermissions(): Promise<UserWithPermissions | null> {

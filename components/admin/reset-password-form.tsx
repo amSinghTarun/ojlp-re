@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button"
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
 import { toast } from "@/components/ui/use-toast"
-import { sendResetPasswordEmail } from "@/lib/actions/auth-actions"
+// import { sendResetPasswordEmail } from "@/lib/actions/auth-actions"
 
 const formSchema = z.object({
   email: z.string().email({
@@ -34,33 +34,33 @@ export function ResetPasswordForm() {
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsLoading(true)
 
-    try {
-      const result = await sendResetPasswordEmail(values.email)
+    // try {
+    //   const result = await sendResetPasswordEmail(values.email)
 
-      if (result.success) {
-        toast({
-          title: "Reset code sent",
-          description: "Check your email for the password reset code.",
-        })
-        // Store email in session storage for the next step
-        sessionStorage.setItem("resetEmail", values.email)
-        router.push("/admin/verify-otp")
-      } else {
-        toast({
-          title: "Error",
-          description: result.message || "Failed to send reset code. Please try again.",
-          variant: "destructive",
-        })
-      }
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "An unexpected error occurred. Please try again.",
-        variant: "destructive",
-      })
-    } finally {
-      setIsLoading(false)
-    }
+    //   if (result.success) {
+    //     toast({
+    //       title: "Reset code sent",
+    //       description: "Check your email for the password reset code.",
+    //     })
+    //     // Store email in session storage for the next step
+    //     sessionStorage.setItem("resetEmail", values.email)
+    //     router.push("/admin/verify-otp")
+    //   } else {
+    //     toast({
+    //       title: "Error",
+    //       description: result.message || "Failed to send reset code. Please try again.",
+    //       variant: "destructive",
+    //     })
+    //   }
+    // } catch (error) {
+    //   toast({
+    //     title: "Error",
+    //     description: "An unexpected error occurred. Please try again.",
+    //     variant: "destructive",
+    //   })
+    // } finally {
+    //   setIsLoading(false)
+    // }
   }
 
   return (

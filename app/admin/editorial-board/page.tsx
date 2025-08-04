@@ -1,4 +1,6 @@
 // app/admin/editorial-board/page.tsx - Updated with better permissions and error handling
+
+import React from "react"
 import { DashboardHeader } from "@/components/admin/dashboard-header"
 import { EditorialBoardTable } from "@/components/admin/editorial-board-table"
 import { getCurrentUser } from "@/lib/auth"
@@ -12,6 +14,8 @@ import { AlertTriangle, PlusCircle, Eye, ArrowLeft, Users, UserCheck, BarChart3 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { getEditorialBoardStats } from "@/lib/controllers/editorial-board"
 import Link from "next/link"
+
+export const dynamic = 'force-dynamic'
 
 // Get current user with permissions helper
 async function getCurrentUserWithPermissions(): Promise<UserWithPermissions | null> {

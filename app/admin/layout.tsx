@@ -1,4 +1,5 @@
 // app/admin/layout.tsx
+import React from "react"
 import { AdminSidebar } from '@/components/admin/sidebar'
 import { getCurrentUser } from '@/lib/auth'
 import { User } from '@prisma/client'

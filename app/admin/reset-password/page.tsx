@@ -1,5 +1,8 @@
+import React from "react"
 import { ResetPasswordForm } from "@/components/admin/reset-password-form"
 import { Scale } from "lucide-react"
+
+export const dynamic = 'force-dynamic'
 
 export default function ResetPasswordPage() {
   return (

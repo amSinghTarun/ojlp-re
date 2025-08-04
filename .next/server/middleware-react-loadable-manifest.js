@@ -1,1 +1,1 @@
-self.__REACT_LOADABLE_MANIFEST="{}"
+self.__REACT_LOADABLE_MANIFEST='{"components/admin/user-form.tsx -> @/lib/actions/user-actions":{"id":94963,"files":["static/chunks/4963.8e1008bc077c4653.js"]}}';

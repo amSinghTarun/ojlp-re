@@ -1,4 +1,5 @@
 // app/admin/journals/[id]/edit/page.tsx - Updated for actual schema
+import React from "react"
 import { DashboardHeader } from "@/components/admin/dashboard-header"
 import { JournalIssueForm } from "@/components/admin/journal-issue-form"
 import { getJournalIssue } from "@/lib/actions/journal-actions"
@@ -12,6 +13,8 @@ import { notFound, redirect } from "next/navigation"
 import { prisma } from "@/lib/prisma"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { AlertCircle } from "lucide-react"
+
+export const dynamic = 'force-dynamic'
 
 interface EditJournalIssuePageProps {
   params: {
