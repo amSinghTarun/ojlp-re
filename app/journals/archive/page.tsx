@@ -1,11 +1,11 @@
+import React from "react"
 import Link from "next/link"
 import { Suspense } from "react"
 import { ScrollReveal } from "@/components/scroll-reveal"
 import { DecorativeHeading } from "@/components/decorative-heading"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { BookOpen, AlertTriangle, FileText, Calendar } from "lucide-react"
+import { BookOpen, AlertTriangle } from "lucide-react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { getJournalVolumes } from "@/lib/controllers/journal-issues"
 
